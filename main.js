@@ -1267,3 +1267,5 @@ supabase.auth.onAuthStateChange((_event,session)=>{
   user=session?.user||null;
 
   render();
+
+});
