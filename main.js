@@ -834,7 +834,6 @@ function renderDashboard() {
 
                   </thead>
 
-
                   <tbody>
 
                     ${
@@ -1246,11 +1245,13 @@ function renderInventory() {
 
   const lowStock =
     inventoryRows.filter(
-      r => n(r.stock_minimo) > 0 &&
-           n(r.stock_inicial) +
-           n(r.entradas) -
-           n(r.salidas) <=
-           n(r.stock_minimo)
+      r =>
+        n(r.stock_minimo) > 0 &&
+        (
+          n(r.stock_inicial) +
+          n(r.entradas) -
+          n(r.salidas)
+        ) <= n(r.stock_minimo)
     ).length;
 
 
@@ -1329,9 +1330,11 @@ function renderInventory() {
       <section class="panel">
 
         <h2>
-          ${editingInventoryId
-            ? 'Editar inventario'
-            : 'Registrar inventario'}
+          ${
+            editingInventoryId
+              ? 'Editar inventario'
+              : 'Registrar inventario'
+          }
         </h2>
 
 
@@ -1379,7 +1382,7 @@ function renderInventory() {
               Material / Producto
 
               <input
-                id="inv_material"
+                id="inv_producto"
                 type="text"
                 placeholder="Ej. Carbonato de calcio"
                 required
@@ -1398,27 +1401,27 @@ function renderInventory() {
                   Seleccionar
                 </option>
 
-                <option>
+                <option value="Materia prima">
                   Materia prima
                 </option>
 
-                <option>
+                <option value="Producto terminado">
                   Producto terminado
                 </option>
 
-                <option>
+                <option value="Insumo">
                   Insumo
                 </option>
 
-                <option>
+                <option value="Repuesto">
                   Repuesto
                 </option>
 
-                <option>
+                <option value="Envase / embalaje">
                   Envase / embalaje
                 </option>
 
-                <option>
+                <option value="Otro">
                   Otro
                 </option>
 
@@ -1433,14 +1436,37 @@ function renderInventory() {
 
               <select id="inv_unidad">
 
-                <option>kg</option>
-                <option>t</option>
-                <option>g</option>
-                <option>litros</option>
-                <option>unidades</option>
-                <option>cajas</option>
-                <option>bolsas</option>
-                <option>otros</option>
+                <option value="kg">
+                  kg
+                </option>
+
+                <option value="t">
+                  t
+                </option>
+
+                <option value="g">
+                  g
+                </option>
+
+                <option value="litros">
+                  litros
+                </option>
+
+                <option value="unidades">
+                  unidades
+                </option>
+
+                <option value="cajas">
+                  cajas
+                </option>
+
+                <option value="bolsas">
+                  bolsas
+                </option>
+
+                <option value="otros">
+                  otros
+                </option>
 
               </select>
 
@@ -1644,7 +1670,7 @@ function renderInventory() {
 
                       <th>Fecha</th>
                       <th>Código</th>
-                      <th>Material</th>
+                      <th>Material / Producto</th>
                       <th>Categoría</th>
                       <th>Unidad</th>
                       <th>Inicial</th>
@@ -1691,7 +1717,7 @@ function renderInventory() {
                               </td>
 
                               <td>
-                                ${esc(r.material)}
+                                ${esc(r.producto || '')}
                               </td>
 
                               <td>
@@ -1699,7 +1725,7 @@ function renderInventory() {
                               </td>
 
                               <td>
-                                ${esc(r.unidad)}
+                                ${esc(r.unidad || '')}
                               </td>
 
                               <td>
@@ -1951,6 +1977,22 @@ async function saveInventory(e) {
       'inventoryMsg'
     );
 
+
+  /*
+     IMPORTANTE:
+     La tabla inventory de Supabase
+     utiliza la columna "producto".
+  */
+
+  const producto =
+    document
+      .getElementById(
+        'inv_producto'
+      )
+      .value
+      .trim();
+
+
   const payload = {
 
     user_id: user.id,
@@ -1965,10 +2007,7 @@ async function saveInventory(e) {
         'inv_codigo'
       ).value.trim() || null,
 
-    material:
-      document.getElementById(
-        'inv_material'
-      ).value.trim(),
+    producto: producto,
 
     categoria:
       document.getElementById(
@@ -2015,7 +2054,7 @@ async function saveInventory(e) {
   };
 
 
-  if (!payload.material) {
+  if (!producto) {
 
     msg.textContent =
       'Debes ingresar el material o producto.';
@@ -2039,7 +2078,9 @@ async function saveInventory(e) {
 
 
   msg.textContent =
-    'Guardando inventario…';
+    editingInventoryId
+      ? 'Actualizando inventario…'
+      : 'Guardando inventario…';
 
 
   let result;
@@ -2135,9 +2176,9 @@ function editInventory(id) {
 
 
   document.getElementById(
-    'inv_material'
+    'inv_producto'
   ).value =
-    row.material || '';
+    row.producto || '';
 
 
   document.getElementById(
@@ -2184,6 +2225,7 @@ function editInventory(id) {
 
   updateInventoryStockPreview();
 
+
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
@@ -2217,7 +2259,7 @@ async function deleteInventory(id) {
 
   const confirmed =
     confirm(
-      `¿Eliminar "${row.material}"?\n\n` +
+      `¿Eliminar "${row.producto || 'este producto'}"?\n\n` +
       `Esta acción no se puede deshacer.`
     );
 
@@ -2256,11 +2298,22 @@ async function deleteInventory(id) {
 
 async function loadInventory() {
 
+  if (!user) {
+
+    inventoryRows = [];
+
+    return;
+  }
+
+
   const result =
     await supabase
       .from('inventory')
       .select('*')
-      .eq('user_id', user.id)
+      .eq(
+        'user_id',
+        user.id
+      )
       .order(
         'fecha',
         {
@@ -2478,4 +2531,3 @@ supabase.auth
 
     }
   );
-  
