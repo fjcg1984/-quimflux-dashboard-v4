@@ -43,6 +43,7 @@ let editingInventoryId = null;
 let editingSsomaId = null;
 let editingPersonalId = null;
 let editingMaintenanceId = null;
+let editingDailyId = null;
 
 /* =========================================================
    METAS
@@ -1281,7 +1282,10 @@ function renderDashboard() {
                     <td>${esc(r.fecha)}</td><td>${esc(r.turno)}</td><td>${esc(r.producto)}</td>
                     <td>${n(r.programada).toLocaleString()}</td><td>${n(r.producida).toLocaleString()}</td>
                     <td>${pct(r.merma)}</td><td>${pct(r.oee)}</td>
-                    <td><button type="button" data-delete-id="${esc(r.id)}">Eliminar</button></td>
+                    <td style="white-space:nowrap;">
+                      <button type="button" data-view-id="${esc(r.id)}">Visualizar</button>
+                      <button type="button" data-delete-id="${esc(r.id)}">Eliminar</button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1292,10 +1296,110 @@ function renderDashboard() {
     </main>
   `;
 
+  document.querySelectorAll('[data-view-id]').forEach(button => {
+    button.onclick = () => viewDailyRecord(button.dataset.viewId);
+  });
+
   document.querySelectorAll('[data-delete-id]').forEach(button => {
     button.onclick = () => deleteRecord(button.dataset.deleteId);
   });
 }
+
+/* =========================================================
+   VISUALIZAR / EDITAR REGISTRO DIARIO
+========================================================= */
+
+function viewDailyRecord(id) {
+  const row = rows.find(r => String(r.id) === String(id));
+
+  if (!row) {
+    alert('No se encontró el registro.');
+    return;
+  }
+
+  const data = derive(row);
+  const fieldsToShow = fields.map(([key, label]) => {
+    let value = row[key];
+
+    if (key === 'merma') {
+      value = `${n(row.merma).toLocaleString()} (${pct(data.merma)})`;
+    } else if (key === 'costo_produccion' || key === 'costo_mantenimiento') {
+      value = `S/ ${n(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (key === 'energia') {
+      value = `${n(value).toLocaleString()} kWh`;
+    } else if (value === null || value === undefined || value === '') {
+      value = '—';
+    }
+
+    return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+      <small style="display:block;opacity:.7;">${esc(label)}</small>
+      <strong>${esc(value)}</strong>
+    </div>`;
+  }).join('');
+
+  const existing = document.getElementById('dailyViewOverlay');
+  existing?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dailyViewOverlay';
+  overlay.innerHTML = `
+    <div role="dialog" aria-modal="true" aria-labelledby="dailyViewTitle"
+         style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;padding:20px;overflow:auto;">
+      <div style="max-width:900px;margin:20px auto;background:var(--panel,#1f2933);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:22px;">
+        <div style="display:flex;justify-content:space-between;gap:15px;align-items:flex-start;">
+          <div>
+            <h2 id="dailyViewTitle" style="margin:0 0 6px;">Detalle del registro diario</h2>
+            <p style="margin:0;opacity:.75;">${esc(row.fecha)} · ${esc(row.turno)} · ${esc(row.producto || 'Sin producto')}</p>
+          </div>
+          <button type="button" id="closeDailyView">Cerrar</button>
+        </div>
+
+        <div class="cards" style="margin-top:18px;">
+          <div class="card"><small>Cumplimiento</small><strong>${pct(data.cumplimiento)}</strong></div>
+          <div class="card"><small>Yield</small><strong>${pct(data.yieldRate)}</strong></div>
+          <div class="card"><small>Merma</small><strong>${pct(data.merma)}</strong></div>
+          <div class="card"><small>OEE</small><strong>${pct(data.oee)}</strong></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 22px;margin-top:18px;">
+          ${fieldsToShow}
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;">
+          <button type="button" class="primary" id="editDailyFromView">Editar registro</button>
+          <button type="button" id="closeDailyViewBottom">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  document.getElementById('closeDailyView').onclick = close;
+  document.getElementById('closeDailyViewBottom').onclick = close;
+  document.getElementById('editDailyFromView').onclick = () => {
+    close();
+    editDailyRecord(row.id);
+  };
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay.firstElementChild) close();
+  });
+}
+
+function editDailyRecord(id) {
+  const row = rows.find(r => String(r.id) === String(id));
+
+  if (!row) {
+    alert('No se encontró el registro.');
+    return;
+  }
+
+  editingDailyId = row.id;
+  renderForm(row);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 /* =========================================================
    ELIMINAR REGISTRO DIARIO
 ========================================================= */
@@ -1340,8 +1444,8 @@ async function deleteRecord(id) {
    FORMULARIO DIARIO
 ========================================================= */
 
-function renderForm() {
-  const r = empty();
+function renderForm(record = null) {
+  const r = record ? { ...empty(), ...record } : empty();
 
   document.getElementById('content').innerHTML = `
     <main>
@@ -1375,9 +1479,12 @@ function renderForm() {
 
         <div id="saveMsg" class="msg full"></div>
 
-        <button class="primary full" type="submit">
-          Guardar registro diario
-        </button>
+        <div class="full" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="primary" type="submit">
+            ${editingDailyId ? 'Actualizar registro diario' : 'Guardar registro diario'}
+          </button>
+          ${editingDailyId ? '<button type="button" id="cancelDailyEdit">Cancelar edición</button>' : ''}
+        </div>
       </form>
     </main>
   `;
@@ -1401,25 +1508,44 @@ function renderForm() {
 
     msg('saveMsg', 'Guardando…');
 
-    const { error } =
-      await supabase
+    let result;
+
+    if (editingDailyId) {
+      result = await supabase
+        .from('daily_records')
+        .update(payload)
+        .eq('id', editingDailyId)
+        .eq('user_id', user.id);
+    } else {
+      result = await supabase
         .from('daily_records')
         .insert(payload);
+    }
 
-    if (error) {
-      msg('saveMsg', error.message);
+    if (result.error) {
+      msg('saveMsg', result.error.message);
       return;
     }
 
+    const wasEditing = Boolean(editingDailyId);
+    editingDailyId = null;
+
     msg(
       'saveMsg',
-      'Registro guardado correctamente.'
+      wasEditing
+        ? 'Registro actualizado correctamente.'
+        : 'Registro guardado correctamente.'
     );
 
     await load();
 
     setTimeout(() => render(), 500);
   };
+
+  document.getElementById('cancelDailyEdit')?.addEventListener('click', () => {
+    editingDailyId = null;
+    renderForm();
+  });
 }
 
 function control(f, r) {
@@ -1430,9 +1556,9 @@ function control(f, r) {
   if (type === 'select') {
     input = `
       <select id="f_${key}">
-        <option>Mañana</option>
-        <option>Tarde</option>
-        <option>Noche</option>
+        <option ${r[key] === 'Mañana' ? 'selected' : ''}>Mañana</option>
+        <option ${r[key] === 'Tarde' ? 'selected' : ''}>Tarde</option>
+        <option ${r[key] === 'Noche' ? 'selected' : ''}>Noche</option>
       </select>
     `;
   } else if (type === 'textarea') {
