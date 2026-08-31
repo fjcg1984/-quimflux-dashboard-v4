@@ -11,11 +11,10 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   'sb_publishable_sULeDyfJ1l5xfuVhFgXRKA_bsim9qSe';
 
-const supabase =
-  createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
 
 /* ==========================================================
@@ -32,47 +31,56 @@ const app =
 
 const fields = [
 
-  ['fecha','Fecha','date'],
+  ['fecha', 'Fecha', 'date'],
 
-  ['turno','Turno','select'],
+  ['turno', 'Turno', 'select'],
 
-  ['producto','Producto','text'],
+  ['producto', 'Producto', 'text'],
 
-  ['programada','Cantidad programada','number'],
+  ['programada', 'Cantidad programada', 'number'],
 
-  ['producida','Cantidad producida','number'],
+  ['producida', 'Cantidad producida', 'number'],
 
-  ['mp','Materia prima consumida','number'],
+  ['mp', 'Materia prima consumida', 'number'],
 
-  ['merma','Merma (%)','number'],
+  /*
+     MERMA SE INGRESA COMO PORCENTAJE.
 
-  ['horas_turno','Horas de turno','number'],
+     Ejemplo:
+     2  = 2%
+     5  = 5%
+     10 = 10%
+  */
 
-  ['horas_paradas','Horas de parada','number'],
+  ['merma', 'Merma (%)', 'number'],
 
-  ['personal_programado','Personal programado','number'],
+  ['horas_turno', 'Horas de turno', 'number'],
 
-  ['personal_presente','Personal presente','number'],
+  ['horas_paradas', 'Horas de parada', 'number'],
 
-  ['rechazadas','Unidades rechazadas','number'],
+  ['personal_programado', 'Personal programado', 'number'],
 
-  ['costo_produccion','Costo producción (S/)','number'],
+  ['personal_presente', 'Personal presente', 'number'],
 
-  ['energia','Energía (kWh)','number'],
+  ['rechazadas', 'Unidades rechazadas', 'number'],
 
-  ['costo_mantenimiento','Costo mantenimiento (S/)','number'],
+  ['costo_produccion', 'Costo producción (S/)', 'number'],
 
-  ['incidentes','Incidentes SSOMA','number'],
+  ['energia', 'Energía (kWh)', 'number'],
 
-  ['pedidos_programados','Pedidos programados','number'],
+  ['costo_mantenimiento', 'Costo mantenimiento (S/)', 'number'],
 
-  ['pedidos_tiempo','Pedidos a tiempo','number'],
+  ['incidentes', 'Incidentes SSOMA', 'number'],
 
-  ['reproceso','Reproceso','number'],
+  ['pedidos_programados', 'Pedidos programados', 'number'],
 
-  ['no_conformidades','No conformidades','number'],
+  ['pedidos_tiempo', 'Pedidos a tiempo', 'number'],
 
-  ['observaciones','Observaciones','textarea']
+  ['reproceso', 'Reproceso', 'number'],
+
+  ['no_conformidades', 'No conformidades', 'number'],
+
+  ['observaciones', 'Observaciones', 'textarea']
 
 ];
 
@@ -80,7 +88,7 @@ const fields = [
 const today =
   new Date()
     .toISOString()
-    .slice(0,10);
+    .slice(0, 10);
 
 
 let user = null;
@@ -100,21 +108,21 @@ let viewingId = null;
 
 let metas = {
 
-  cumplimiento:0.95,
+  cumplimiento: 0.95,
 
-  merma:0.02,
+  merma: 0.02,
 
-  yield:0.95,
+  yield: 0.95,
 
-  disponibilidad:0.90,
+  disponibilidad: 0.90,
 
-  asistencia:0.95,
+  asistencia: 0.95,
 
-  rechazo:0.03,
+  rechazo: 0.03,
 
-  otif:0.95,
+  otif: 0.95,
 
-  incidentes:0
+  incidentes: 0
 
 };
 
@@ -123,13 +131,13 @@ let metas = {
    ESTILOS ADICIONALES
    ========================================================== */
 
-function ensureExtraStyles(){
+function ensureExtraStyles() {
 
-  if(
+  if (
     document.getElementById(
       'quimfluxExtraStyles'
     )
-  ){
+  ) {
 
     return;
 
@@ -146,248 +154,143 @@ function ensureExtraStyles(){
 
   style.textContent = `
 
-    .rowActions{
-
+    .rowActions {
       display:flex;
-
       gap:6px;
-
       align-items:center;
-
       justify-content:center;
-
       white-space:nowrap;
-
     }
 
-
-    .actionBtn{
-
+    .actionBtn {
       border:1px solid rgba(255,255,255,.18);
-
       background:rgba(255,255,255,.08);
-
       color:white;
-
       border-radius:7px;
-
       padding:6px 8px;
-
       cursor:pointer;
-
       font-size:14px;
-
       transition:.15s;
-
     }
 
-
-    .actionBtn:hover{
-
+    .actionBtn:hover {
       background:rgba(255,255,255,.18);
-
       transform:translateY(-1px);
-
     }
 
-
-    .actionBtn.danger{
-
+    .actionBtn.danger {
       border-color:rgba(255,80,80,.35);
-
     }
 
-
-    .modalOverlay{
-
+    .modalOverlay {
       position:fixed;
-
       inset:0;
-
       z-index:9999;
-
       background:rgba(0,0,0,.72);
-
       display:flex;
-
       align-items:center;
-
       justify-content:center;
-
       padding:20px;
-
       overflow:auto;
-
     }
 
-
-    .modalCard{
-
+    .modalCard {
       width:min(1000px,95vw);
-
       max-height:90vh;
-
       overflow:auto;
-
       background:#172238;
-
       color:white;
-
       border:1px solid rgba(255,255,255,.18);
-
       border-radius:16px;
-
       padding:22px;
-
       box-shadow:0 20px 60px rgba(0,0,0,.45);
-
     }
 
-
-    .modalHeader{
-
+    .modalHeader {
       display:flex;
-
       justify-content:space-between;
-
       align-items:flex-start;
-
       gap:20px;
-
       margin-bottom:20px;
-
     }
 
-
-    .modalHeader h2{
-
+    .modalHeader h2 {
       margin:0 0 5px 0;
-
     }
 
-
-    .modalClose{
-
+    .modalClose {
       border:0;
-
       background:rgba(255,255,255,.1);
-
       color:white;
-
       border-radius:8px;
-
       font-size:24px;
-
       width:40px;
-
       height:40px;
-
       cursor:pointer;
-
     }
 
-
-    .detailGrid{
-
+    .detailGrid {
       display:grid;
-
       grid-template-columns:
         repeat(auto-fit,minmax(210px,1fr));
-
       gap:10px;
-
     }
 
-
-    .detailItem{
-
+    .detailItem {
       background:rgba(255,255,255,.06);
-
       border:1px solid rgba(255,255,255,.1);
-
       border-radius:10px;
-
       padding:12px;
-
     }
 
-
-    .detailItem small{
-
+    .detailItem small {
       display:block;
-
       opacity:.7;
-
       margin-bottom:5px;
-
     }
 
-
-    .detailItem strong{
-
+    .detailItem strong {
       display:block;
-
       word-break:break-word;
-
     }
 
-
-    .modalActions{
-
+    .modalActions {
       display:flex;
-
       gap:10px;
-
       flex-wrap:wrap;
-
       margin-top:20px;
-
     }
 
-
-    .modalActions button{
-
+    .modalActions button {
       cursor:pointer;
-
     }
 
-
-    .danger{
-
+    .danger {
       background:rgba(220,60,60,.18);
-
       border:1px solid rgba(255,90,90,.35);
-
       color:white;
-
       border-radius:8px;
-
       padding:9px 14px;
-
     }
 
-
-    .secondary{
-
+    .secondary {
       background:rgba(255,255,255,.1);
-
       border:1px solid rgba(255,255,255,.18);
-
       color:white;
-
       border-radius:8px;
-
       padding:9px 14px;
-
     }
 
-
-    .badge.na{
-
+    .badge.na {
       background:rgba(160,160,160,.2);
-
       color:rgba(255,255,255,.75);
+    }
 
+    .mermaHelp {
+      display:block;
+      margin-top:4px;
+      font-size:12px;
+      opacity:.65;
     }
 
   `;
@@ -405,7 +308,7 @@ ensureExtraStyles();
    FUNCIONES GENERALES
    ========================================================== */
 
-function esc(v=''){
+function esc(v = '') {
 
   return String(v).replace(
 
@@ -413,15 +316,15 @@ function esc(v=''){
 
     c => ({
 
-      '&':'&amp;',
+      '&': '&amp;',
 
-      '<':'&lt;',
+      '<': '&lt;',
 
-      '>':'&gt;',
+      '>': '&gt;',
 
-      '"':'&quot;',
+      '"': '&quot;',
 
-      "'":'&#039;'
+      "'": '&#039;'
 
     }[c])
 
@@ -430,7 +333,7 @@ function esc(v=''){
 }
 
 
-function n(v){
+function n(v) {
 
   const x =
     Number(v);
@@ -442,11 +345,91 @@ function n(v){
 }
 
 
-function pct(v){
+function pct(v) {
 
   return (
     n(v) * 100
   ).toFixed(1) + '%';
+
+}
+
+
+/* ==========================================================
+   NORMALIZAR MERMA
+   ========================================================== */
+
+/*
+   IMPORTANTE
+
+   El usuario introduce Merma como porcentaje.
+
+   2  -> 0.02
+   5  -> 0.05
+   10 -> 0.10
+   20 -> 0.20
+
+   Internamente todos los KPI trabajan
+   con fracción decimal.
+
+   Así pct(0.02) = 2.0%
+*/
+
+function mermaRate(v) {
+
+  const value =
+    Number(v);
+
+
+  if (
+    !Number.isFinite(value)
+  ) {
+
+    return 0;
+
+  }
+
+
+  return value / 100;
+
+}
+
+
+/*
+   Compatibilidad con registros antiguos.
+
+   Si algún registro antiguo ya tenía
+   la merma guardada como decimal
+   (por ejemplo 0.02), se interpreta
+   correctamente como 2%.
+
+   Si tiene 2, se interpreta como 2%.
+*/
+
+function normalizeStoredMerma(v) {
+
+  const value =
+    Number(v);
+
+
+  if (
+    !Number.isFinite(value)
+  ) {
+
+    return 0;
+
+  }
+
+
+  if (
+    Math.abs(value) <= 1
+  ) {
+
+    return value;
+
+  }
+
+
+  return value / 100;
 
 }
 
@@ -458,8 +441,8 @@ function pct(v){
 function status(
   value,
   target,
-  invert=false
-){
+  invert = false
+) {
 
   const v = n(value);
 
@@ -468,20 +451,20 @@ function status(
   const epsilon = 0.000001;
 
 
-  if(
+  if (
     !Number.isFinite(v) ||
     !Number.isFinite(t)
-  ){
+  ) {
 
     return {
 
-      ok:false,
+      ok: false,
 
-      critical:false,
+      critical: false,
 
-      label:'N/A',
+      label: 'N/A',
 
-      cls:'na'
+      cls: 'na'
 
     };
 
@@ -492,34 +475,34 @@ function status(
      MENOS ES MEJOR
   */
 
-  if(invert){
+  if (invert) {
 
-    if(
+    if (
       v <= t + epsilon
-    ){
+    ) {
 
       return {
 
-        ok:true,
+        ok: true,
 
-        critical:false,
+        critical: false,
 
-        label:'OK',
+        label: 'OK',
 
-        cls:'ok'
+        cls: 'ok'
 
       };
 
     }
 
 
-    if(t === 0){
+    if (t === 0) {
 
       return {
 
-        ok:false,
+        ok: false,
 
-        critical:v > 0,
+        critical: v > 0,
 
         label:
           v > 0
@@ -537,13 +520,12 @@ function status(
 
 
     const critical =
-      v >
-      t * 1.5;
+      v > t * 1.5;
 
 
     return {
 
-      ok:false,
+      ok: false,
 
       critical,
 
@@ -566,19 +548,19 @@ function status(
      MÁS ES MEJOR
   */
 
-  if(
+  if (
     v >= t - epsilon
-  ){
+  ) {
 
     return {
 
-      ok:true,
+      ok: true,
 
-      critical:false,
+      critical: false,
 
-      label:'OK',
+      label: 'OK',
 
-      cls:'ok'
+      cls: 'ok'
 
     };
 
@@ -586,13 +568,12 @@ function status(
 
 
   const critical =
-    v <
-    t * 0.85;
+    v < t * 0.85;
 
 
   return {
 
-    ok:false,
+    ok: false,
 
     critical,
 
@@ -615,59 +596,56 @@ function status(
    REGISTRO VACÍO
    ========================================================== */
 
-function empty(){
+function empty() {
 
   return {
 
-    fecha:today,
+    fecha: today,
 
-    turno:'Mañana',
+    turno: 'Mañana',
 
-    producto:'',
+    producto: '',
 
-    programada:0,
+    programada: 0,
 
-    producida:0,
+    producida: 0,
 
-    mp:0,
+    mp: 0,
 
     /*
-       MERMA SE INGRESA COMO DECIMAL:
-
-       0.02 = 2%
-       0.05 = 5%
-       0.10 = 10%
+       AHORA SE INTRODUCE COMO:
+       2 = 2%
     */
 
-    merma:0,
+    merma: 0,
 
-    horas_turno:8,
+    horas_turno: 8,
 
-    horas_paradas:0,
+    horas_paradas: 0,
 
-    personal_programado:0,
+    personal_programado: 0,
 
-    personal_presente:0,
+    personal_presente: 0,
 
-    rechazadas:0,
+    rechazadas: 0,
 
-    costo_produccion:0,
+    costo_produccion: 0,
 
-    energia:0,
+    energia: 0,
 
-    costo_mantenimiento:0,
+    costo_mantenimiento: 0,
 
-    incidentes:0,
+    incidentes: 0,
 
-    pedidos_programados:0,
+    pedidos_programados: 0,
 
-    pedidos_tiempo:0,
+    pedidos_tiempo: 0,
 
-    reproceso:0,
+    reproceso: 0,
 
-    no_conformidades:0,
+    no_conformidades: 0,
 
-    observaciones:''
+    observaciones: ''
 
   };
 
@@ -678,7 +656,7 @@ function empty(){
    CÁLCULO DE KPI
    ========================================================== */
 
-function derive(r){
+function derive(r) {
 
   const p =
     n(r.programada);
@@ -712,9 +690,7 @@ function derive(r){
 
 
   /*
-     ========================================================
      CUMPLIMIENTO
-     ========================================================
   */
 
   const cumplimiento =
@@ -724,33 +700,25 @@ function derive(r){
 
 
   /*
-     ========================================================
      MERMA
-     
+
      IMPORTANTE:
 
-     El valor guardado en Supabase ya es un porcentaje
-     decimal.
+     Se toma directamente del campo
+     Merma (%) y se convierte a decimal.
 
-     0.02       = 2%
-     0.052631   = 5.2631%
-     0.111111   = 11.1111%
-
-     NO SE DIVIDE NUEVAMENTE ENTRE MP.
-     ========================================================
+     Ejemplo:
+     2 -> 0.02 -> 2%
   */
 
   const merma =
-    Math.max(
-      0,
-      n(r.merma)
+    normalizeStoredMerma(
+      r.merma
     );
 
 
   /*
-     ========================================================
      YIELD
-     ========================================================
   */
 
   const yieldRate =
@@ -760,24 +728,26 @@ function derive(r){
 
 
   /*
-     ========================================================
      DISPONIBILIDAD
-     ========================================================
   */
 
   const disponibilidad =
     h > 0
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
-      : 0;
+
+      ?
+
+      Math.max(
+        0,
+        (h - stop) / h
+      )
+
+      :
+
+      0;
 
 
   /*
-     ========================================================
      ASISTENCIA
-     ========================================================
   */
 
   const asistencia =
@@ -787,9 +757,7 @@ function derive(r){
 
 
   /*
-     ========================================================
      RECHAZO
-     ========================================================
   */
 
   const rechazo =
@@ -799,9 +767,7 @@ function derive(r){
 
 
   /*
-     ========================================================
      OTIF
-     ========================================================
   */
 
   const otif =
@@ -811,15 +777,11 @@ function derive(r){
 
 
   /*
-     ========================================================
      OEE
-     
-     OEE =
+
      Disponibilidad × Yield × Calidad
 
-     Calidad =
-     1 - Rechazo
-     ========================================================
+     Calidad = 1 - rechazo
   */
 
   const oee =
@@ -874,9 +836,9 @@ function indicador(
   label,
   rawValue,
   target,
-  invert=false,
-  customStatus=null
-){
+  invert = false,
+  customStatus = null
+) {
 
   const s =
     customStatus ||
@@ -890,26 +852,25 @@ function indicador(
   let displayValue;
 
 
-  if(
+  if (
     rawValue === null ||
     rawValue === undefined
-  ){
+  ) {
 
-    displayValue =
-      'N/A';
+    displayValue = 'N/A';
 
   }
 
-  else if(
+  else if (
     typeof rawValue === 'number'
-  ){
+  ) {
 
     displayValue =
       pct(rawValue);
 
   }
 
-  else{
+  else {
 
     displayValue =
       esc(rawValue);
@@ -948,18 +909,18 @@ function indicador(
 
 function tendencia(
   valores,
-  invert=false
-){
+  invert = false
+) {
 
-  if(
+  if (
     valores.length < 2
-  ){
+  ) {
 
     return {
 
-      label:'SIN DATOS',
+      label: 'SIN DATOS',
 
-      cls:'na'
+      cls: 'na'
 
     };
 
@@ -979,15 +940,15 @@ function tendencia(
       );
 
 
-  if(
+  if (
     ultimos.length < 2
-  ){
+  ) {
 
     return {
 
-      label:'SIN DATOS',
+      label: 'SIN DATOS',
 
-      cls:'na'
+      cls: 'na'
 
     };
 
@@ -995,9 +956,7 @@ function tendencia(
 
 
   const primero =
-    n(
-      ultimos[0]
-    );
+    n(ultimos[0]);
 
   const ultimo =
     n(
@@ -1011,15 +970,15 @@ function tendencia(
     ultimo - primero;
 
 
-  if(
+  if (
     Math.abs(diferencia) < 0.01
-  ){
+  ) {
 
     return {
 
-      label:'→ ESTABLE',
+      label: '→ ESTABLE',
 
-      cls:'ok'
+      cls: 'ok'
 
     };
 
@@ -1038,9 +997,9 @@ function tendencia(
 
     {
 
-      label:'↑ MEJORANDO',
+      label: '↑ MEJORANDO',
 
-      cls:'ok'
+      cls: 'ok'
 
     }
 
@@ -1048,9 +1007,9 @@ function tendencia(
 
     {
 
-      label:'↓ EMPEORANDO',
+      label: '↓ EMPEORANDO',
 
-      cls:'warn'
+      cls: 'warn'
 
     };
 
@@ -1058,16 +1017,16 @@ function tendencia(
 
 
 /* ==========================================================
-   GRÁFICO SVG
+   GRÁFICO
    ========================================================== */
 
 function graficoTendencia(
   registros
-){
+) {
 
-  if(
+  if (
     registros.length < 2
-  ){
+  ) {
 
     return `
 
@@ -1093,27 +1052,18 @@ function graficoTendencia(
   const series = [
 
     {
-
-      name:'Cumplimiento',
-
-      key:'cumplimiento'
-
+      name: 'Cumplimiento',
+      key: 'cumplimiento'
     },
 
     {
-
-      name:'Yield',
-
-      key:'yieldRate'
-
+      name: 'Yield',
+      key: 'yieldRate'
     },
 
     {
-
-      name:'OEE',
-
-      key:'oee'
-
+      name: 'OEE',
+      key: 'oee'
     }
 
   ];
@@ -1133,22 +1083,17 @@ function graficoTendencia(
 
 
   const plotWidth =
-    width -
-    left -
-    right;
-
+    width - left - right;
 
   const plotHeight =
-    height -
-    top -
-    bottom;
+    height - top - bottom;
 
 
   const x = i => {
 
-    if(
+    if (
       data.length === 1
-    ){
+    ) {
 
       return left;
 
@@ -1252,7 +1197,7 @@ function graficoTendencia(
 
           y1="${yy}"
 
-          x2="${width-right}"
+          x2="${width - right}"
 
           y2="${yy}"
 
@@ -1266,7 +1211,7 @@ function graficoTendencia(
 
           x="8"
 
-          y="${yy+5}"
+          y="${yy + 5}"
 
           fill="rgba(255,255,255,.65)"
 
@@ -1302,7 +1247,7 @@ function graficoTendencia(
 
       y1="${metaY}"
 
-      x2="${width-right}"
+      x2="${width - right}"
 
       y2="${metaY}"
 
@@ -1316,9 +1261,9 @@ function graficoTendencia(
 
     <text
 
-      x="${width-right-80}"
+      x="${width - right - 80}"
 
-      y="${metaY-7}"
+      y="${metaY - 7}"
 
       fill="rgba(255,190,0,.9)"
 
@@ -1338,12 +1283,12 @@ function graficoTendencia(
   */
 
   series.forEach(
-    (serie,index) => {
+    (serie, index) => {
 
       const points =
         data
           .map(
-            (r,i) =>
+            (r, i) =>
               `${x(i)},${y(r[serie.key])}`
           )
           .join(' ');
@@ -1359,7 +1304,7 @@ function graficoTendencia(
 
           stroke="
             hsl(
-              ${index*70+190},
+              ${index * 70 + 190},
               80%,
               60%
             )
@@ -1377,7 +1322,7 @@ function graficoTendencia(
 
 
       data.forEach(
-        (r,i) => {
+        (r, i) => {
 
           svg += `
 
@@ -1391,7 +1336,7 @@ function graficoTendencia(
 
               fill="
                 hsl(
-                  ${index*70+190},
+                  ${index * 70 + 190},
                   80%,
                   60%
                 )
@@ -1422,12 +1367,12 @@ function graficoTendencia(
 
 
   data.forEach(
-    (r,i) => {
+    (r, i) => {
 
-      if(
+      if (
         i % paso !== 0 &&
         i !== data.length - 1
-      ){
+      ) {
 
         return;
 
@@ -1440,7 +1385,7 @@ function graficoTendencia(
 
           x="${x(i)}"
 
-          y="${height-15}"
+          y="${height - 15}"
 
           text-anchor="middle"
 
@@ -1512,7 +1457,7 @@ function graficoTendencia(
    AUTENTICACIÓN
    ========================================================== */
 
-function renderAuth(){
+function renderAuth() {
 
   app.innerHTML = `
 
@@ -1570,9 +1515,7 @@ function renderAuth(){
             class="primary"
             type="submit"
           >
-
             Entrar
-
           </button>
 
           <button
@@ -1580,9 +1523,7 @@ function renderAuth(){
             id="signup"
             type="button"
           >
-
             Crear una cuenta
-
           </button>
 
         </form>
@@ -1622,20 +1563,18 @@ function renderAuth(){
               document
                 .getElementById(
                   'email'
-                )
-                .value,
+                ).value,
 
             password:
               document
                 .getElementById(
                   'password'
-                )
-                .value
+                ).value
 
           });
 
 
-      if(error){
+      if (error) {
 
         msg.textContent =
           error.message;
@@ -1670,16 +1609,14 @@ function renderAuth(){
         document
           .getElementById(
             'email'
-          )
-          .value;
+          ).value;
 
 
       const password =
         document
           .getElementById(
             'password'
-          )
-          .value;
+          ).value;
 
 
       msg.textContent =
@@ -1710,7 +1647,6 @@ function renderAuth(){
           :
 
           (
-
             data.session
 
               ?
@@ -1720,7 +1656,6 @@ function renderAuth(){
               :
 
               'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.'
-
           );
 
     };
@@ -1732,9 +1667,9 @@ function renderAuth(){
    ESTRUCTURA PRINCIPAL
    ========================================================== */
 
-function render(){
+function render() {
 
-  if(!user){
+  if (!user) {
 
     renderAuth();
 
@@ -1745,21 +1680,21 @@ function render(){
 
   const nav = [
 
-    ['dashboard','Dashboard'],
+    ['dashboard', 'Dashboard'],
 
-    ['registro','Registro Diario'],
+    ['registro', 'Registro Diario'],
 
-    ['resumen','Resumen Ejecutivo'],
+    ['resumen', 'Resumen Ejecutivo'],
 
-    ['costos','Costos'],
+    ['costos', 'Costos'],
 
-    ['mantenimiento','Mantenimiento'],
+    ['mantenimiento', 'Mantenimiento'],
 
-    ['inventario','Inventario'],
+    ['inventario', 'Inventario'],
 
-    ['personal','Personal'],
+    ['personal', 'Personal'],
 
-    ['ssoma','SSOMA']
+    ['ssoma', 'SSOMA']
 
   ];
 
@@ -1793,28 +1728,30 @@ function render(){
     <nav>
 
       ${
-        nav.map(
-          x => `
+        nav
+          .map(
+            x => `
 
-            <button
+              <button
 
-              data-tab="${x[0]}"
+                data-tab="${x[0]}"
 
-              class="
-                ${tab === x[0]
-                  ? 'active'
-                  : ''
-                }
-              "
+                class="
+                  ${tab === x[0]
+                    ? 'active'
+                    : ''
+                  }
+                "
 
-            >
+              >
 
-              ${x[1]}
+                ${x[1]}
 
-            </button>
+              </button>
 
-          `
-        ).join('')
+            `
+          )
+          .join('')
       }
 
     </nav>
@@ -1855,31 +1792,50 @@ function render(){
     };
 
 
-  if(
+  if (
     tab === 'dashboard'
-  ){
+  ) {
 
     renderDashboard();
 
   }
 
-  else if(
+  else if (
     tab === 'registro'
-  ){
+  ) {
 
-    renderForm();
+    if (editingId) {
+
+      const registro =
+        rows.find(
+          r =>
+            String(r.id) ===
+            String(editingId)
+        );
+
+      renderForm(
+        registro || null
+      );
+
+    }
+
+    else {
+
+      renderForm();
+
+    }
 
   }
 
-  else if(
+  else if (
     tab === 'costos'
-  ){
+  ) {
 
     renderCostos();
 
   }
 
-  else{
+  else {
 
     renderPlaceholder(
 
@@ -1901,7 +1857,7 @@ function render(){
    DASHBOARD
    ========================================================== */
 
-function renderDashboard(){
+function renderDashboard() {
 
   const d =
     rows.map(
@@ -1913,8 +1869,7 @@ function renderDashboard(){
 
     d.reduce(
 
-      (s,r) =>
-
+      (s, r) =>
         s + n(r[key]),
 
       0
@@ -1933,8 +1888,23 @@ function renderDashboard(){
     mp:
       sums('mp'),
 
-    merma:
-      sums('merma'),
+    /*
+       MERMA NO SE SUMA COMO PORCENTAJE.
+
+       Para el histórico se calcula
+       una media ponderada por MP.
+    */
+
+    mermaTotal:
+      d.reduce(
+        (s, r) =>
+          s +
+          (
+            n(r.mp) *
+            n(r.merma)
+          ),
+        0
+      ),
 
     stop:
       sums('horas_paradas'),
@@ -1973,9 +1943,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
-     CUMPLIMIENTO HISTÓRICO
-     ========================================================
+     CUMPLIMIENTO
   */
 
   k.cumplimiento =
@@ -1993,9 +1961,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
-     YIELD HISTÓRICO
-     ========================================================
+     YIELD
   */
 
   k.yield =
@@ -2013,49 +1979,33 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
      MERMA HISTÓRICA
-     
-     IMPORTANTE:
-     
-     Cada registro ya tiene merma expresada como
-     porcentaje decimal.
 
-     El histórico se calcula ponderando por MP.
-     ========================================================
+     Promedio ponderado por materia prima.
+
+     Cada registro:
+       merma decimal × MP
+
+     Luego:
+       suma merma ponderada / suma MP
   */
 
-  const mermaNumerador =
-    d.reduce(
-      (s,r) =>
-        s +
-        (
-          n(r.merma) *
-          n(r.mp)
-        ),
-      0
-    );
-
-
-  const mermaDenominador =
-    d.reduce(
-      (s,r) =>
-        s +
-        n(r.mp),
-      0
-    );
-
-
   k.mermaRate =
-    mermaDenominador > 0
-      ? mermaNumerador / mermaDenominador
-      : 0;
+
+    k.mp > 0
+
+      ?
+
+      k.mermaTotal /
+      k.mp
+
+      :
+
+      0;
 
 
   /*
-     ========================================================
      DISPONIBILIDAD
-     ========================================================
   */
 
   k.disponibilidad =
@@ -2079,9 +2029,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
      ASISTENCIA
-     ========================================================
   */
 
   k.asistencia =
@@ -2099,9 +2047,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
      RECHAZO
-     ========================================================
   */
 
   k.rechazo =
@@ -2119,9 +2065,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
      OTIF
-     ========================================================
   */
 
   k.otif =
@@ -2139,9 +2083,7 @@ function renderDashboard(){
 
 
   /*
-     ========================================================
      OEE
-     ========================================================
   */
 
   k.oee =
@@ -2150,7 +2092,7 @@ function renderDashboard(){
     k.yield *
     Math.max(
       0,
-      1-k.rechazo
+      1 - k.rechazo
     );
 
 
@@ -2160,7 +2102,7 @@ function renderDashboard(){
 
       ?
 
-      d[d.length-1]
+      d[d.length - 1]
 
       :
 
@@ -2174,16 +2116,16 @@ function renderDashboard(){
   const alerts = [];
 
 
-  if(last){
+  if (last) {
 
-    if(
+    if (
       last.cumplimiento <
       metas.cumplimiento
-    ){
+    ) {
 
       alerts.push({
 
-        tipo:'warn',
+        tipo: 'warn',
 
         titulo:
           'Cumplimiento requiere revisión',
@@ -2203,14 +2145,14 @@ function renderDashboard(){
     }
 
 
-    if(
+    if (
       last.yieldRate <
       metas.yield
-    ){
+    ) {
 
       alerts.push({
 
-        tipo:'warn',
+        tipo: 'warn',
 
         titulo:
           'Yield requiere revisión',
@@ -2230,14 +2172,14 @@ function renderDashboard(){
     }
 
 
-    if(
+    if (
       last.merma >
       metas.merma
-    ){
+    ) {
 
       alerts.push({
 
-        tipo:'critical',
+        tipo: 'critical',
 
         titulo:
           'Merma en nivel crítico',
@@ -2258,14 +2200,14 @@ function renderDashboard(){
     }
 
 
-    if(
+    if (
       last.oee <
       .80
-    ){
+    ) {
 
       alerts.push({
 
-        tipo:'critical',
+        tipo: 'critical',
 
         titulo:
           'OEE en nivel crítico',
@@ -2283,15 +2225,15 @@ function renderDashboard(){
     }
 
 
-    if(
+    if (
       last.otif !== null &&
       last.otif <
       metas.otif
-    ){
+    ) {
 
       alerts.push({
 
-        tipo:'warn',
+        tipo: 'warn',
 
         titulo:
           'OTIF requiere revisión',
@@ -2335,52 +2277,54 @@ function renderDashboard(){
             <div class="cards">
 
               ${
-                alerts.map(
-                  a => `
+                alerts
+                  .map(
+                    a => `
 
-                    <div class="card">
+                      <div class="card">
 
-                      <span
-                        class="
-                          badge
-                          ${a.tipo}
-                        "
-                      >
+                        <span
+                          class="
+                            badge
+                            ${a.tipo}
+                          "
+                        >
 
-                        ${
-                          a.tipo ===
-                          'critical'
+                          ${
+                            a.tipo ===
+                            'critical'
 
-                            ?
+                              ?
 
-                            'CRÍTICO'
+                              'CRÍTICO'
 
-                            :
+                              :
 
-                            'REVISAR'
+                              'REVISAR'
 
-                        }
+                          }
 
-                      </span>
+                        </span>
 
-                      <strong>
-                        ${esc(a.titulo)}
-                      </strong>
+                        <strong>
+                          ${esc(a.titulo)}
+                        </strong>
 
-                      <small>
+                        <small>
 
-                        ${a.valor}
+                          ${a.valor}
 
-                        · Meta
+                          · Meta
 
-                        ${a.meta}
+                          ${a.meta}
 
-                      </small>
+                        </small>
 
-                    </div>
+                      </div>
 
-                  `
-                ).join('')
+                    `
+                  )
+                  .join('')
               }
 
             </div>
@@ -2415,7 +2359,7 @@ function renderDashboard(){
   let ultimoHTML = '';
 
 
-  if(last){
+  if (last) {
 
     const otifStatus =
 
@@ -2424,8 +2368,8 @@ function renderDashboard(){
         ?
 
         {
-          label:'N/A',
-          cls:'na'
+          label: 'N/A',
+          cls: 'na'
         }
 
         :
@@ -2574,8 +2518,8 @@ function renderDashboard(){
       ?
 
       {
-        label:'N/A',
-        cls:'na'
+        label: 'N/A',
+        cls: 'na'
       }
 
       :
@@ -2720,11 +2664,13 @@ function renderDashboard(){
             S/
             ${
               k.prod
-                ? (
-                    k.costo /
-                    k.prod
-                  ).toFixed(3)
-                : '0.000'
+                ?
+                (
+                  k.costo /
+                  k.prod
+                ).toFixed(3)
+                :
+                '0.000'
             }
           </strong>
 
@@ -2741,11 +2687,13 @@ function renderDashboard(){
 
             ${
               k.prod
-                ? (
-                    k.energia /
-                    k.prod
-                  ).toFixed(3)
-                : '0.000'
+                ?
+                (
+                  k.energia /
+                  k.prod
+                ).toFixed(3)
+                :
+                '0.000'
             }
 
             kWh/unidad
@@ -2785,17 +2733,17 @@ function renderDashboard(){
   let comparativaHTML = '';
 
 
-  if(last){
+  if (last) {
 
     const diferencia = (
       actual,
       historico
     ) => {
 
-      if(
+      if (
         actual === null ||
         historico === null
-      ){
+      ) {
 
         return 'N/A';
 
@@ -3215,7 +3163,6 @@ function renderDashboard(){
       k.prod.toLocaleString()
     ],
 
-
     [
       'Cumplimiento',
       pct(k.cumplimiento),
@@ -3225,7 +3172,6 @@ function renderDashboard(){
       )
     ],
 
-
     [
       'Yield',
       pct(k.yield),
@@ -3234,7 +3180,6 @@ function renderDashboard(){
         metas.yield
       )
     ],
-
 
     [
       'Merma',
@@ -3246,7 +3191,6 @@ function renderDashboard(){
       )
     ],
 
-
     [
       'Disponibilidad',
       pct(k.disponibilidad),
@@ -3256,7 +3200,6 @@ function renderDashboard(){
       )
     ],
 
-
     [
       'Asistencia',
       pct(k.asistencia),
@@ -3265,7 +3208,6 @@ function renderDashboard(){
         metas.asistencia
       )
     ],
-
 
     [
       'Rechazo calidad',
@@ -3277,7 +3219,6 @@ function renderDashboard(){
       )
     ],
 
-
     [
       'OEE',
       pct(k.oee),
@@ -3287,13 +3228,11 @@ function renderDashboard(){
       )
     ],
 
-
     [
       'Costo producción',
       'S/ ' +
       k.costo.toLocaleString()
     ],
-
 
     [
       'Costo mantenimiento',
@@ -3301,35 +3240,31 @@ function renderDashboard(){
       k.mnt.toLocaleString()
     ],
 
-
     [
       'Horas parada',
       k.stop.toFixed(2) +
       ' h'
     ],
 
-
     [
       'Costo unitario',
       'S/' +
       (
         k.prod
-          ? k.costo/k.prod
+          ? k.costo / k.prod
           : 0
       ).toFixed(3)
     ],
-
 
     [
       'Energía',
       (
         k.prod
-          ? k.energia/k.prod
+          ? k.energia / k.prod
           : 0
       ).toFixed(3) +
       ' kWh/unidad'
     ],
-
 
     [
       'Entregas a tiempo',
@@ -3339,19 +3274,22 @@ function renderDashboard(){
         : pct(k.otif),
 
       k.otif === null
+
         ?
+
         {
-          label:'N/A',
-          cls:'na'
+          label: 'N/A',
+          cls: 'na'
         }
+
         :
+
         status(
           k.otif,
           metas.otif
         )
 
     ],
-
 
     [
       'Incidentes SSOMA',
@@ -3628,49 +3566,51 @@ function renderDashboard(){
           <div class="cards">
 
             ${
-              cards.map(
-                c => `
+              cards
+                .map(
+                  c => `
 
-                  <div class="card">
+                    <div class="card">
 
-                    <small>
-                      ${c[0]}
-                    </small>
+                      <small>
+                        ${c[0]}
+                      </small>
 
-                    <strong>
-                      ${c[1]}
-                    </strong>
+                      <strong>
+                        ${c[1]}
+                      </strong>
 
-                    ${
-                      c.length > 2
+                      ${
+                        c.length > 2
 
-                        ?
+                          ?
 
-                        `
+                          `
 
-                          <span
-                            class="
-                              badge
-                              ${c[2].cls}
-                            "
-                          >
+                            <span
+                              class="
+                                badge
+                                ${c[2].cls}
+                              "
+                            >
 
-                            ${c[2].label}
+                              ${c[2].label}
 
-                          </span>
+                            </span>
 
-                        `
+                          `
 
-                        :
+                          :
 
-                        ''
+                          ''
 
-                    }
+                      }
 
-                  </div>
+                    </div>
 
-                `
-              ).join('')
+                  `
+                )
+                .join('')
             }
 
           </div>
@@ -3690,11 +3630,11 @@ function renderDashboard(){
 
       </main>
 
-  `;
+    `;
 
 
   /* ========================================================
-     ACTIVAR BOTÓN VER
+     ACTIVAR BOTONES
      ======================================================== */
 
   document
@@ -3716,10 +3656,6 @@ function renderDashboard(){
     );
 
 
-  /* ========================================================
-     ACTIVAR BOTÓN EDITAR
-     ======================================================== */
-
   document
     .querySelectorAll(
       '[data-edit]'
@@ -3738,10 +3674,6 @@ function renderDashboard(){
       }
     );
 
-
-  /* ========================================================
-     ACTIVAR BOTÓN ELIMINAR
-     ======================================================== */
 
   document
     .querySelectorAll(
@@ -3765,10 +3697,10 @@ function renderDashboard(){
 
 
 /* ==========================================================
-   VER REGISTRO COMPLETO
+   VER REGISTRO
    ========================================================== */
 
-function verRegistro(id){
+function verRegistro(id) {
 
   const r =
     rows.find(
@@ -3778,7 +3710,7 @@ function verRegistro(id){
     );
 
 
-  if(!r){
+  if (!r) {
 
     alert(
       'No se encontró el registro.'
@@ -3819,7 +3751,7 @@ function verRegistro(id){
       n(r.mp),
 
     'Merma':
-      pct(r.merma),
+      pct(d.merma),
 
     'Horas de turno':
       n(r.horas_turno),
@@ -3936,7 +3868,9 @@ function verRegistro(id){
                 ?
 
                 ' · ' +
-                esc(r.producto)
+                esc(
+                  r.producto
+                )
 
                 :
 
@@ -3953,9 +3887,7 @@ function verRegistro(id){
           class="modalClose"
           id="closeModal"
         >
-
           ×
-
         </button>
 
       </div>
@@ -3968,7 +3900,7 @@ function verRegistro(id){
             contenido
           )
           .map(
-            ([label,value]) => `
+            ([label, value]) => `
 
               <div
                 class="detailItem"
@@ -3998,9 +3930,7 @@ function verRegistro(id){
           class="primary"
           id="modalEdit"
         >
-
           ✏️ Editar
-
         </button>
 
 
@@ -4008,9 +3938,7 @@ function verRegistro(id){
           class="danger"
           id="modalDelete"
         >
-
           🗑️ Eliminar
-
         </button>
 
 
@@ -4018,9 +3946,7 @@ function verRegistro(id){
           class="secondary"
           id="modalClose2"
         >
-
           Cerrar
-
         </button>
 
       </div>
@@ -4092,7 +4018,7 @@ function verRegistro(id){
    EDITAR REGISTRO
    ========================================================== */
 
-function editarRegistro(id){
+function editarRegistro(id) {
 
   const r =
     rows.find(
@@ -4102,7 +4028,7 @@ function editarRegistro(id){
     );
 
 
-  if(!r){
+  if (!r) {
 
     alert(
       'No se encontró el registro.'
@@ -4117,7 +4043,7 @@ function editarRegistro(id){
 
   tab = 'registro';
 
-  renderForm(r);
+  render();
 
 }
 
@@ -4126,7 +4052,7 @@ function editarRegistro(id){
    ELIMINAR REGISTRO
    ========================================================== */
 
-async function eliminarRegistro(id){
+async function eliminarRegistro(id) {
 
   const registro =
     rows.find(
@@ -4136,7 +4062,7 @@ async function eliminarRegistro(id){
     );
 
 
-  if(!registro){
+  if (!registro) {
 
     alert(
       'No se encontró el registro.'
@@ -4164,7 +4090,7 @@ Esta acción no se puede deshacer.`
     );
 
 
-  if(!confirmar){
+  if (!confirmar) {
 
     return;
 
@@ -4185,7 +4111,7 @@ Esta acción no se puede deshacer.`
       );
 
 
-  if(error){
+  if (error) {
 
     alert(
 
@@ -4202,10 +4128,6 @@ Esta acción no se puede deshacer.`
   await load();
 
 
-  editingId = null;
-
-  viewingId = null;
-
   tab = 'dashboard';
 
   render();
@@ -4219,12 +4141,7 @@ Esta acción no se puede deshacer.`
 
 function renderForm(
   registro = null
-){
-
-  /*
-     Si estamos editando, usar el registro recibido.
-     Si no, crear uno vacío.
-  */
+) {
 
   const r =
     registro
@@ -4294,9 +4211,7 @@ function renderForm(
                   class="secondary"
                   id="cancelEdit"
                 >
-
                   Cancelar edición
-
                 </button>
 
               `
@@ -4323,7 +4238,7 @@ function renderForm(
 
             ${
               fields
-                .slice(0,7)
+                .slice(0, 7)
                 .map(
                   f =>
                     control(
@@ -4345,7 +4260,7 @@ function renderForm(
 
             ${
               fields
-                .slice(7,12)
+                .slice(7, 12)
                 .map(
                   f =>
                     control(
@@ -4367,7 +4282,7 @@ function renderForm(
 
             ${
               fields
-                .slice(12,15)
+                .slice(12, 15)
                 .map(
                   f =>
                     control(
@@ -4429,7 +4344,36 @@ function renderForm(
   `;
 
 
-  if(editando){
+  /*
+     AYUDA VISUAL PARA MERMA
+  */
+
+  const mermaInput =
+    document.getElementById(
+      'f_merma'
+    );
+
+
+  if (mermaInput) {
+
+    const help =
+      document.createElement(
+        'small'
+      );
+
+    help.className =
+      'mermaHelp';
+
+    help.textContent =
+      'Ingrese el porcentaje directamente. Ejemplo: 2 = 2%.';
+
+    mermaInput.parentElement
+      ?.appendChild(help);
+
+  }
+
+
+  if (editando) {
 
     document
       .getElementById(
@@ -4470,7 +4414,7 @@ function renderForm(
 
 
       fields.forEach(
-        ([key,,type]) => {
+        ([key, , type]) => {
 
           const el =
             document.getElementById(
@@ -4478,12 +4422,26 @@ function renderForm(
             );
 
 
-          if(!el){
+          if (!el) {
 
             return;
 
           }
 
+
+          /*
+             MERMA:
+
+             Se guarda como número tal como
+             lo introduce el usuario.
+
+             2 = 2%
+             5 = 5%
+             10 = 10%
+
+             derive() se encarga de convertir
+             internamente a 0.02, 0.05, 0.10.
+          */
 
           payload[key] =
 
@@ -4512,71 +4470,6 @@ function renderForm(
       );
 
 
-      /*
-         Validación básica de MERMA
-
-         Debe ser decimal entre 0 y 1.
-
-         Ejemplo:
-         2% = 0.02
-        10% = 0.10
-       100% = 1.00
-      */
-
-      if(
-        payload.merma !== null &&
-        (
-          payload.merma < 0 ||
-          payload.merma > 1
-        )
-      ){
-
-        msg.textContent =
-          'La merma debe ingresarse como decimal entre 0 y 1. Ejemplo: 2% = 0.02';
-
-        return;
-
-      }
-
-
-      /*
-         Validación de pedidos
-      */
-
-      if(
-        payload.pedidos_tiempo !== null &&
-        payload.pedidos_programados !== null &&
-        payload.pedidos_tiempo >
-        payload.pedidos_programados
-      ){
-
-        msg.textContent =
-          'Los pedidos a tiempo no pueden ser mayores que los pedidos programados.';
-
-        return;
-
-      }
-
-
-      /*
-         Validación de personal
-      */
-
-      if(
-        payload.personal_presente !== null &&
-        payload.personal_programado !== null &&
-        payload.personal_presente >
-        payload.personal_programado
-      ){
-
-        msg.textContent =
-          'El personal presente no puede ser mayor que el personal programado.';
-
-        return;
-
-      }
-
-
       msg.textContent =
 
         editando
@@ -4593,7 +4486,7 @@ function renderForm(
       let response;
 
 
-      if(editando){
+      if (editando) {
 
         response =
 
@@ -4611,7 +4504,7 @@ function renderForm(
 
       }
 
-      else{
+      else {
 
         response =
 
@@ -4626,7 +4519,7 @@ function renderForm(
       }
 
 
-      if(response.error){
+      if (response.error) {
 
         msg.textContent =
           response.error.message;
@@ -4678,7 +4571,7 @@ function renderForm(
 function control(
   f,
   r
-){
+) {
 
   const [
     key,
@@ -4690,9 +4583,9 @@ function control(
   let input;
 
 
-  if(
+  if (
     type === 'select'
-  ){
+  ) {
 
     input = `
 
@@ -4737,9 +4630,9 @@ function control(
   }
 
 
-  else if(
+  else if (
     type === 'textarea'
-  ){
+  ) {
 
     input = `
 
@@ -4754,7 +4647,7 @@ function control(
   }
 
 
-  else{
+  else {
 
     input = `
 
@@ -4800,7 +4693,7 @@ function control(
    COSTOS
    ========================================================== */
 
-function renderCostos(){
+function renderCostos() {
 
   const d =
     rows.map(
@@ -4810,7 +4703,7 @@ function renderCostos(){
 
   const totalProduccion =
     d.reduce(
-      (s,r) =>
+      (s, r) =>
         s +
         n(
           r.costo_produccion
@@ -4821,7 +4714,7 @@ function renderCostos(){
 
   const totalMantenimiento =
     d.reduce(
-      (s,r) =>
+      (s, r) =>
         s +
         n(
           r.costo_mantenimiento
@@ -4832,7 +4725,7 @@ function renderCostos(){
 
   const totalEnergia =
     d.reduce(
-      (s,r) =>
+      (s, r) =>
         s +
         n(r.energia),
       0
@@ -4841,7 +4734,7 @@ function renderCostos(){
 
   const totalProduccionUnidades =
     d.reduce(
-      (s,r) =>
+      (s, r) =>
         s +
         n(r.producida),
       0
@@ -4907,7 +4800,7 @@ function renderCostos(){
 
   const last =
     d.length
-      ? d[d.length-1]
+      ? d[d.length - 1]
       : null;
 
 
@@ -5272,8 +5165,7 @@ function renderCostos(){
               (() => {
 
                 const anterior =
-                  d[d.length-2];
-
+                  d[d.length - 2];
 
                 const diff = (
                   a,
@@ -5281,9 +5173,9 @@ function renderCostos(){
                 ) =>
 
                   (
-                    n(a)-n(b)
+                    n(a) -
+                    n(b)
                   ).toFixed(3);
-
 
                 return `
 
@@ -5470,7 +5362,6 @@ function renderCostos(){
             Evolución del costo unitario y consumo energético.
           </p>
 
-
           <div class="cards">
 
             <div class="card">
@@ -5528,7 +5419,6 @@ function renderCostos(){
           <p>
             Indicadores equivalentes de consumo energético.
           </p>
-
 
           <div class="cards">
 
@@ -5757,7 +5647,6 @@ function renderCostos(){
             🔎 Lectura administrativa
           </h2>
 
-
           <div class="cards">
 
             <div class="card">
@@ -5828,7 +5717,7 @@ function renderCostos(){
 
 function renderPlaceholder(
   title
-){
+) {
 
   document
     .getElementById('content')
@@ -5867,7 +5756,7 @@ function renderPlaceholder(
    CARGAR DATOS
    ========================================================== */
 
-async function load(){
+async function load() {
 
   const r =
     await supabase
@@ -5878,12 +5767,12 @@ async function load(){
       .order(
         'fecha',
         {
-          ascending:true
+          ascending: true
         }
       );
 
 
-  if(!r.error){
+  if (!r.error) {
 
     rows =
       r.data || [];
@@ -5901,115 +5790,66 @@ async function load(){
       .maybeSingle();
 
 
-  if(s.data){
+  if (s.data) {
 
     metas = {
 
       ...metas,
 
       cumplimiento:
-        Number.isFinite(
-          Number(
-            s.data.meta_cumplimiento
-          )
-        )
-        ?
         n(
-          s.data.meta_cumplimiento
-        )
-        :
+          s.data
+            .meta_cumplimiento
+        ) ||
         metas.cumplimiento,
 
       merma:
-        Number.isFinite(
-          Number(
-            s.data.meta_merma
-          )
-        )
-        ?
         n(
-          s.data.meta_merma
-        )
-        :
+          s.data
+            .meta_merma
+        ) ||
         metas.merma,
 
       yield:
-        Number.isFinite(
-          Number(
-            s.data.meta_yield
-          )
-        )
-        ?
         n(
-          s.data.meta_yield
-        )
-        :
+          s.data
+            .meta_yield
+        ) ||
         metas.yield,
 
       disponibilidad:
-        Number.isFinite(
-          Number(
-            s.data.meta_disponibilidad
-          )
-        )
-        ?
         n(
-          s.data.meta_disponibilidad
-        )
-        :
+          s.data
+            .meta_disponibilidad
+        ) ||
         metas.disponibilidad,
 
       asistencia:
-        Number.isFinite(
-          Number(
-            s.data.meta_asistencia
-          )
-        )
-        ?
         n(
-          s.data.meta_asistencia
-        )
-        :
+          s.data
+            .meta_asistencia
+        ) ||
         metas.asistencia,
 
       rechazo:
-        Number.isFinite(
-          Number(
-            s.data.meta_rechazo
-          )
-        )
-        ?
         n(
-          s.data.meta_rechazo
-        )
-        :
+          s.data
+            .meta_rechazo
+        ) ||
         metas.rechazo,
 
       otif:
-        Number.isFinite(
-          Number(
-            s.data.meta_entregas
-          )
-        )
-        ?
         n(
-          s.data.meta_entregas
-        )
-        :
+          s.data
+            .meta_entregas
+        ) ||
         metas.otif,
 
       incidentes:
-        Number.isFinite(
-          Number(
-            s.data.meta_incidentes
-          )
-        )
-        ?
         n(
-          s.data.meta_incidentes
+          s.data
+            .meta_incidentes
         )
-        :
-        metas.incidentes
 
     };
 
@@ -6034,7 +5874,7 @@ supabase.auth
         null;
 
 
-      if(user){
+      if (user) {
 
         await load();
 
