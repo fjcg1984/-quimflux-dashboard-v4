@@ -45,6 +45,9 @@ let editingInventoryId = null;
 let editingSsomaId = null;
 let editingPersonalId = null;
 let editingMaintenanceId = null;
+let inventoryView = 'registro';
+let inventorySearch = '';
+let inventorySearchField = 'todos';
 let editingDailyId = null;
 
 /* =========================================================
@@ -2297,14 +2300,26 @@ function renderInventory() {
       );
     }).length;
 
+  if (inventoryView === 'consulta') {
+    renderInventoryConsulta();
+    return;
+  }
+
   document.getElementById('content').innerHTML = `
     <main>
-      <h1>Control de Inventario</h1>
+      <div class="titleRow">
+        <div>
+          <h1>Control de Inventario</h1>
+          <p>
+            Registra entradas, salidas y stock
+            de materiales y productos.
+          </p>
+        </div>
 
-      <p>
-        Registra entradas, salidas y stock
-        de materiales y productos.
-      </p>
+        <button id="openInventoryConsulta" type="button">
+          🔎 Consultar inventario
+        </button>
+      </div>
 
       <div class="cards">
         <div class="card">
@@ -2315,7 +2330,6 @@ function renderInventory() {
         <div class="card">
           <small>Stock bajo</small>
           <strong>${lowStock}</strong>
-
           <span class="badge ${lowStock ? 'critical' : 'ok'}">
             ${lowStock ? 'REVISAR' : 'OK'}
           </span>
@@ -2440,7 +2454,16 @@ function renderInventory() {
       </section>
 
       <section class="panel">
-        <h2>Inventario registrado</h2>
+        <div class="titleRow">
+          <div>
+            <h2>Inventario registrado</h2>
+            <p>Vista rápida de los registros más recientes.</p>
+          </div>
+
+          <button id="openInventoryConsulta2" type="button">
+            Ver todo / Buscar
+          </button>
+        </div>
 
         ${
           inventoryRows.length
@@ -2465,7 +2488,7 @@ function renderInventory() {
                   </thead>
 
                   <tbody>
-                    ${inventoryRows.map(r => {
+                    ${inventoryRows.slice(0, 20).map(r => {
                       const stock =
                         n(r.stock_inicial) +
                         n(r.entradas) -
@@ -2494,12 +2517,12 @@ function renderInventory() {
                             </span>
                           </td>
 
-                          <td>
-                            <button data-edit-inventory="${esc(r.id)}">
+                          <td style="white-space:nowrap;">
+                            <button type="button" data-edit-inventory="${esc(r.id)}">
                               Editar
                             </button>
 
-                            <button data-delete-inventory="${esc(r.id)}">
+                            <button type="button" data-delete-inventory="${esc(r.id)}">
                               Eliminar
                             </button>
                           </td>
@@ -2538,6 +2561,22 @@ function renderInventory() {
   document.getElementById('inventoryForm').onsubmit =
     saveInventory;
 
+  document.getElementById('openInventoryConsulta')?.addEventListener(
+    'click',
+    () => {
+      inventoryView = 'consulta';
+      renderInventory();
+    }
+  );
+
+  document.getElementById('openInventoryConsulta2')?.addEventListener(
+    'click',
+    () => {
+      inventoryView = 'consulta';
+      renderInventory();
+    }
+  );
+
   document
     .querySelectorAll('[data-edit-inventory]')
     .forEach(button => {
@@ -2556,6 +2595,234 @@ function renderInventory() {
     ?.addEventListener('click', () => {
       editingInventoryId = null;
       renderInventory();
+    });
+}
+
+function renderInventoryConsulta() {
+  const query = String(inventorySearch || '').trim().toLowerCase();
+
+  const filtered = inventoryRows.filter(r => {
+    if (!query) return true;
+
+    const values = {
+      todos: [
+        r.codigo,
+        r.material,
+        r.categoria,
+        r.unidad,
+        r.fecha,
+        r.observaciones
+      ],
+      codigo: [r.codigo],
+      material: [r.material],
+      categoria: [r.categoria],
+      unidad: [r.unidad]
+    };
+
+    return (values[inventorySearchField] || values.todos)
+      .some(value =>
+        String(value ?? '').toLowerCase().includes(query)
+      );
+  });
+
+  document.getElementById('content').innerHTML = `
+    <main>
+      <div class="titleRow">
+        <div>
+          <h1>Consulta de Inventario</h1>
+          <p>
+            Consulta todos los ítems registrados sin afectar
+            el formulario de registro.
+          </p>
+        </div>
+
+        <button id="backInventoryRegister" type="button">
+          ← Volver a registrar
+        </button>
+      </div>
+
+      <section class="panel">
+        <h2>Buscar inventario</h2>
+
+        <div style="
+          display:grid;
+          grid-template-columns:minmax(180px, 220px) 1fr auto;
+          gap:10px;
+          align-items:end;
+        ">
+          <label>
+            Buscar por
+            <select id="inventorySearchField">
+              <option value="todos">Todos</option>
+              <option value="codigo">Código</option>
+              <option value="material">Material / Producto</option>
+              <option value="categoria">Categoría</option>
+              <option value="unidad">Unidad</option>
+            </select>
+          </label>
+
+          <label>
+            Texto de búsqueda
+            <input
+              id="inventorySearchInput"
+              type="search"
+              placeholder="Escribe para buscar..."
+              value="${esc(inventorySearch)}"
+              autocomplete="off"
+            >
+          </label>
+
+          <button id="clearInventorySearch" type="button">
+            Limpiar
+          </button>
+        </div>
+      </section>
+
+      <div class="cards">
+        <div class="card">
+          <small>Resultados</small>
+          <strong>${filtered.length}</strong>
+        </div>
+
+        <div class="card">
+          <small>Total registrado</small>
+          <strong>${inventoryRows.length}</strong>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>Inventario completo</h2>
+
+        ${
+          filtered.length
+            ? `
+              <div class="tableWrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Código</th>
+                      <th>Material / Producto</th>
+                      <th>Categoría</th>
+                      <th>Unidad</th>
+                      <th>Inicial</th>
+                      <th>Entradas</th>
+                      <th>Salidas</th>
+                      <th>Stock actual</th>
+                      <th>Mínimo</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    ${filtered.map(r => {
+                      const stock =
+                        n(r.stock_inicial) +
+                        n(r.entradas) -
+                        n(r.salidas);
+
+                      const low =
+                        n(r.stock_minimo) > 0 &&
+                        stock <= n(r.stock_minimo);
+
+                      return `
+                        <tr>
+                          <td>${esc(r.fecha)}</td>
+                          <td>${esc(r.codigo || '')}</td>
+                          <td><strong>${esc(r.material)}</strong></td>
+                          <td>${esc(r.categoria || '')}</td>
+                          <td>${esc(r.unidad || '')}</td>
+                          <td>${n(r.stock_inicial)}</td>
+                          <td>${n(r.entradas)}</td>
+                          <td>${n(r.salidas)}</td>
+                          <td><strong>${stock}</strong></td>
+                          <td>${n(r.stock_minimo)}</td>
+                          <td>
+                            <span class="badge ${low ? 'critical' : 'ok'}">
+                              ${low ? 'STOCK BAJO' : 'OK'}
+                            </span>
+                          </td>
+                          <td style="white-space:nowrap;">
+                            <button type="button" data-edit-inventory="${esc(r.id)}">
+                              Editar
+                            </button>
+                            <button type="button" data-delete-inventory="${esc(r.id)}">
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : `
+              <div class="empty">
+                No se encontraron registros con los criterios seleccionados.
+              </div>
+            `
+        }
+      </section>
+    </main>
+  `;
+
+  document.getElementById('backInventoryRegister')?.addEventListener(
+    'click',
+    () => {
+      inventoryView = 'registro';
+      inventorySearch = '';
+      inventorySearchField = 'todos';
+      renderInventory();
+    }
+  );
+
+  const field = document.getElementById('inventorySearchField');
+  const input = document.getElementById('inventorySearchInput');
+
+  if (field) {
+    field.value = inventorySearchField;
+    field.addEventListener('change', () => {
+      inventorySearchField = field.value;
+      renderInventoryConsulta();
+    });
+  }
+
+  if (input) {
+    input.addEventListener('input', () => {
+      inventorySearch = input.value;
+      renderInventoryConsulta();
+    });
+
+    input.focus();
+    input.setSelectionRange(
+      input.value.length,
+      input.value.length
+    );
+  }
+
+  document.getElementById('clearInventorySearch')?.addEventListener(
+    'click',
+    () => {
+      inventorySearch = '';
+      inventorySearchField = 'todos';
+      renderInventoryConsulta();
+    }
+  );
+
+  document
+    .querySelectorAll('[data-edit-inventory]')
+    .forEach(button => {
+      button.onclick = () =>
+        editInventory(button.dataset.editInventory);
+    });
+
+  document
+    .querySelectorAll('[data-delete-inventory]')
+    .forEach(button => {
+      button.onclick = () =>
+        deleteInventory(button.dataset.deleteInventory);
     });
 }
 
@@ -2642,6 +2909,7 @@ async function saveInventory(e) {
   }
 
   editingInventoryId = null;
+  inventoryView = 'registro';
 
   await loadInventory();
   renderInventory();
