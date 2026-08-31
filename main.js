@@ -121,7 +121,7 @@ let metas = {
 
 
 /* ==========================================================
-   ESTILOS ADICIONALES
+   ESTILOS EXTRA
    ========================================================== */
 
 function ensureExtraStyles(){
@@ -462,9 +462,9 @@ function status(
   invert=false
 ){
 
-  const v = n(value);
+  const v = Number(value);
 
-  const t = n(target);
+  const t = Number(target);
 
 
   const epsilon = 0.000001;
@@ -490,9 +490,7 @@ function status(
   }
 
 
-  /*
-     MENOS ES MEJOR
-  */
+  /* MENOS ES MEJOR */
 
   if(invert){
 
@@ -521,17 +519,11 @@ function status(
 
         ok:false,
 
-        critical:v > 0,
+        critical:true,
 
-        label:
-          v > 0
-            ? 'CRÍTICO'
-            : 'OK',
+        label:'CRÍTICO',
 
-        cls:
-          v > 0
-            ? 'critical'
-            : 'ok'
+        cls:'critical'
 
       };
 
@@ -564,9 +556,7 @@ function status(
   }
 
 
-  /*
-     MÁS ES MEJOR
-  */
+  /* MÁS ES MEJOR */
 
   if(
     v >= t - epsilon
@@ -669,7 +659,7 @@ function empty(){
 
 
 /* ==========================================================
-   CÁLCULO DE KPI
+   CÁLCULO KPI
    ========================================================== */
 
 function derive(r){
@@ -705,19 +695,11 @@ function derive(r){
     n(r.pedidos_tiempo);
 
 
-  /*
-     Cumplimiento
-  */
-
   const cumplimiento =
     p > 0
       ? q / p
       : 0;
 
-
-  /*
-     Merma
-  */
 
   const merma =
     mp > 0
@@ -725,19 +707,11 @@ function derive(r){
       : 0;
 
 
-  /*
-     Yield
-  */
-
   const yieldRate =
     mp > 0
       ? q / mp
       : 0;
 
-
-  /*
-     Disponibilidad
-  */
 
   const disponibilidad =
     h > 0
@@ -754,19 +728,11 @@ function derive(r){
       0;
 
 
-  /*
-     Asistencia
-  */
-
   const asistencia =
     pp > 0
       ? pa / pp
       : 0;
 
-
-  /*
-     Rechazo
-  */
 
   const rechazo =
     q > 0
@@ -774,19 +740,11 @@ function derive(r){
       : 0;
 
 
-  /*
-     OTIF
-  */
-
   const otif =
     pedidos > 0
       ? at / pedidos
       : null;
 
-
-  /*
-     OEE
-  */
 
   const oee =
     disponibilidad *
@@ -833,7 +791,10 @@ function derive(r){
 
 
 /* ==========================================================
-   TARJETA KPI
+   INDICADOR
+   CORRECCIÓN:
+   permite distinguir porcentajes,
+   cantidades, dinero y unidades.
    ========================================================== */
 
 function indicador(
@@ -857,35 +818,15 @@ function indicador(
   let displayValue;
 
 
-  /*
-     PORCENTAJE
-  */
-
   if(
-    displayType === 'percent'
+    rawValue === null ||
+    rawValue === undefined
   ){
 
-    if(
-      rawValue === null ||
-      rawValue === undefined
-    ){
-
-      displayValue =
-        'N/A';
-
-    }else{
-
-      displayValue =
-        pct(rawValue);
-
-    }
+    displayValue =
+      'N/A';
 
   }
-
-
-  /*
-     NÚMERO
-  */
 
   else if(
     displayType === 'number'
@@ -897,13 +838,8 @@ function indicador(
 
   }
 
-
-  /*
-     MONEDA
-  */
-
   else if(
-    displayType === 'currency'
+    displayType === 'money'
   ){
 
     displayValue =
@@ -919,17 +855,29 @@ function indicador(
 
   }
 
+  else if(
+    displayType === 'decimal'
+  ){
 
-  /*
-     TEXTO
-  */
+    displayValue =
+      n(rawValue)
+        .toFixed(3);
+
+  }
+
+  else if(
+    typeof rawValue === 'number'
+  ){
+
+    displayValue =
+      pct(rawValue);
+
+  }
 
   else{
 
     displayValue =
-      esc(
-        rawValue ?? ''
-      );
+      esc(rawValue);
 
   }
 
@@ -947,8 +895,7 @@ function indicador(
       </strong>
 
       ${
-        displayType === 'number' ||
-        displayType === 'currency'
+        customStatus === false
 
           ?
 
@@ -965,6 +912,7 @@ function indicador(
             </span>
 
           `
+
       }
 
     </div>
@@ -1088,7 +1036,7 @@ function tendencia(
 
 
 /* ==========================================================
-   GRÁFICO SVG
+   GRÁFICO
    ========================================================== */
 
 function graficoTendencia(
@@ -1123,27 +1071,18 @@ function graficoTendencia(
   const series = [
 
     {
-
       name:'Cumplimiento',
-
       key:'cumplimiento'
-
     },
 
     {
-
       name:'Yield',
-
       key:'yieldRate'
-
     },
 
     {
-
       name:'OEE',
-
       key:'oee'
-
     }
 
   ];
@@ -1251,10 +1190,6 @@ function graficoTendencia(
   `;
 
 
-  /*
-     LÍNEAS HORIZONTALES
-  */
-
   [
     0,
     .4,
@@ -1309,10 +1244,6 @@ function graficoTendencia(
   );
 
 
-  /*
-     META
-  */
-
   const metaY =
     y(
       metas.cumplimiento
@@ -1358,10 +1289,6 @@ function graficoTendencia(
   `;
 
 
-  /*
-     SERIES
-  */
-
   series.forEach(
     (serie,index) => {
 
@@ -1374,14 +1301,6 @@ function graficoTendencia(
         ).join(' ');
 
 
-      const color =
-        `hsl(
-          ${index*70+190},
-          80%,
-          60%
-        )`;
-
-
       svg += `
 
         <polyline
@@ -1390,7 +1309,13 @@ function graficoTendencia(
 
           fill="none"
 
-          stroke="${color}"
+          stroke="
+            hsl(
+              ${index*70+190},
+              80%,
+              60%
+            )
+          "
 
           stroke-width="4"
 
@@ -1416,7 +1341,13 @@ function graficoTendencia(
 
               r="5"
 
-              fill="${color}"
+              fill="
+                hsl(
+                  ${index*70+190},
+                  80%,
+                  60%
+                )
+              "
 
             />
 
@@ -1428,10 +1359,6 @@ function graficoTendencia(
     }
   );
 
-
-  /*
-     FECHAS
-  */
 
   const paso =
     Math.max(
@@ -1591,9 +1518,7 @@ function renderAuth(){
             class="primary"
             type="submit"
           >
-
             Entrar
-
           </button>
 
           <button
@@ -1601,9 +1526,7 @@ function renderAuth(){
             id="signup"
             type="button"
           >
-
             Crear una cuenta
-
           </button>
 
         </form>
@@ -1854,28 +1777,7 @@ function render(){
           tab =
             button.dataset.tab;
 
-
-          /*
-             Si el usuario entra manualmente
-             a Registro Diario, no debe
-             quedar una edición pendiente.
-          */
-
-          if(
-            tab === 'registro'
-          ){
-
-            /*
-               Conservamos editingId solamente
-               si ya veníamos editando.
-            */
-
-          }else{
-
-            editingId = null;
-
-          }
-
+          editingId = null;
 
           render();
 
@@ -1909,28 +1811,22 @@ function render(){
 
     /*
        CORRECCIÓN IMPORTANTE:
-       Si editingId existe, buscamos
-       el registro y lo pasamos al formulario.
+       si editingId existe,
+       cargamos el registro seleccionado.
     */
 
-    const registroEditar =
+    const registro =
       editingId
-
-        ?
-
-        rows.find(
-          r =>
-            String(r.id) ===
-            String(editingId)
-        )
-
-        :
-
-        null;
+        ? rows.find(
+            r =>
+              String(r.id) ===
+              String(editingId)
+          )
+        : null;
 
 
     renderForm(
-      registroEditar
+      registro || null
     );
 
   }
@@ -2601,18 +2497,12 @@ function renderDashboard(){
 
       <div class="cards">
 
-        /*
-           CORRECCIÓN:
-           Producción total es una cantidad,
-           NO un porcentaje.
-        */
-
         ${indicador(
           'Producción total',
           k.prod,
           0,
           false,
-          null,
+          false,
           'number'
         )}
 
@@ -2773,7 +2663,9 @@ function renderDashboard(){
           'Incidentes SSOMA',
           k.incidentes,
           metas.incidentes,
-          true
+          true,
+          null,
+          'number'
         )}
 
       </div>
@@ -3467,13 +3359,9 @@ function renderDashboard(){
 
                               class="actionBtn"
 
-                              data-view="
-                                ${esc(r.id)}
-                              "
+                              data-view="${esc(r.id)}"
 
-                              title="
-                                Ver registro
-                              "
+                              title="Ver registro"
 
                             >
                               👁️
@@ -3484,13 +3372,9 @@ function renderDashboard(){
 
                               class="actionBtn"
 
-                              data-edit="
-                                ${esc(r.id)}
-                              "
+                              data-edit="${esc(r.id)}"
 
-                              title="
-                                Editar registro
-                              "
+                              title="Editar registro"
 
                             >
                               ✏️
@@ -3504,13 +3388,9 @@ function renderDashboard(){
                                 danger
                               "
 
-                              data-delete="
-                                ${esc(r.id)}
-                              "
+                              data-delete="${esc(r.id)}"
 
-                              title="
-                                Eliminar registro
-                              "
+                              title="Eliminar registro"
 
                             >
                               🗑️
@@ -3685,7 +3565,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACTIVAR BOTÓN VER
+     ACCIÓN VER
      ======================================================== */
 
   document
@@ -3708,7 +3588,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACTIVAR BOTÓN EDITAR
+     ACCIÓN EDITAR
      ======================================================== */
 
   document
@@ -3731,7 +3611,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACTIVAR BOTÓN ELIMINAR
+     ACCIÓN ELIMINAR
      ======================================================== */
 
   document
@@ -3756,7 +3636,7 @@ function renderDashboard(){
 
 
 /* ==========================================================
-   VER REGISTRO COMPLETO
+   VER REGISTRO
    ========================================================== */
 
 function verRegistro(id){
@@ -3944,9 +3824,7 @@ function verRegistro(id){
           class="modalClose"
           id="closeModal"
         >
-
           ×
-
         </button>
 
       </div>
@@ -3989,9 +3867,7 @@ function verRegistro(id){
           class="primary"
           id="modalEdit"
         >
-
           ✏️ Editar
-
         </button>
 
 
@@ -3999,9 +3875,7 @@ function verRegistro(id){
           class="danger"
           id="modalDelete"
         >
-
           🗑️ Eliminar
-
         </button>
 
 
@@ -4009,9 +3883,7 @@ function verRegistro(id){
           class="secondary"
           id="modalClose2"
         >
-
           Cerrar
-
         </button>
 
       </div>
@@ -4105,25 +3977,16 @@ function editarRegistro(id){
 
 
   /*
-     Guardamos el ID que se va a editar.
+     CORRECCIÓN:
+     guardamos el ID y render()
+     abrirá el registro correspondiente.
   */
 
   editingId =
-    id;
-
-
-  /*
-     Cambiamos al formulario.
-  */
+    r.id;
 
   tab =
     'registro';
-
-
-  /*
-     render() buscará editingId
-     y cargará el registro completo.
-  */
 
   render();
 
@@ -4214,7 +4077,8 @@ Esta acción no se puede deshacer.`
 
   viewingId = null;
 
-  tab = 'dashboard';
+  tab =
+    'dashboard';
 
   render();
 
@@ -4442,7 +4306,8 @@ function renderForm(
 
         editingId = null;
 
-        tab = 'dashboard';
+        tab =
+          'dashboard';
 
         render();
 
@@ -4545,6 +4410,10 @@ function renderForm(
             .eq(
               'id',
               editingId
+            )
+            .eq(
+              'user_id',
+              user.id
             );
 
       }
@@ -4596,7 +4465,8 @@ function renderForm(
       setTimeout(
         () => {
 
-          tab = 'dashboard';
+          tab =
+            'dashboard';
 
           render();
 
@@ -5798,12 +5668,22 @@ function renderPlaceholder(
 
 async function load(){
 
+  /*
+     IMPORTANTE:
+     solamente cargamos los registros
+     del usuario actualmente conectado.
+  */
+
   const r =
     await supabase
       .from(
         'daily_records'
       )
       .select('*')
+      .eq(
+        'user_id',
+        user.id
+      )
       .order(
         'fecha',
         {
@@ -5816,6 +5696,17 @@ async function load(){
 
     rows =
       r.data || [];
+
+  }
+
+  else{
+
+    console.error(
+      'Error cargando registros:',
+      r.error
+    );
+
+    rows = [];
 
   }
 
@@ -5837,56 +5728,56 @@ async function load(){
       ...metas,
 
       cumplimiento:
-        n(
+        Number(
           s.data
             .meta_cumplimiento
         ) ||
         metas.cumplimiento,
 
       merma:
-        n(
+        Number(
           s.data
             .meta_merma
         ) ||
         metas.merma,
 
       yield:
-        n(
+        Number(
           s.data
             .meta_yield
         ) ||
         metas.yield,
 
       disponibilidad:
-        n(
+        Number(
           s.data
             .meta_disponibilidad
         ) ||
         metas.disponibilidad,
 
       asistencia:
-        n(
+        Number(
           s.data
             .meta_asistencia
         ) ||
         metas.asistencia,
 
       rechazo:
-        n(
+        Number(
           s.data
             .meta_rechazo
         ) ||
         metas.rechazo,
 
       otif:
-        n(
+        Number(
           s.data
             .meta_entregas
         ) ||
         metas.otif,
 
       incidentes:
-        n(
+        Number(
           s.data
             .meta_incidentes
         )
@@ -5937,6 +5828,24 @@ supabase.auth
       user =
         session?.user ||
         null;
+
+
+      /*
+         Evitamos intentar cargar
+         datos si todavía no existe
+         sesión.
+      */
+
+      if(!user){
+
+        rows = [];
+
+        editingId = null;
+
+        viewingId = null;
+
+      }
+
 
       render();
 
