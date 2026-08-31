@@ -403,7 +403,7 @@ function render() {
       <div>
         <b>QUIMFLUX</b>
         <span>
-          · Administrador de Planta V4
+          ·Administrador de Planta V5 PRUEBA
         </span>
       </div>
 
