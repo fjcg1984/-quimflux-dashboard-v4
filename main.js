@@ -46,25 +46,18 @@ const fields = [
   ['observaciones', 'Observaciones', 'textarea']
 ];
 
-
 const today =
   new Date().toISOString().slice(0, 10);
 
-
 let user = null;
-
 let rows = [];
-
 let inventoryRows = [];
-
 let ssomaRows = [];
 
 let tab = 'dashboard';
 
 let editingInventoryId = null;
-
 let editingSsomaId = null;
-
 
 let metas = {
   cumplimiento: 0.95,
@@ -83,7 +76,6 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
-
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -96,37 +88,13 @@ function esc(v = '') {
   );
 }
 
-
 function n(v) {
-
   const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : 0;
+  return Number.isFinite(x) ? x : 0;
 }
-
 
 function pct(v) {
-
-  return (
-    n(v) * 100
-  ).toFixed(1) + '%';
-}
-
-
-function money(v) {
-
-  return (
-    'S/ ' +
-    n(v).toLocaleString(
-      'es-PE',
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }
-    )
-  );
+  return (n(v) * 100).toFixed(1) + '%';
 }
 
 
@@ -148,82 +116,49 @@ function derive(r) {
 
   const rej = n(r.rechazadas);
 
-  const pedidos =
-    n(r.pedidos_programados);
-
-  const at =
-    n(r.pedidos_tiempo);
-
+  const pedidos = n(r.pedidos_programados);
+  const at = n(r.pedidos_tiempo);
 
   const merma =
-    mp
-      ? n(r.merma) / mp
-      : 0;
-
+    mp ? n(r.merma) / mp : 0;
 
   const yieldRate =
-    mp
-      ? q / mp
-      : 0;
-
+    mp ? q / mp : 0;
 
   const disponibilidad =
     h
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
+      ? Math.max(0, (h - stop) / h)
       : 0;
-
 
   const asistencia =
-    pp
-      ? pa / pp
-      : 0;
-
+    pp ? pa / pp : 0;
 
   const rechazo =
-    q
-      ? rej / q
-      : 0;
-
+    q ? rej / q : 0;
 
   const cumplimiento =
-    p
-      ? q / p
-      : 0;
-
+    p ? q / p : 0;
 
   const otif =
-    pedidos
-      ? at / pedidos
-      : 0;
-
+    pedidos ? at / pedidos : 0;
 
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
+    Math.max(0, 1 - rechazo);
 
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
       : 0;
 
-
   const energiaUnit =
     q
       ? n(r.energia) / q
       : 0;
 
-
   return {
     ...r,
-
     cumplimiento,
     merma,
     yieldRate,
@@ -245,45 +180,32 @@ function derive(r) {
 function empty() {
 
   return {
-
     fecha: today,
-
     turno: 'Mañana',
-
     producto: '',
-
     programada: 0,
-
     producida: 0,
-
     mp: 0,
-
     merma: 0,
 
     horas_turno: 8,
-
     horas_paradas: 0,
 
     personal_programado: 0,
-
     personal_presente: 0,
 
     rechazadas: 0,
 
     costo_produccion: 0,
-
     energia: 0,
-
     costo_mantenimiento: 0,
 
     incidentes: 0,
 
     pedidos_programados: 0,
-
     pedidos_tiempo: 0,
 
     reproceso: 0,
-
     no_conformidades: 0,
 
     observaciones: ''
@@ -298,7 +220,6 @@ function empty() {
 function renderAuth() {
 
   app.innerHTML = `
-
     <div class="auth">
 
       <div class="authCard">
@@ -340,26 +261,19 @@ function renderAuth() {
             >
           </label>
 
-          <div
-            id="authMsg"
-            class="msg">
-          </div>
+          <div id="authMsg" class="msg"></div>
 
           <button
             class="primary"
             type="submit">
-
             Entrar
-
           </button>
 
           <button
             class="link"
             id="signup"
             type="button">
-
             Crear una cuenta
-
           </button>
 
         </form>
@@ -369,18 +283,11 @@ function renderAuth() {
     </div>
   `;
 
-
   const emailInput =
-    document.getElementById(
-      'email'
-    );
-
+    document.getElementById('email');
 
   const passwordInput =
-    document.getElementById(
-      'password'
-    );
-
+    document.getElementById('password');
 
   document
     .getElementById('authForm')
@@ -388,44 +295,27 @@ function renderAuth() {
 
       e.preventDefault();
 
-
       const msg =
-        document.getElementById(
-          'authMsg'
-        );
-
+        document.getElementById('authMsg');
 
       msg.textContent =
         'Procesando…';
-
 
       const {
         data,
         error
       } =
         await supabase.auth.signInWithPassword({
-
-          email:
-            emailInput.value.trim(),
-
-          password:
-            passwordInput.value
-
+          email: emailInput.value.trim(),
+          password: passwordInput.value
         });
 
-
       if (error) {
-
-        msg.textContent =
-          error.message;
-
+        msg.textContent = error.message;
         return;
       }
 
-
-      user =
-        data.user;
-
+      user = data.user;
 
       await load();
 
@@ -438,23 +328,15 @@ function renderAuth() {
     .onclick = async () => {
 
       const msg =
-        document.getElementById(
-          'authMsg'
-        );
-
+        document.getElementById('authMsg');
 
       const email =
         emailInput.value.trim();
 
-
       const password =
         passwordInput.value;
 
-
-      if (
-        !email ||
-        !password
-      ) {
+      if (!email || !password) {
 
         msg.textContent =
           'Ingresa correo y contraseña.';
@@ -462,23 +344,17 @@ function renderAuth() {
         return;
       }
 
-
       msg.textContent =
         'Creando cuenta…';
-
 
       const {
         data,
         error
       } =
         await supabase.auth.signUp({
-
           email,
-
           password
-
         });
-
 
       if (error) {
 
@@ -488,12 +364,9 @@ function renderAuth() {
         return;
       }
 
-
       msg.textContent =
         data.session
-
           ? 'Cuenta creada correctamente.'
-
           : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
     };
 }
@@ -512,53 +385,35 @@ function render() {
     return;
   }
 
-
   const nav = [
-
     ['dashboard', 'Dashboard'],
-
     ['registro', 'Registro Diario'],
-
     ['resumen', 'Resumen Ejecutivo'],
-
     ['costos', 'Costos'],
-
     ['mantenimiento', 'Mantenimiento'],
-
     ['inventario', 'Inventario'],
-
     ['personal', 'Personal'],
-
     ['ssoma', 'SSOMA']
-
   ];
-
 
   app.innerHTML = `
 
     <header>
 
       <div>
-
         <b>QUIMFLUX</b>
-
         <span>
           · Administrador de Planta V4
         </span>
-
       </div>
-
 
       <button
         id="logout"
         class="logout">
-
         Salir
-
       </button>
 
     </header>
-
 
     <nav>
 
@@ -567,15 +422,12 @@ function render() {
         <button
           data-tab="${x[0]}"
           class="${tab === x[0] ? 'active' : ''}">
-
           ${x[1]}
-
         </button>
 
       `).join('')}
 
     </nav>
-
 
     <div id="content"></div>
   `;
@@ -591,9 +443,7 @@ function render() {
           button.dataset.tab;
 
         render();
-
       };
-
     });
 
 
@@ -604,57 +454,40 @@ function render() {
       await supabase.auth.signOut();
 
       user = null;
-
       rows = [];
-
       inventoryRows = [];
-
       ssomaRows = [];
 
       render();
-
     };
 
 
-  if (
-    tab === 'dashboard'
-  ) {
+  if (tab === 'dashboard') {
 
     renderDashboard();
 
-  } else if (
-    tab === 'registro'
-  ) {
+  } else if (tab === 'registro') {
 
     renderForm();
 
-  } else if (
-    tab === 'inventario'
-  ) {
+  } else if (tab === 'resumen') {
+
+    renderResumen();
+
+  } else if (tab === 'inventario') {
 
     renderInventory();
 
-  } else if (
-    tab === 'resumen'
-  ) {
-
-    renderExecutive();
-
-  } else if (
-    tab === 'ssoma'
-  ) {
+  } else if (tab === 'ssoma') {
 
     renderSsoma();
 
   } else {
 
     renderPlaceholder(
-      nav.find(
-        x => x[0] === tab
-      )?.[1] ||
-      'QUIMFLUX'
+      nav.find(x => x[0] === tab)?.[1]
+      || 'QUIMFLUX'
     );
-
   }
 }
 
@@ -668,94 +501,57 @@ function renderDashboard() {
   const d =
     rows.map(derive);
 
-
   const sum = key =>
     d.reduce(
-      (s, r) =>
-        s + n(r[key]),
+      (s, r) => s + n(r[key]),
       0
     );
 
+  const programada = sum('programada');
+  const producida = sum('producida');
+  const mp = sum('mp');
+  const merma = sum('merma');
 
-  const programada =
-    sum('programada');
-
-
-  const producida =
-    sum('producida');
-
-
-  const mp =
-    sum('mp');
-
-
-  const merma =
-    sum('merma');
-
-
-  const horas =
-    sum('horas_turno');
-
-
-  const paradas =
-    sum('horas_paradas');
-
+  const horas = sum('horas_turno');
+  const paradas = sum('horas_paradas');
 
   const personalProgramado =
-    sum(
-      'personal_programado'
-    );
-
+    sum('personal_programado');
 
   const personalPresente =
-    sum(
-      'personal_presente'
-    );
-
+    sum('personal_presente');
 
   const rechazadas =
     sum('rechazadas');
 
-
   const pedidos =
-    sum(
-      'pedidos_programados'
-    );
-
+    sum('pedidos_programados');
 
   const pedidosTiempo =
-    sum(
-      'pedidos_tiempo'
-    );
-
+    sum('pedidos_tiempo');
 
   const cumplimiento =
     programada
       ? producida / programada
       : 0;
 
-
   const yieldRate =
     mp
       ? producida / mp
       : 0;
-
 
   const mermaRate =
     mp
       ? merma / mp
       : 0;
 
-
   const disponibilidad =
     horas
       ? Math.max(
           0,
-          (horas - paradas) /
-            horas
+          (horas - paradas) / horas
         )
       : 0;
-
 
   const asistencia =
     personalProgramado
@@ -763,54 +559,36 @@ function renderDashboard() {
         personalProgramado
       : 0;
 
-
   const rechazo =
     producida
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : 0;
-
 
   const otif =
     pedidos
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : 0;
-
 
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
+    Math.max(0, 1 - rechazo);
 
   const costo =
-    sum(
-      'costo_produccion'
-    );
-
+    sum('costo_produccion');
 
   const mantenimiento =
-    sum(
-      'costo_mantenimiento'
-    );
-
+    sum('costo_mantenimiento');
 
   const costoUnitario =
     producida
       ? costo / producida
       : 0;
 
-
   const energia =
     producida
-      ? sum('energia') /
-        producida
+      ? sum('energia') / producida
       : 0;
-
 
   const incidentes =
     sum('incidentes');
@@ -827,12 +605,10 @@ function renderDashboard() {
         ? value <= target
         : value >= target;
 
-
     const critical =
       invert
         ? value > target * 1.5
         : value < target * 0.85;
-
 
     return {
 
@@ -919,25 +695,25 @@ function renderDashboard() {
     [
       'OEE',
       pct(oee),
-      status(
-        oee,
-        0.80
-      )
+      status(oee, 0.80)
     ],
 
     [
       'Costo producción',
-      money(costo)
+      'S/ ' +
+      costo.toLocaleString()
     ],
 
     [
       'Costo unitario',
-      money(costoUnitario)
+      'S/ ' +
+      costoUnitario.toFixed(3)
     ],
 
     [
       'Mantenimiento',
-      money(mantenimiento)
+      'S/ ' +
+      mantenimiento.toLocaleString()
     ],
 
     [
@@ -964,7 +740,6 @@ function renderDashboard() {
         true
       )
     ]
-
   ];
 
 
@@ -1015,9 +790,7 @@ function renderDashboard() {
                 ? `
                   <span
                     class="badge ${c[2].cls}">
-
                     ${c[2].label}
-
                   </span>
                 `
                 : ''
@@ -1032,9 +805,22 @@ function renderDashboard() {
 
       <section class="panel">
 
-        <h2>
-          Últimos registros
-        </h2>
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              Últimos registros
+            </h2>
+
+            <p>
+              Desde aquí puedes eliminar registros.
+            </p>
+
+          </div>
+
+        </div>
+
 
         ${
           d.length
@@ -1048,7 +834,6 @@ function renderDashboard() {
                   <thead>
 
                     <tr>
-
                       <th>Fecha</th>
                       <th>Turno</th>
                       <th>Producto</th>
@@ -1057,10 +842,10 @@ function renderDashboard() {
                       <th>Merma</th>
                       <th>OEE</th>
                       <th>Acción</th>
-
                     </tr>
 
                   </thead>
+
 
                   <tbody>
 
@@ -1112,10 +897,9 @@ function renderDashboard() {
                                   border-radius:8px;
                                   padding:7px 10px;
                                   font-weight:600;
+                                  cursor:pointer;
                                 ">
-
                                 Eliminar
-
                               </button>
 
                             </td>
@@ -1156,9 +940,7 @@ function renderDashboard() {
 
 
   document
-    .querySelectorAll(
-      '[data-delete-id]'
-    )
+    .querySelectorAll('[data-delete-id]')
     .forEach(button => {
 
       button.onclick = () => {
@@ -1170,6 +952,521 @@ function renderDashboard() {
       };
 
     });
+}
+
+
+/* =========================================================
+   RESUMEN EJECUTIVO
+========================================================= */
+
+function renderResumen() {
+
+  const d =
+    rows.map(derive);
+
+  const sum = key =>
+    d.reduce(
+      (s, r) => s + n(r[key]),
+      0
+    );
+
+  const programada =
+    sum('programada');
+
+  const producida =
+    sum('producida');
+
+  const mp =
+    sum('mp');
+
+  const merma =
+    sum('merma');
+
+  const horas =
+    sum('horas_turno');
+
+  const paradas =
+    sum('horas_paradas');
+
+  const personalProgramado =
+    sum('personal_programado');
+
+  const personalPresente =
+    sum('personal_presente');
+
+  const rechazadas =
+    sum('rechazadas');
+
+  const pedidos =
+    sum('pedidos_programados');
+
+  const pedidosTiempo =
+    sum('pedidos_tiempo');
+
+  const costo =
+    sum('costo_produccion');
+
+  const mantenimiento =
+    sum('costo_mantenimiento');
+
+  const energia =
+    sum('energia');
+
+  const reproceso =
+    sum('reproceso');
+
+  const noConformidades =
+    sum('no_conformidades');
+
+  const incidentesDiarios =
+    sum('incidentes');
+
+
+  const cumplimiento =
+    programada
+      ? producida / programada
+      : 0;
+
+  const yieldRate =
+    mp
+      ? producida / mp
+      : 0;
+
+  const mermaRate =
+    mp
+      ? merma / mp
+      : 0;
+
+  const disponibilidad =
+    horas
+      ? Math.max(
+          0,
+          (horas - paradas) / horas
+        )
+      : 0;
+
+  const asistencia =
+    personalProgramado
+      ? personalPresente /
+        personalProgramado
+      : 0;
+
+  const rechazo =
+    producida
+      ? rechazadas / producida
+      : 0;
+
+  const otif =
+    pedidos
+      ? pedidosTiempo / pedidos
+      : 0;
+
+  const oee =
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    );
+
+  const costoUnitario =
+    producida
+      ? costo / producida
+      : 0;
+
+  const energiaUnit =
+    producida
+      ? energia / producida
+      : 0;
+
+  const incidentesRegistrados =
+    ssomaRows.length;
+
+
+  function status(
+    value,
+    target,
+    invert = false
+  ) {
+
+    const ok =
+      invert
+        ? value <= target
+        : value >= target;
+
+    const critical =
+      invert
+        ? value > target * 1.5
+        : value < target * 0.85;
+
+    return {
+      label:
+        critical
+          ? 'CRÍTICO'
+          : ok
+            ? 'OK'
+            : 'REVISAR',
+
+      cls:
+        critical
+          ? 'critical'
+          : ok
+            ? 'ok'
+            : 'warn'
+    };
+  }
+
+
+  const kpis = [
+
+    [
+      'Cumplimiento',
+      pct(cumplimiento),
+      status(
+        cumplimiento,
+        metas.cumplimiento
+      )
+    ],
+
+    [
+      'Yield',
+      pct(yieldRate),
+      status(
+        yieldRate,
+        metas.yield
+      )
+    ],
+
+    [
+      'Merma',
+      pct(mermaRate),
+      status(
+        mermaRate,
+        metas.merma,
+        true
+      )
+    ],
+
+    [
+      'Disponibilidad',
+      pct(disponibilidad),
+      status(
+        disponibilidad,
+        metas.disponibilidad
+      )
+    ],
+
+    [
+      'Asistencia',
+      pct(asistencia),
+      status(
+        asistencia,
+        metas.asistencia
+      )
+    ],
+
+    [
+      'Rechazo',
+      pct(rechazo),
+      status(
+        rechazo,
+        metas.rechazo,
+        true
+      )
+    ],
+
+    [
+      'OEE',
+      pct(oee),
+      status(oee, 0.80)
+    ],
+
+    [
+      'OTIF',
+      pct(otif),
+      status(
+        otif,
+        metas.otif
+      )
+    ]
+  ];
+
+
+  document.getElementById(
+    'content'
+  ).innerHTML = `
+
+    <main>
+
+      <div class="titleRow">
+
+        <div>
+
+          <h1>
+            Resumen Ejecutivo
+          </h1>
+
+          <p>
+            Visión consolidada del desempeño
+            de la planta.
+          </p>
+
+        </div>
+
+        <span class="online">
+          ● EN LÍNEA
+        </span>
+
+      </div>
+
+
+      <section class="panel">
+
+        <h2>
+          Indicadores principales
+        </h2>
+
+        <div class="cards">
+
+          ${kpis.map(k => `
+
+            <div class="card">
+
+              <small>
+                ${k[0]}
+              </small>
+
+              <strong>
+                ${k[1]}
+              </strong>
+
+              <span
+                class="badge ${k[2].cls}">
+                ${k[2].label}
+              </span>
+
+            </div>
+
+          `).join('')}
+
+        </div>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Producción
+        </h2>
+
+        <div class="cards">
+
+          <div class="card">
+            <small>Producción programada</small>
+            <strong>
+              ${programada.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Producción real</small>
+            <strong>
+              ${producida.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Materia prima consumida</small>
+            <strong>
+              ${mp.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Merma</small>
+            <strong>
+              ${merma.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Horas de turno</small>
+            <strong>
+              ${horas.toFixed(1)}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Horas de parada</small>
+            <strong>
+              ${paradas.toFixed(1)}
+            </strong>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Costos y eficiencia
+        </h2>
+
+        <div class="cards">
+
+          <div class="card">
+            <small>Costo de producción</small>
+            <strong>
+              S/ ${costo.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Costo unitario</small>
+            <strong>
+              S/ ${costoUnitario.toFixed(3)}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Mantenimiento</small>
+            <strong>
+              S/ ${mantenimiento.toLocaleString()}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Energía total</small>
+            <strong>
+              ${energia.toLocaleString()} kWh
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Energía por unidad</small>
+            <strong>
+              ${energiaUnit.toFixed(3)} kWh/kg
+            </strong>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Calidad, personal y despacho
+        </h2>
+
+        <div class="cards">
+
+          <div class="card">
+            <small>Personal programado</small>
+            <strong>
+              ${personalProgramado}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Personal presente</small>
+            <strong>
+              ${personalPresente}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Unidades rechazadas</small>
+            <strong>
+              ${rechazadas}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Reproceso</small>
+            <strong>
+              ${reproceso}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>No conformidades</small>
+            <strong>
+              ${noConformidades}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Pedidos programados</small>
+            <strong>
+              ${pedidos}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Pedidos a tiempo</small>
+            <strong>
+              ${pedidosTiempo}
+            </strong>
+          </div>
+
+          <div class="card">
+            <small>Incidentes SSOMA</small>
+            <strong>
+              ${incidentesRegistrados}
+            </strong>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Situación ejecutiva
+        </h2>
+
+        ${
+          rows.length
+            ? `
+              <p>
+                La planta cuenta actualmente con
+                <b>${rows.length}</b>
+                registros diarios y
+                <b>${incidentesRegistrados}</b>
+                incidentes SSOMA registrados.
+              </p>
+
+              <p>
+                Producción real:
+                <b>${producida.toLocaleString()}</b>
+                unidades.
+                Cumplimiento:
+                <b>${pct(cumplimiento)}</b>.
+                OEE:
+                <b>${pct(oee)}</b>.
+              </p>
+            `
+            : `
+              <div class="empty">
+                Todavía no existen registros diarios.
+                Ingresa información desde
+                <b>Registro Diario</b>
+                para comenzar a generar indicadores.
+              </div>
+            `
+        }
+
+      </section>
+
+    </main>
+  `;
 }
 
 
@@ -1188,7 +1485,6 @@ async function deleteRecord(id) {
     return;
   }
 
-
   const row =
     rows.find(
       r =>
@@ -1196,32 +1492,25 @@ async function deleteRecord(id) {
         String(id)
     );
 
-
   const detail =
     row
       ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
       : 'este registro';
 
+  const confirmed =
+    confirm(
+      `¿Eliminar ${detail}?\n\n` +
+      `Esta acción no se puede deshacer.`
+    );
 
-  if (
-    !confirm(
-      `¿Eliminar ${detail}?\n\nEsta acción no se puede deshacer.`
-    )
-  ) {
+  if (!confirmed) return;
 
-    return;
-  }
-
-
-  const {
-    error
-  } =
+  const { error } =
     await supabase
       .from('daily_records')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id);
-
 
   if (error) {
 
@@ -1232,7 +1521,6 @@ async function deleteRecord(id) {
 
     return;
   }
-
 
   await load();
 
@@ -1247,7 +1535,6 @@ async function deleteRecord(id) {
 function renderForm() {
 
   const r = empty();
-
 
   document.getElementById(
     'content'
@@ -1264,11 +1551,9 @@ function renderForm() {
         Los KPI se calculan automáticamente.
       </p>
 
-
       <form
         id="daily"
         class="formGrid">
-
 
         <section>
 
@@ -1352,17 +1637,14 @@ function renderForm() {
 
     e.preventDefault();
 
-
     const msg =
       document.getElementById(
         'saveMsg'
       );
 
-
     const payload = {
       user_id: user.id
     };
-
 
     fields.forEach(
       ([key, , type]) => {
@@ -1372,33 +1654,24 @@ function renderForm() {
             'f_' + key
           );
 
-
         payload[key] =
           type === 'number'
-
             ? (
                 el.value === ''
                   ? null
                   : n(el.value)
               )
-
             : el.value;
-
       }
     );
-
 
     msg.textContent =
       'Guardando…';
 
-
-    const {
-      error
-    } =
+    const { error } =
       await supabase
         .from('daily_records')
         .insert(payload);
-
 
     if (error) {
 
@@ -1408,13 +1681,10 @@ function renderForm() {
       return;
     }
 
-
     msg.textContent =
       'Registro guardado correctamente.';
 
-
     await load();
-
 
     setTimeout(
       () => render(),
@@ -1436,18 +1706,13 @@ function control(f, r) {
     type
   ] = f;
 
-
   let input;
 
-
-  if (
-    type === 'select'
-  ) {
+  if (type === 'select') {
 
     input = `
 
-      <select
-        id="f_${key}">
+      <select id="f_${key}">
 
         <option>Mañana</option>
         <option>Tarde</option>
@@ -1457,9 +1722,7 @@ function control(f, r) {
 
     `;
 
-  } else if (
-    type === 'textarea'
-  ) {
+  } else if (type === 'textarea') {
 
     input = `
 
@@ -1485,7 +1748,6 @@ function control(f, r) {
     `;
   }
 
-
   return `
 
     <label>
@@ -1509,17 +1771,13 @@ function renderInventory() {
   const totalItems =
     inventoryRows.length;
 
-
   const lowStock =
     inventoryRows.filter(
-      r =>
-        n(r.stock_minimo) > 0 &&
-        (
-          n(r.stock_inicial) +
-          n(r.entradas) -
-          n(r.salidas)
-        ) <=
-        n(r.stock_minimo)
+      r => n(r.stock_minimo) > 0 &&
+           n(r.stock_inicial) +
+           n(r.entradas) -
+           n(r.salidas) <=
+           n(r.stock_minimo)
     ).length;
 
 
@@ -1598,11 +1856,9 @@ function renderInventory() {
       <section class="panel">
 
         <h2>
-          ${
-            editingInventoryId
-              ? 'Editar inventario'
-              : 'Registrar inventario'
-          }
+          ${editingInventoryId
+            ? 'Editar inventario'
+            : 'Registrar inventario'}
         </h2>
 
 
@@ -1663,8 +1919,7 @@ function renderInventory() {
 
               Categoría
 
-              <select
-                id="inv_categoria">
+              <select id="inv_categoria">
 
                 <option value="">
                   Seleccionar
@@ -1703,8 +1958,7 @@ function renderInventory() {
 
               Unidad de medida
 
-              <select
-                id="inv_unidad">
+              <select id="inv_unidad">
 
                 <option>kg</option>
                 <option>t</option>
@@ -1804,9 +2058,7 @@ function renderInventory() {
                   font-size:28px;
                   margin-top:8px;
                 ">
-
                 0
-
               </strong>
 
             </div>
@@ -1886,14 +2138,22 @@ function renderInventory() {
 
       <section class="panel">
 
-        <h2>
-          Inventario registrado
-        </h2>
+        <div class="titleRow">
 
-        <p>
-          Stock actual =
-          stock inicial + entradas - salidas.
-        </p>
+          <div>
+
+            <h2>
+              Inventario registrado
+            </h2>
+
+            <p>
+              Stock actual =
+              stock inicial + entradas - salidas.
+            </p>
+
+          </div>
+
+        </div>
 
 
         ${
@@ -1938,15 +2198,12 @@ function renderInventory() {
                             n(r.entradas) -
                             n(r.salidas);
 
-
                           const minimo =
                             n(r.stock_minimo);
-
 
                           const low =
                             minimo > 0 &&
                             stock <= minimo;
-
 
                           return `
 
@@ -2054,7 +2311,6 @@ function renderInventory() {
                             </tr>
 
                           `;
-
                         })
                         .join('')
                     }
@@ -2072,6 +2328,9 @@ function renderInventory() {
               <div class="empty">
 
                 Todavía no hay inventario registrado.
+
+                Utiliza el formulario superior
+                para crear el primer registro.
 
               </div>
 
@@ -2104,9 +2363,7 @@ function renderInventory() {
 
 
   document
-    .getElementById(
-      'inventoryForm'
-    )
+    .getElementById('inventoryForm')
     .onsubmit =
       saveInventory;
 
@@ -2150,7 +2407,6 @@ function renderInventory() {
       'cancelInventory'
     );
 
-
   if (cancel) {
 
     cancel.onclick = () => {
@@ -2160,13 +2416,12 @@ function renderInventory() {
       renderInventory();
 
     };
-
   }
 }
 
 
 /* =========================================================
-   STOCK INVENTARIO
+   PREVISUALIZAR STOCK
 ========================================================= */
 
 function updateInventoryStockPreview() {
@@ -2178,14 +2433,12 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
-
   const entradas =
     n(
       document.getElementById(
         'inv_entradas'
       )?.value
     );
-
 
   const salidas =
     n(
@@ -2194,47 +2447,40 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
-
   const stock =
     inicial +
     entradas -
     salidas;
-
 
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
 
-
   if (output) {
 
     output.textContent =
       stock;
-
   }
 }
 
 
 /* =========================================================
-   GUARDAR INVENTARIO
+   GUARDAR / ACTUALIZAR INVENTARIO
 ========================================================= */
 
 async function saveInventory(e) {
 
   e.preventDefault();
 
-
   const msg =
     document.getElementById(
       'inventoryMsg'
     );
 
-
   const payload = {
 
-    user_id:
-      user.id,
+    user_id: user.id,
 
     fecha:
       document.getElementById(
@@ -2244,8 +2490,7 @@ async function saveInventory(e) {
     codigo:
       document.getElementById(
         'inv_codigo'
-      ).value.trim() ||
-      null,
+      ).value.trim() || null,
 
     material:
       document.getElementById(
@@ -2255,8 +2500,7 @@ async function saveInventory(e) {
     categoria:
       document.getElementById(
         'inv_categoria'
-      ).value ||
-      null,
+      ).value || null,
 
     unidad:
       document.getElementById(
@@ -2294,8 +2538,7 @@ async function saveInventory(e) {
     observaciones:
       document.getElementById(
         'inv_observaciones'
-      ).value.trim() ||
-      null
+      ).value.trim() || null
   };
 
 
@@ -2303,6 +2546,20 @@ async function saveInventory(e) {
 
     msg.textContent =
       'Debes ingresar el material o producto.';
+
+    return;
+  }
+
+
+  if (
+    payload.stock_inicial < 0 ||
+    payload.entradas < 0 ||
+    payload.salidas < 0 ||
+    payload.stock_minimo < 0
+  ) {
+
+    msg.textContent =
+      'Los valores de inventario no pueden ser negativos.';
 
     return;
   }
@@ -2336,7 +2593,6 @@ async function saveInventory(e) {
       await supabase
         .from('inventory')
         .insert(payload);
-
   }
 
 
@@ -2352,9 +2608,11 @@ async function saveInventory(e) {
 
   editingInventoryId = null;
 
+  msg.textContent =
+    'Inventario guardado correctamente.';
+
 
   await loadInventory();
-
 
   renderInventory();
 }
@@ -2394,36 +2652,31 @@ function editInventory(id) {
   document.getElementById(
     'inv_fecha'
   ).value =
-    row.fecha ||
-    today;
+    row.fecha || today;
 
 
   document.getElementById(
     'inv_codigo'
   ).value =
-    row.codigo ||
-    '';
+    row.codigo || '';
 
 
   document.getElementById(
     'inv_material'
   ).value =
-    row.material ||
-    '';
+    row.material || '';
 
 
   document.getElementById(
     'inv_categoria'
   ).value =
-    row.categoria ||
-    '';
+    row.categoria || '';
 
 
   document.getElementById(
     'inv_unidad'
   ).value =
-    row.unidad ||
-    'kg';
+    row.unidad || 'kg';
 
 
   document.getElementById(
@@ -2453,12 +2706,10 @@ function editInventory(id) {
   document.getElementById(
     'inv_observaciones'
   ).value =
-    row.observaciones ||
-    '';
+    row.observaciones || '';
 
 
   updateInventoryStockPreview();
-
 
   window.scrollTo({
     top: 0,
@@ -2491,30 +2742,22 @@ async function deleteInventory(id) {
   }
 
 
-  if (
-    !confirm(
-      `¿Eliminar "${row.material}"?\n\nEsta acción no se puede deshacer.`
-    )
-  ) {
-
-    return;
-  }
+  const confirmed =
+    confirm(
+      `¿Eliminar "${row.material}"?\n\n` +
+      `Esta acción no se puede deshacer.`
+    );
 
 
-  const {
-    error
-  } =
+  if (!confirmed) return;
+
+
+  const { error } =
     await supabase
       .from('inventory')
       .delete()
-      .eq(
-        'id',
-        id
-      )
-      .eq(
-        'user_id',
-        user.id
-      );
+      .eq('id', id)
+      .eq('user_id', user.id);
 
 
   if (error) {
@@ -2535,648 +2778,6 @@ async function deleteInventory(id) {
 
 
 /* =========================================================
-   RESUMEN EJECUTIVO
-========================================================= */
-
-function renderExecutive() {
-
-  const d =
-    rows.map(derive);
-
-
-  const sum = key =>
-    d.reduce(
-      (s, r) =>
-        s + n(r[key]),
-      0
-    );
-
-
-  const programada =
-    sum('programada');
-
-
-  const producida =
-    sum('producida');
-
-
-  const mp =
-    sum('mp');
-
-
-  const merma =
-    sum('merma');
-
-
-  const horas =
-    sum('horas_turno');
-
-
-  const paradas =
-    sum('horas_paradas');
-
-
-  const personalProgramado =
-    sum(
-      'personal_programado'
-    );
-
-
-  const personalPresente =
-    sum(
-      'personal_presente'
-    );
-
-
-  const rechazadas =
-    sum('rechazadas');
-
-
-  const pedidos =
-    sum(
-      'pedidos_programados'
-    );
-
-
-  const pedidosTiempo =
-    sum(
-      'pedidos_tiempo'
-    );
-
-
-  const costo =
-    sum(
-      'costo_produccion'
-    );
-
-
-  const mantenimiento =
-    sum(
-      'costo_mantenimiento'
-    );
-
-
-  const incidentes =
-    ssomaRows.length;
-
-
-  const cumplimiento =
-    programada
-      ? producida /
-        programada
-      : 0;
-
-
-  const yieldRate =
-    mp
-      ? producida /
-        mp
-      : 0;
-
-
-  const mermaRate =
-    mp
-      ? merma /
-        mp
-      : 0;
-
-
-  const disponibilidad =
-    horas
-      ? Math.max(
-          0,
-          (horas - paradas) /
-            horas
-        )
-      : 0;
-
-
-  const asistencia =
-    personalProgramado
-      ? personalPresente /
-        personalProgramado
-      : 0;
-
-
-  const rechazo =
-    producida
-      ? rechazadas /
-        producida
-      : 0;
-
-
-  const otif =
-    pedidos
-      ? pedidosTiempo /
-        pedidos
-      : 0;
-
-
-  const oee =
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
-
-  const lowStock =
-    inventoryRows.filter(
-      r => {
-
-        const stock =
-          n(r.stock_inicial) +
-          n(r.entradas) -
-          n(r.salidas);
-
-        const minimo =
-          n(r.stock_minimo);
-
-        return (
-          minimo > 0 &&
-          stock <= minimo
-        );
-      }
-    ).length;
-
-
-  const graves =
-    ssomaRows.filter(
-      r =>
-        String(
-          r.gravedad || ''
-        ).toLowerCase()
-        .includes('grave')
-        ||
-        String(
-          r.gravedad || ''
-        ).toLowerCase()
-        .includes('crítico')
-        ||
-        String(
-          r.gravedad || ''
-        ).toLowerCase()
-        .includes('critico')
-    ).length;
-
-
-  document.getElementById(
-    'content'
-  ).innerHTML = `
-
-    <main>
-
-      <div class="titleRow">
-
-        <div>
-
-          <h1>
-            Resumen Ejecutivo
-          </h1>
-
-          <p>
-            Visión general de la operación
-            con los datos registrados en QUIMFLUX.
-          </p>
-
-        </div>
-
-        <span class="online">
-          ● EN LÍNEA
-        </span>
-
-      </div>
-
-
-      <div class="cards">
-
-
-        <div class="card">
-
-          <small>
-            Producción
-          </small>
-
-          <strong>
-            ${producida.toLocaleString()}
-          </strong>
-
-          <span class="badge ${
-            producida
-              ? 'ok'
-              : 'warn'
-          }">
-
-            ${
-              producida
-                ? 'REGISTRADA'
-                : 'SIN DATOS'
-            }
-
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Cumplimiento
-          </small>
-
-          <strong>
-            ${pct(cumplimiento)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            OEE
-          </small>
-
-          <strong>
-            ${pct(oee)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Yield
-          </small>
-
-          <strong>
-            ${pct(yieldRate)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Merma
-          </small>
-
-          <strong>
-            ${pct(mermaRate)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Disponibilidad
-          </small>
-
-          <strong>
-            ${pct(disponibilidad)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Asistencia
-          </small>
-
-          <strong>
-            ${pct(asistencia)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            OTIF
-          </small>
-
-          <strong>
-            ${pct(otif)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Costo producción
-          </small>
-
-          <strong>
-            ${money(costo)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Mantenimiento
-          </small>
-
-          <strong>
-            ${money(mantenimiento)}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Ítems inventario
-          </small>
-
-          <strong>
-            ${inventoryRows.length}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Stock bajo
-          </small>
-
-          <strong>
-            ${lowStock}
-          </strong>
-
-          <span class="badge ${
-            lowStock
-              ? 'critical'
-              : 'ok'
-          }">
-
-            ${
-              lowStock
-                ? 'REVISAR'
-                : 'OK'
-            }
-
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Incidentes SSOMA
-          </small>
-
-          <strong>
-            ${incidentes}
-          </strong>
-
-          <span class="badge ${
-            incidentes
-              ? 'warn'
-              : 'ok'
-          }">
-
-            ${
-              incidentes
-                ? 'REVISAR'
-                : 'SIN INCIDENTES'
-            }
-
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Incidentes graves
-          </small>
-
-          <strong>
-            ${graves}
-          </strong>
-
-        </div>
-
-
-      </div>
-
-
-      <section class="panel">
-
-        <h2>
-          Estado general de la planta
-        </h2>
-
-
-        <div
-          style="
-            display:grid;
-            gap:12px;
-            margin-top:15px;
-          ">
-
-
-          <div>
-
-            <strong>
-              Producción
-            </strong>
-
-            <p>
-              ${producida.toLocaleString()}
-              unidades registradas frente a
-              ${programada.toLocaleString()}
-              programadas.
-            </p>
-
-          </div>
-
-
-          <div>
-
-            <strong>
-              Calidad
-            </strong>
-
-            <p>
-              Rechazo:
-              ${pct(rechazo)}
-              · Merma:
-              ${pct(mermaRate)}
-              · Yield:
-              ${pct(yieldRate)}
-            </p>
-
-          </div>
-
-
-          <div>
-
-            <strong>
-              Operación
-            </strong>
-
-            <p>
-              Disponibilidad:
-              ${pct(disponibilidad)}
-              · OEE:
-              ${pct(oee)}
-            </p>
-
-          </div>
-
-
-          <div>
-
-            <strong>
-              Seguridad
-            </strong>
-
-            <p>
-              ${incidentes}
-              incidentes registrados,
-              de los cuales
-              ${graves}
-              presentan gravedad grave/crítica.
-            </p>
-
-          </div>
-
-
-          <div>
-
-            <strong>
-              Inventario
-            </strong>
-
-            <p>
-              ${inventoryRows.length}
-              ítems registrados.
-              ${
-                lowStock
-                  ? `${lowStock} requieren revisión por stock bajo.`
-                  : 'No hay ítems bajo el stock mínimo.'
-              }
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <section class="panel">
-
-        <h2>
-          Últimos incidentes SSOMA
-        </h2>
-
-
-        ${
-          ssomaRows.length
-
-            ? `
-
-              <div class="tableWrap">
-
-                <table>
-
-                  <thead>
-
-                    <tr>
-
-                      <th>Fecha</th>
-                      <th>Tipo</th>
-                      <th>Lugar</th>
-                      <th>Gravedad</th>
-                      <th>Estado</th>
-
-                    </tr>
-
-                  </thead>
-
-
-                  <tbody>
-
-                    ${
-                      ssomaRows
-                        .slice(0, 10)
-                        .map(r => `
-
-                          <tr>
-
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
-
-                            <td>
-                              ${esc(r.tipo)}
-                            </td>
-
-                            <td>
-                              ${esc(r.lugar)}
-                            </td>
-
-                            <td>
-                              ${esc(r.gravedad)}
-                            </td>
-
-                            <td>
-                              ${esc(r.estado)}
-                            </td>
-
-                          </tr>
-
-                        `)
-                        .join('')
-                    }
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-            `
-
-            : `
-
-              <div class="empty">
-
-                No hay incidentes SSOMA registrados.
-
-              </div>
-
-            `
-        }
-
-      </section>
-
-    </main>
-  `;
-}
-
-
-/* =========================================================
    SSOMA
 ========================================================= */
 
@@ -3193,12 +2794,13 @@ function renderSsoma() {
         <div>
 
           <h1>
-            Gestión SSOMA
+            SSOMA
           </h1>
 
           <p>
             Registro y seguimiento de incidentes
-            de Seguridad, Salud Ocupacional y Medio Ambiente.
+            de Seguridad, Salud Ocupacional y
+            Medio Ambiente.
           </p>
 
         </div>
@@ -3228,46 +2830,16 @@ function renderSsoma() {
         <div class="card">
 
           <small>
-            Abiertos
+            Incidentes abiertos
           </small>
 
           <strong>
             ${
               ssomaRows.filter(
                 r =>
-                  String(
-                    r.estado || ''
-                  ).toLowerCase()
-                  .includes('abierto')
-              ).length
-            }
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Graves / críticos
-          </small>
-
-          <strong>
-            ${
-              ssomaRows.filter(
-                r => {
-
-                  const g =
-                    String(
-                      r.gravedad || ''
-                    ).toLowerCase();
-
-                  return (
-                    g.includes('grave') ||
-                    g.includes('crítico') ||
-                    g.includes('critico')
-                  );
-                }
+                  String(r.estado || '')
+                    .toLowerCase()
+                    !== 'cerrado'
               ).length
             }
           </strong>
@@ -3339,19 +2911,19 @@ function renderSsoma() {
                 </option>
 
                 <option>
-                  Acto inseguro
-                </option>
-
-                <option>
                   Condición insegura
                 </option>
 
                 <option>
-                  Derrame
+                  Acto inseguro
                 </option>
 
                 <option>
                   Ambiental
+                </option>
+
+                <option>
+                  Salud ocupacional
                 </option>
 
                 <option>
@@ -3382,7 +2954,8 @@ function renderSsoma() {
               Gravedad
 
               <select
-                id="ss_gravedad">
+                id="ss_gravedad"
+                required>
 
                 <option value="">
                   Seleccionar
@@ -3393,7 +2966,7 @@ function renderSsoma() {
                 </option>
 
                 <option>
-                  Moderado
+                  Moderada
                 </option>
 
                 <option>
@@ -3401,7 +2974,7 @@ function renderSsoma() {
                 </option>
 
                 <option>
-                  Crítico
+                  Crítica
                 </option>
 
               </select>
@@ -3414,7 +2987,8 @@ function renderSsoma() {
               Estado
 
               <select
-                id="ss_estado">
+                id="ss_estado"
+                required>
 
                 <option>
                   Abierto
@@ -3452,7 +3026,21 @@ function renderSsoma() {
 
               <textarea
                 id="ss_hechos"
-                placeholder="Describe qué ocurrió, cómo ocurrió y las circunstancias...">
+                required
+                placeholder="Describe claramente qué ocurrió...">
+              </textarea>
+
+            </label>
+
+
+            <label>
+
+              Acciones tomadas
+
+              <textarea
+                id="ss_acciones"
+                required
+                placeholder="Describe las acciones inmediatas y correctivas...">
               </textarea>
 
             </label>
@@ -3475,20 +3063,8 @@ function renderSsoma() {
           <section>
 
             <h2>
-              Acciones y seguimiento
+              Observaciones
             </h2>
-
-
-            <label>
-
-              Acciones tomadas
-
-              <textarea
-                id="ss_acciones"
-                placeholder="Describe las acciones inmediatas y correctivas tomadas...">
-              </textarea>
-
-            </label>
 
 
             <label>
@@ -3497,7 +3073,7 @@ function renderSsoma() {
 
               <textarea
                 id="ss_observaciones"
-                placeholder="Información adicional...">
+                placeholder="Información adicional, seguimiento o recomendaciones...">
               </textarea>
 
             </label>
@@ -3519,7 +3095,6 @@ function renderSsoma() {
               flex-wrap:wrap;
             ">
 
-
             <button
               class="primary"
               type="submit">
@@ -3536,7 +3111,6 @@ function renderSsoma() {
             ${
               editingSsomaId
                 ? `
-
                   <button
                     id="cancelSsoma"
                     type="button"
@@ -3545,7 +3119,6 @@ function renderSsoma() {
                     Cancelar edición
 
                   </button>
-
                 `
                 : ''
             }
@@ -3559,9 +3132,21 @@ function renderSsoma() {
 
       <section class="panel">
 
-        <h2>
-          Incidentes registrados
-        </h2>
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              Incidentes registrados
+            </h2>
+
+            <p>
+              Historial de incidentes SSOMA.
+            </p>
+
+          </div>
+
+        </div>
 
 
         ${
@@ -3604,59 +3189,28 @@ function renderSsoma() {
                             </td>
 
                             <td>
-                              ${esc(r.tipo)}
+                              ${esc(r.tipo || '')}
                             </td>
 
                             <td>
-                              ${esc(r.lugar)}
+                              ${esc(r.lugar || '')}
                             </td>
 
                             <td>
-
-                              <span
-                                class="badge ${
-                                  String(
-                                    r.gravedad || ''
-                                  ).toLowerCase()
-                                  .includes('grave') ||
-                                  String(
-                                    r.gravedad || ''
-                                  ).toLowerCase()
-                                  .includes('crítico') ||
-                                  String(
-                                    r.gravedad || ''
-                                  ).toLowerCase()
-                                  .includes('critico')
-
-                                    ? 'critical'
-
-                                    : 'warn'
-                                }">
-
-                                ${esc(
-                                  r.gravedad ||
-                                  'Sin definir'
-                                )}
-
-                              </span>
-
+                              ${esc(r.gravedad || '')}
                             </td>
-
 
                             <td>
-                              ${esc(r.estado)}
+                              ${esc(r.estado || '')}
                             </td>
-
 
                             <td>
                               ${esc(r.hechos || '')}
                             </td>
 
-
                             <td>
                               ${esc(r.acciones_tomadas || '')}
                             </td>
-
 
                             <td>
 
@@ -3730,10 +3284,10 @@ function renderSsoma() {
   `;
 
 
-  document.getElementById(
-    'ssomaForm'
-  ).onsubmit =
-    saveSsoma;
+  document
+    .getElementById('ssomaForm')
+    .onsubmit =
+      saveSsoma;
 
 
   document
@@ -3775,7 +3329,6 @@ function renderSsoma() {
       'cancelSsoma'
     );
 
-
   if (cancel) {
 
     cancel.onclick = () => {
@@ -3785,19 +3338,17 @@ function renderSsoma() {
       renderSsoma();
 
     };
-
   }
 }
 
 
 /* =========================================================
-   GUARDAR SSOMA
+   GUARDAR / ACTUALIZAR SSOMA
 ========================================================= */
 
 async function saveSsoma(e) {
 
   e.preventDefault();
-
 
   const msg =
     document.getElementById(
@@ -3807,8 +3358,7 @@ async function saveSsoma(e) {
 
   const payload = {
 
-    user_id:
-      user.id,
+    user_id: user.id,
 
     fecha:
       document.getElementById(
@@ -3823,44 +3373,37 @@ async function saveSsoma(e) {
     hechos:
       document.getElementById(
         'ss_hechos'
-      ).value.trim() ||
-      null,
+      ).value.trim(),
 
     lugar:
       document.getElementById(
         'ss_lugar'
-      ).value.trim() ||
-      null,
+      ).value.trim(),
 
     acciones_tomadas:
       document.getElementById(
         'ss_acciones'
-      ).value.trim() ||
-      null,
+      ).value.trim(),
 
     personas_involucradas:
       document.getElementById(
         'ss_personas'
-      ).value.trim() ||
-      null,
+      ).value.trim() || null,
 
     gravedad:
       document.getElementById(
         'ss_gravedad'
-      ).value ||
-      null,
+      ).value,
 
     estado:
       document.getElementById(
         'ss_estado'
-      ).value ||
-      null,
+      ).value,
 
     observaciones:
       document.getElementById(
         'ss_observaciones'
-      ).value.trim() ||
-      null
+      ).value.trim() || null
   };
 
 
@@ -3882,10 +3425,37 @@ async function saveSsoma(e) {
   }
 
 
+  if (!payload.hechos) {
+
+    msg.textContent =
+      'Debes describir los hechos.';
+
+    return;
+  }
+
+
   if (!payload.lugar) {
 
     msg.textContent =
-      'Debes ingresar el lugar.';
+      'Debes indicar el lugar.';
+
+    return;
+  }
+
+
+  if (!payload.acciones_tomadas) {
+
+    msg.textContent =
+      'Debes indicar las acciones tomadas.';
+
+    return;
+  }
+
+
+  if (!payload.gravedad) {
+
+    msg.textContent =
+      'Debes seleccionar la gravedad.';
 
     return;
   }
@@ -3919,7 +3489,6 @@ async function saveSsoma(e) {
       await supabase
         .from('ssoma_incidents')
         .insert(payload);
-
   }
 
 
@@ -3935,9 +3504,11 @@ async function saveSsoma(e) {
 
   editingSsomaId = null;
 
+  msg.textContent =
+    'Incidente guardado correctamente.';
+
 
   await loadSsoma();
-
 
   renderSsoma();
 }
@@ -3977,64 +3548,55 @@ function editSsoma(id) {
   document.getElementById(
     'ss_fecha'
   ).value =
-    row.fecha ||
-    today;
+    row.fecha || today;
 
 
   document.getElementById(
     'ss_tipo'
   ).value =
-    row.tipo ||
-    '';
-
-
-  document.getElementById(
-    'ss_lugar'
-  ).value =
-    row.lugar ||
-    '';
-
-
-  document.getElementById(
-    'ss_gravedad'
-  ).value =
-    row.gravedad ||
-    '';
-
-
-  document.getElementById(
-    'ss_estado'
-  ).value =
-    row.estado ||
-    'Abierto';
+    row.tipo || '';
 
 
   document.getElementById(
     'ss_hechos'
   ).value =
-    row.hechos ||
-    '';
+    row.hechos || '';
 
 
   document.getElementById(
-    'ss_personas'
+    'ss_lugar'
   ).value =
-    row.personas_involucradas ||
-    '';
+    row.lugar || '';
 
 
   document.getElementById(
     'ss_acciones'
   ).value =
-    row.acciones_tomadas ||
-    '';
+    row.acciones_tomadas || '';
+
+
+  document.getElementById(
+    'ss_personas'
+  ).value =
+    row.personas_involucradas || '';
+
+
+  document.getElementById(
+    'ss_gravedad'
+  ).value =
+    row.gravedad || '';
+
+
+  document.getElementById(
+    'ss_estado'
+  ).value =
+    row.estado || 'Abierto';
 
 
   document.getElementById(
     'ss_observaciones'
   ).value =
-    row.observaciones ||
-    '';
+    row.observaciones || '';
 
 
   window.scrollTo({
@@ -4068,19 +3630,17 @@ async function deleteSsoma(id) {
   }
 
 
-  if (
-    !confirm(
-      `¿Eliminar el incidente "${row.tipo || 'Sin tipo'}" del ${row.fecha}?\n\nEsta acción no se puede deshacer.`
-    )
-  ) {
-
-    return;
-  }
+  const confirmed =
+    confirm(
+      `¿Eliminar el incidente del ${row.fecha}?\n\n` +
+      `Esta acción no se puede deshacer.`
+    );
 
 
-  const {
-    error
-  } =
+  if (!confirmed) return;
+
+
+  const { error } =
     await supabase
       .from('ssoma_incidents')
       .delete()
@@ -4107,55 +3667,7 @@ async function deleteSsoma(id) {
 
   await loadSsoma();
 
-
   renderSsoma();
-}
-
-
-/* =========================================================
-   CARGAR INVENTARIO
-========================================================= */
-
-async function loadInventory() {
-
-  const result =
-    await supabase
-      .from('inventory')
-      .select('*')
-      .eq(
-        'user_id',
-        user.id
-      )
-      .order(
-        'fecha',
-        {
-          ascending: false
-        }
-      )
-      .order(
-        'created_at',
-        {
-          ascending: false
-        }
-      );
-
-
-  if (result.error) {
-
-    console.error(
-      'Error cargando inventario:',
-      result.error
-    );
-
-    inventoryRows = [];
-
-    return;
-  }
-
-
-  inventoryRows =
-    result.data ||
-    [];
 }
 
 
@@ -4201,8 +3713,50 @@ async function loadSsoma() {
 
 
   ssomaRows =
-    result.data ||
-    [];
+    result.data || [];
+}
+
+
+/* =========================================================
+   CARGAR INVENTARIO
+========================================================= */
+
+async function loadInventory() {
+
+  const result =
+    await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_id', user.id)
+      .order(
+        'fecha',
+        {
+          ascending: false
+        }
+      )
+      .order(
+        'created_at',
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      'Error cargando inventario:',
+      result.error
+    );
+
+    inventoryRows = [];
+
+    return;
+  }
+
+
+  inventoryRows =
+    result.data || [];
 }
 
 
@@ -4222,15 +3776,16 @@ function renderPlaceholder(title) {
         ${esc(title)}
       </h1>
 
-
       <section class="panel">
 
         <p>
-          Este módulo se encuentra en desarrollo.
+          Este módulo está preparado para
+          enlazarse con su tabla correspondiente
+          de Supabase en la siguiente fase.
         </p>
 
         <span class="badge ok">
-          Módulo disponible próximamente
+          Módulo preparado
         </span>
 
       </section>
@@ -4242,7 +3797,7 @@ function renderPlaceholder(title) {
 
 
 /* =========================================================
-   CARGAR TODOS LOS DATOS
+   CARGAR DATOS
 ========================================================= */
 
 async function load() {
@@ -4262,8 +3817,7 @@ async function load() {
   if (!r.error) {
 
     rows =
-      r.data ||
-      [];
+      r.data || [];
 
   } else {
 
@@ -4271,7 +3825,6 @@ async function load() {
       'Error cargando registros:',
       r.error
     );
-
   }
 
 
@@ -4286,7 +3839,6 @@ async function load() {
   if (s.data) {
 
     metas = {
-
       ...metas,
 
       cumplimiento:
@@ -4335,7 +3887,6 @@ async function load() {
         n(
           s.data.meta_incidentes
         )
-
     };
   }
 
@@ -4385,17 +3936,13 @@ supabase.auth
         session?.user ||
         null;
 
-
       if (!user) {
 
         rows = [];
-
         inventoryRows = [];
-
         ssomaRows = [];
 
       }
-
 
       render();
 
