@@ -1,10 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
 
-/* =========================================================
-   SUPABASE
-========================================================= */
-
 const SUPABASE_URL =
   'https://cgkdztwtodmdteohvuoh.supabase.co';
 
@@ -18,63 +14,19 @@ const supabase = createClient(
 
 const app = document.getElementById('app');
 
-
-/* =========================================================
-   ARRANQUE
-========================================================= */
-
-function hideBoot() {
-  const boot = document.getElementById('boot');
-
-  if (boot) {
-    boot.style.display = 'none';
-  }
-}
-
-
-/* =========================================================
-   REGISTRO DIARIO
-========================================================= */
-
-const fields = [
-  ['fecha', 'Fecha', 'date'],
-  ['turno', 'Turno', 'select'],
-  ['producto', 'Producto', 'text'],
-  ['programada', 'Cantidad programada', 'number'],
-  ['producida', 'Cantidad producida', 'number'],
-  ['mp', 'Materia prima consumida', 'number'],
-  ['merma', 'Merma', 'number'],
-
-  ['horas_turno', 'Horas de turno', 'number'],
-  ['horas_paradas', 'Horas de parada', 'number'],
-  ['personal_programado', 'Personal programado', 'number'],
-  ['personal_presente', 'Personal presente', 'number'],
-  ['rechazadas', 'Unidades rechazadas', 'number'],
-
-  ['costo_produccion', 'Costo producción (S/)', 'number'],
-  ['energia', 'Energía (kWh)', 'number'],
-  ['costo_mantenimiento', 'Costo mantenimiento (S/)', 'number'],
-
-  ['incidentes', 'Incidentes SSOMA', 'number'],
-  ['pedidos_programados', 'Pedidos programados', 'number'],
-  ['pedidos_tiempo', 'Pedidos a tiempo', 'number'],
-  ['reproceso', 'Reproceso', 'number'],
-  ['no_conformidades', 'No conformidades', 'number'],
-  ['observaciones', 'Observaciones', 'textarea']
-];
-
-const today =
-  new Date().toISOString().slice(0, 10);
+const today = new Date().toISOString().slice(0, 10);
 
 let user = null;
 let rows = [];
 let inventoryRows = [];
 let ssomaRows = [];
+let personalRows = [];
 
 let tab = 'dashboard';
 
 let editingInventoryId = null;
 let editingSsomaId = null;
+let editingPersonalId = null;
 
 let metas = {
   cumplimiento: 0.95,
@@ -114,50 +66,63 @@ function pct(v) {
   return (n(v) * 100).toFixed(1) + '%';
 }
 
+function msg(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
 
 /* =========================================================
-   KPI
+   REGISTRO DIARIO
 ========================================================= */
 
-function derive(r) {
+const fields = [
+  ['fecha', 'Fecha', 'date'],
+  ['turno', 'Turno', 'select'],
+  ['producto', 'Producto', 'text'],
+  ['programada', 'Cantidad programada', 'number'],
+  ['producida', 'Cantidad producida', 'number'],
+  ['mp', 'Materia prima consumida', 'number'],
+  ['merma', 'Merma', 'number'],
 
+  ['horas_turno', 'Horas de turno', 'number'],
+  ['horas_paradas', 'Horas de parada', 'number'],
+  ['personal_programado', 'Personal programado', 'number'],
+  ['personal_presente', 'Personal presente', 'number'],
+  ['rechazadas', 'Unidades rechazadas', 'number'],
+
+  ['costo_produccion', 'Costo producción (S/)', 'number'],
+  ['energia', 'Energía (kWh)', 'number'],
+  ['costo_mantenimiento', 'Costo mantenimiento (S/)', 'number'],
+
+  ['incidentes', 'Incidentes SSOMA', 'number'],
+  ['pedidos_programados', 'Pedidos programados', 'number'],
+  ['pedidos_tiempo', 'Pedidos a tiempo', 'number'],
+  ['reproceso', 'Reproceso', 'number'],
+  ['no_conformidades', 'No conformidades', 'number'],
+  ['observaciones', 'Observaciones', 'textarea']
+];
+
+function derive(r) {
   const p = n(r.programada);
   const q = n(r.producida);
   const mp = n(r.mp);
-
   const h = n(r.horas_turno);
   const stop = n(r.horas_paradas);
-
   const pp = n(r.personal_programado);
   const pa = n(r.personal_presente);
-
   const rej = n(r.rechazadas);
-
   const pedidos = n(r.pedidos_programados);
   const at = n(r.pedidos_tiempo);
 
-  const merma =
-    mp ? n(r.merma) / mp : 0;
-
-  const yieldRate =
-    mp ? q / mp : 0;
-
+  const merma = mp ? n(r.merma) / mp : 0;
+  const yieldRate = mp ? q / mp : 0;
   const disponibilidad =
-    h
-      ? Math.max(0, (h - stop) / h)
-      : 0;
-
-  const asistencia =
-    pp ? pa / pp : 0;
-
-  const rechazo =
-    q ? rej / q : 0;
-
-  const cumplimiento =
-    p ? q / p : 0;
-
-  const otif =
-    pedidos ? at / pedidos : 0;
+    h ? Math.max(0, (h - stop) / h) : 0;
+  const asistencia = pp ? pa / pp : 0;
+  const rechazo = q ? rej / q : 0;
+  const cumplimiento = p ? q / p : 0;
+  const otif = pedidos ? at / pedidos : 0;
 
   const oee =
     disponibilidad *
@@ -165,14 +130,10 @@ function derive(r) {
     Math.max(0, 1 - rechazo);
 
   const costoUnitario =
-    q
-      ? n(r.costo_produccion) / q
-      : 0;
+    q ? n(r.costo_produccion) / q : 0;
 
   const energiaUnit =
-    q
-      ? n(r.energia) / q
-      : 0;
+    q ? n(r.energia) / q : 0;
 
   return {
     ...r,
@@ -189,13 +150,7 @@ function derive(r) {
   };
 }
 
-
-/* =========================================================
-   REGISTRO VACÍO
-========================================================= */
-
 function empty() {
-
   return {
     fecha: today,
     turno: 'Mañana',
@@ -204,27 +159,19 @@ function empty() {
     producida: 0,
     mp: 0,
     merma: 0,
-
     horas_turno: 8,
     horas_paradas: 0,
-
     personal_programado: 0,
     personal_presente: 0,
-
     rechazadas: 0,
-
     costo_produccion: 0,
     energia: 0,
     costo_mantenimiento: 0,
-
     incidentes: 0,
-
     pedidos_programados: 0,
     pedidos_tiempo: 0,
-
     reproceso: 0,
     no_conformidades: 0,
-
     observaciones: ''
   };
 }
@@ -235,73 +182,58 @@ function empty() {
 ========================================================= */
 
 function renderAuth() {
-
-  hideBoot();
-
   app.innerHTML = `
     <div class="auth">
 
-      <div class="authCard">
+      <h1>QUIMFLUX</h1>
 
-        <div class="logo">
-          QUIMFLUX
-        </div>
+      <h2>Administrador de Planta</h2>
 
-        <h1>
-          Administrador de Planta
-        </h1>
+      <p>
+        Inicia sesión para acceder al dashboard.
+      </p>
 
-        <p>
-          Inicia sesión para acceder al dashboard.
-        </p>
+      <form id="authForm">
 
-        <form id="authForm">
+        <label>
+          Correo
+          <input
+            id="email"
+            type="email"
+            required
+            autocomplete="email"
+          >
+        </label>
 
-          <label>
-            Correo
+        <label>
+          Contraseña
+          <input
+            id="password"
+            type="password"
+            minlength="6"
+            required
+            autocomplete="current-password"
+          >
+        </label>
 
-            <input
-              id="email"
-              type="email"
-              required
-              autocomplete="email"
-            >
-          </label>
+        <div id="authMsg" class="msg"></div>
 
-          <label>
-            Contraseña
+        <button class="primary" type="submit">
+          Entrar
+        </button>
 
-            <input
-              id="password"
-              type="password"
-              minlength="6"
-              required
-              autocomplete="current-password"
-            >
-          </label>
+        <button
+          class="link"
+          id="signup"
+          type="button"
+        >
+          Crear una cuenta
+        </button>
 
-          <div id="authMsg" class="msg"></div>
-
-          <button
-            class="primary"
-            type="submit">
-            Entrar
-          </button>
-
-          <button
-            class="link"
-            id="signup"
-            type="button">
-            Crear una cuenta
-          </button>
-
-        </form>
-
-      </div>
+      </form>
 
     </div>
   `;
-
 
   const emailInput =
     document.getElementById('email');
@@ -309,91 +241,73 @@ function renderAuth() {
   const passwordInput =
     document.getElementById('password');
 
+  document.getElementById(
+    'authForm'
+  ).onsubmit = async e => {
 
-  document
-    .getElementById('authForm')
-    .onsubmit = async e => {
+    e.preventDefault();
 
-      e.preventDefault();
+    msg('authMsg', 'Iniciando sesión…');
 
-      const msg =
-        document.getElementById('authMsg');
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email: emailInput.value.trim(),
+        password: passwordInput.value
+      });
 
-      msg.textContent =
-        'Procesando…';
+    if (error) {
+      msg('authMsg', error.message);
+      return;
+    }
 
-      const {
-        data,
-        error
-      } =
-        await supabase.auth.signInWithPassword({
-          email: emailInput.value.trim(),
-          password: passwordInput.value
-        });
+    user = data.user;
 
-      if (error) {
+    await load();
 
-        msg.textContent =
-          error.message;
+    render();
+  };
 
-        return;
-      }
+  document.getElementById(
+    'signup'
+  ).onclick = async () => {
 
-      user =
-        data.user;
+    const email =
+      emailInput.value.trim();
 
-      await load();
+    const password =
+      passwordInput.value;
 
-      render();
-    };
+    if (!email || !password) {
+      msg(
+        'authMsg',
+        'Ingresa correo y contraseña.'
+      );
+      return;
+    }
 
+    msg(
+      'authMsg',
+      'Creando cuenta…'
+    );
 
-  document
-    .getElementById('signup')
-    .onclick = async () => {
+    const { data, error } =
+      await supabase.auth.signUp({
+        email,
+        password
+      });
 
-      const msg =
-        document.getElementById('authMsg');
+    if (error) {
+      msg('authMsg', error.message);
+      return;
+    }
 
-      const email =
-        emailInput.value.trim();
-
-      const password =
-        passwordInput.value;
-
-      if (!email || !password) {
-
-        msg.textContent =
-          'Ingresa correo y contraseña.';
-
-        return;
-      }
-
-      msg.textContent =
-        'Creando cuenta…';
-
-      const {
-        data,
-        error
-      } =
-        await supabase.auth.signUp({
-          email,
-          password
-        });
-
-      if (error) {
-
-        msg.textContent =
-          error.message;
-
-        return;
-      }
-
-      msg.textContent =
-        data.session
-          ? 'Cuenta creada correctamente.'
-          : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
-    };
+    msg(
+      'authMsg',
+      data.session
+        ? 'Cuenta creada correctamente.'
+        : 'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.'
+    );
+  };
 }
 
 
@@ -403,21 +317,10 @@ function renderAuth() {
 
 function render() {
 
-  /*
-   * IMPORTANTE:
-   * Ocultamos la pantalla de arranque antes
-   * de mostrar cualquier pantalla de la aplicación.
-   */
-  hideBoot();
-
-
   if (!user) {
-
     renderAuth();
-
     return;
   }
-
 
   const nav = [
     ['dashboard', 'Dashboard'],
@@ -430,7 +333,6 @@ function render() {
     ['ssoma', 'SSOMA']
   ];
 
-
   app.innerHTML = `
 
     <header>
@@ -442,34 +344,27 @@ function render() {
         </span>
       </div>
 
-      <button
-        id="logout"
-        class="logout">
+      <button id="logout">
         Salir
       </button>
 
     </header>
 
-
     <nav>
 
       ${nav.map(x => `
-
         <button
           data-tab="${x[0]}"
-          class="${tab === x[0] ? 'active' : ''}">
+          class="${tab === x[0] ? 'active' : ''}"
+        >
           ${x[1]}
         </button>
-
       `).join('')}
 
     </nav>
 
-
     <div id="content"></div>
-
   `;
-
 
   document
     .querySelectorAll('nav button')
@@ -484,49 +379,83 @@ function render() {
       };
     });
 
+  document.getElementById(
+    'logout'
+  ).onclick = async () => {
 
-  document
-    .getElementById('logout')
-    .onclick = async () => {
+    await supabase.auth.signOut();
 
-      await supabase.auth.signOut();
+    user = null;
+    rows = [];
+    inventoryRows = [];
+    ssomaRows = [];
+    personalRows = [];
 
-      user = null;
-      rows = [];
-      inventoryRows = [];
-      ssomaRows = [];
-
-      render();
-    };
-
+    render();
+  };
 
   if (tab === 'dashboard') {
-
     renderDashboard();
 
   } else if (tab === 'registro') {
-
     renderForm();
 
   } else if (tab === 'resumen') {
-
     renderResumen();
 
   } else if (tab === 'inventario') {
-
     renderInventory();
 
-  } else if (tab === 'ssoma') {
+  } else if (tab === 'personal') {
+    renderPersonal();
 
+  } else if (tab === 'ssoma') {
     renderSsoma();
 
   } else {
-
     renderPlaceholder(
       nav.find(x => x[0] === tab)?.[1]
       || 'QUIMFLUX'
     );
   }
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function status(
+  value,
+  target,
+  invert = false
+) {
+
+  const ok =
+    invert
+      ? value <= target
+      : value >= target;
+
+  const critical =
+    invert
+      ? value > target * 1.5
+      : value < target * 0.85;
+
+  return {
+    label:
+      critical
+        ? 'CRÍTICO'
+        : ok
+          ? 'OK'
+          : 'REVISAR',
+
+    cls:
+      critical
+        ? 'critical'
+        : ok
+          ? 'ok'
+          : 'warn'
+  };
 }
 
 
@@ -545,24 +474,13 @@ function renderDashboard() {
       0
     );
 
+  const programada = sum('programada');
+  const producida = sum('producida');
+  const mp = sum('mp');
+  const merma = sum('merma');
 
-  const programada =
-    sum('programada');
-
-  const producida =
-    sum('producida');
-
-  const mp =
-    sum('mp');
-
-  const merma =
-    sum('merma');
-
-  const horas =
-    sum('horas_turno');
-
-  const paradas =
-    sum('horas_paradas');
+  const horas = sum('horas_turno');
+  const paradas = sum('horas_paradas');
 
   const personalProgramado =
     sum('personal_programado');
@@ -579,34 +497,23 @@ function renderDashboard() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
-
   const cumplimiento =
-    programada
-      ? producida / programada
-      : 0;
+    programada ? producida / programada : 0;
 
   const yieldRate =
-    mp
-      ? producida / mp
-      : 0;
+    mp ? producida / mp : 0;
 
   const mermaRate =
-    mp
-      ? merma / mp
-      : 0;
+    mp ? merma / mp : 0;
 
   const disponibilidad =
     horas
-      ? Math.max(
-          0,
-          (horas - paradas) / horas
-        )
+      ? Math.max(0, (horas - paradas) / horas)
       : 0;
 
   const asistencia =
     personalProgramado
-      ? personalPresente /
-        personalProgramado
+      ? personalPresente / personalProgramado
       : 0;
 
   const rechazo =
@@ -622,11 +529,7 @@ function renderDashboard() {
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
+    Math.max(0, 1 - rechazo);
 
   const costo =
     sum('costo_produccion');
@@ -635,9 +538,7 @@ function renderDashboard() {
     sum('costo_mantenimiento');
 
   const costoUnitario =
-    producida
-      ? costo / producida
-      : 0;
+    producida ? costo / producida : 0;
 
   const energia =
     producida
@@ -646,42 +547,6 @@ function renderDashboard() {
 
   const incidentes =
     sum('incidentes');
-
-
-  function status(
-    value,
-    target,
-    invert = false
-  ) {
-
-    const ok =
-      invert
-        ? value <= target
-        : value >= target;
-
-    const critical =
-      invert
-        ? value > target * 1.5
-        : value < target * 0.85;
-
-    return {
-
-      label:
-        critical
-          ? 'CRÍTICO'
-          : ok
-            ? 'OK'
-            : 'REVISAR',
-
-      cls:
-        critical
-          ? 'critical'
-          : ok
-            ? 'ok'
-            : 'warn'
-    };
-  }
-
 
   const cards = [
 
@@ -749,10 +614,7 @@ function renderDashboard() {
     [
       'OEE',
       pct(oee),
-      status(
-        oee,
-        0.80
-      )
+      status(oee, 0.80)
     ],
 
     [
@@ -776,7 +638,7 @@ function renderDashboard() {
     [
       'Energía',
       energia.toFixed(3) +
-      ' kWh/kg'
+      ' kWh/unidad'
     ],
 
     [
@@ -798,7 +660,6 @@ function renderDashboard() {
       )
     ]
   ];
-
 
   document.getElementById(
     'content'
@@ -827,7 +688,6 @@ function renderDashboard() {
 
       </div>
 
-
       <div class="cards">
 
         ${cards.map(c => `
@@ -835,18 +695,17 @@ function renderDashboard() {
           <div class="card">
 
             <small>
-              ${c[0]}
+              ${esc(c[0])}
             </small>
 
             <strong>
-              ${c[1]}
+              ${esc(c[1])}
             </strong>
 
             ${
               c.length > 2
                 ? `
-                  <span
-                    class="badge ${c[2].cls}">
+                  <span class="badge ${c[2].cls}">
                     ${c[2].label}
                   </span>
                 `
@@ -859,29 +718,14 @@ function renderDashboard() {
 
       </div>
 
-
       <section class="panel">
 
-        <div class="titleRow">
-
-          <div>
-
-            <h2>
-              Últimos registros
-            </h2>
-
-            <p>
-              Desde aquí puedes eliminar registros.
-            </p>
-
-          </div>
-
-        </div>
-
+        <h2>
+          Últimos registros
+        </h2>
 
         ${
           d.length
-
             ? `
 
               <div class="tableWrap">
@@ -889,7 +733,6 @@ function renderDashboard() {
                 <table>
 
                   <thead>
-
                     <tr>
                       <th>Fecha</th>
                       <th>Turno</th>
@@ -900,63 +743,46 @@ function renderDashboard() {
                       <th>OEE</th>
                       <th>Acción</th>
                     </tr>
-
                   </thead>
-
 
                   <tbody>
 
-                    ${
-                      d
-                        .slice(-20)
-                        .reverse()
-                        .map(r => `
+                    ${d
+                      .slice(-20)
+                      .reverse()
+                      .map(r => `
 
-                          <tr>
+                        <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                          <td>${esc(r.fecha)}</td>
 
-                            <td>
-                              ${esc(r.turno)}
-                            </td>
+                          <td>${esc(r.turno)}</td>
 
-                            <td>
-                              ${esc(r.producto)}
-                            </td>
+                          <td>${esc(r.producto)}</td>
 
-                            <td>
-                              ${n(r.programada)}
-                            </td>
+                          <td>${n(r.programada)}</td>
 
-                            <td>
-                              ${n(r.producida)}
-                            </td>
+                          <td>${n(r.producida)}</td>
 
-                            <td>
-                              ${n(r.merma)}
-                            </td>
+                          <td>${n(r.merma)}</td>
 
-                            <td>
-                              ${pct(r.oee)}
-                            </td>
+                          <td>${pct(r.oee)}</td>
 
-                            <td>
+                          <td>
 
-                              <button
-                                type="button"
-                                data-delete-id="${esc(r.id)}">
-                                Eliminar
-                              </button>
+                            <button
+                              type="button"
+                              data-delete-id="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
 
-                            </td>
+                          </td>
 
-                          </tr>
+                        </tr>
 
-                        `)
-                        .join('')
-                    }
+                      `)
+                      .join('')}
 
                   </tbody>
 
@@ -965,19 +791,12 @@ function renderDashboard() {
               </div>
 
             `
-
             : `
-
               <div class="empty">
-
                 Todavía no hay registros.
-
-                Ve a
-                <b>Registro Diario</b>
+                Ve a <b>Registro Diario</b>
                 para ingresar el primero.
-
               </div>
-
             `
         }
 
@@ -986,17 +805,14 @@ function renderDashboard() {
     </main>
   `;
 
-
   document
     .querySelectorAll('[data-delete-id]')
     .forEach(button => {
 
       button.onclick = () => {
-
         deleteRecord(
           button.dataset.deleteId
         );
-
       };
 
     });
@@ -1004,7 +820,248 @@ function renderDashboard() {
 
 
 /* =========================================================
-   RESUMEN EJECUTIVO
+   ELIMINAR REGISTRO DIARIO
+========================================================= */
+
+async function deleteRecord(id) {
+
+  if (!id) {
+    alert('No se pudo identificar el registro.');
+    return;
+  }
+
+  const row =
+    rows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+  const detail =
+    row
+      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
+      : 'este registro';
+
+  if (
+    !confirm(
+      `¿Eliminar ${detail}?\n\nEsta acción no se puede deshacer.`
+    )
+  ) return;
+
+  const { error } =
+    await supabase
+      .from('daily_records')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+  if (error) {
+    alert(
+      'No se pudo eliminar:\n' +
+      error.message
+    );
+    return;
+  }
+
+  await load();
+
+  render();
+}
+
+
+/* =========================================================
+   FORMULARIO DIARIO
+========================================================= */
+
+function renderForm() {
+
+  const r = empty();
+
+  document.getElementById(
+    'content'
+  ).innerHTML = `
+
+    <main>
+
+      <h1>Registro Diario</h1>
+
+      <p>
+        Ingresa los datos del turno.
+        Los KPI se calculan automáticamente.
+      </p>
+
+      <form id="daily" class="formGrid">
+
+        <section>
+
+          <h2>Producción</h2>
+
+          ${fields
+            .slice(0, 7)
+            .map(f => control(f, r))
+            .join('')}
+
+        </section>
+
+        <section>
+
+          <h2>Operación y personal</h2>
+
+          ${fields
+            .slice(7, 12)
+            .map(f => control(f, r))
+            .join('')}
+
+        </section>
+
+        <section>
+
+          <h2>Costos y energía</h2>
+
+          ${fields
+            .slice(12, 15)
+            .map(f => control(f, r))
+            .join('')}
+
+        </section>
+
+        <section>
+
+          <h2>Despacho y SSOMA</h2>
+
+          ${fields
+            .slice(15)
+            .map(f => control(f, r))
+            .join('')}
+
+        </section>
+
+        <div id="saveMsg" class="msg full"></div>
+
+        <button
+          class="primary full"
+          type="submit"
+        >
+          Guardar registro diario
+        </button>
+
+      </form>
+
+    </main>
+  `;
+
+  document.getElementById(
+    'daily'
+  ).onsubmit = async e => {
+
+    e.preventDefault();
+
+    const payload = {
+      user_id: user.id
+    };
+
+    fields.forEach(
+      ([key, , type]) => {
+
+        const el =
+          document.getElementById(
+            'f_' + key
+          );
+
+        payload[key] =
+          type === 'number'
+            ? (
+                el.value === ''
+                  ? null
+                  : n(el.value)
+              )
+            : el.value;
+      }
+    );
+
+    msg(
+      'saveMsg',
+      'Guardando…'
+    );
+
+    const { error } =
+      await supabase
+        .from('daily_records')
+        .insert(payload);
+
+    if (error) {
+      msg(
+        'saveMsg',
+        error.message
+      );
+      return;
+    }
+
+    msg(
+      'saveMsg',
+      'Registro guardado correctamente.'
+    );
+
+    await load();
+
+    setTimeout(
+      () => render(),
+      500
+    );
+  };
+}
+
+function control(f, r) {
+
+  const [
+    key,
+    label,
+    type
+  ] = f;
+
+  let input;
+
+  if (type === 'select') {
+
+    input = `
+      <select id="f_${key}">
+        <option>Mañana</option>
+        <option>Tarde</option>
+        <option>Noche</option>
+      </select>
+    `;
+
+  } else if (type === 'textarea') {
+
+    input = `
+      <textarea id="f_${key}"></textarea>
+    `;
+
+  } else {
+
+    input = `
+      <input
+        id="f_${key}"
+        type="${type}"
+        value="${esc(r[key])}"
+        ${type === 'number'
+          ? 'step="any"'
+          : ''}
+      >
+    `;
+  }
+
+  return `
+    <label>
+      ${esc(label)}
+      ${input}
+    </label>
+  `;
+}
+
+
+/* =========================================================
+   RESUMEN
 ========================================================= */
 
 function renderResumen() {
@@ -1018,24 +1075,13 @@ function renderResumen() {
       0
     );
 
+  const programada = sum('programada');
+  const producida = sum('producida');
+  const mp = sum('mp');
+  const merma = sum('merma');
 
-  const programada =
-    sum('programada');
-
-  const producida =
-    sum('producida');
-
-  const mp =
-    sum('mp');
-
-  const merma =
-    sum('merma');
-
-  const horas =
-    sum('horas_turno');
-
-  const paradas =
-    sum('horas_paradas');
+  const horas = sum('horas_turno');
+  const paradas = sum('horas_paradas');
 
   const personalProgramado =
     sum('personal_programado');
@@ -1067,34 +1113,23 @@ function renderResumen() {
   const noConformidades =
     sum('no_conformidades');
 
-
   const cumplimiento =
-    programada
-      ? producida / programada
-      : 0;
+    programada ? producida / programada : 0;
 
   const yieldRate =
-    mp
-      ? producida / mp
-      : 0;
+    mp ? producida / mp : 0;
 
   const mermaRate =
-    mp
-      ? merma / mp
-      : 0;
+    mp ? merma / mp : 0;
 
   const disponibilidad =
     horas
-      ? Math.max(
-          0,
-          (horas - paradas) / horas
-        )
+      ? Math.max(0, (horas - paradas) / horas)
       : 0;
 
   const asistencia =
     personalProgramado
-      ? personalPresente /
-        personalProgramado
+      ? personalPresente / personalProgramado
       : 0;
 
   const rechazo =
@@ -1110,10 +1145,7 @@ function renderResumen() {
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
+    Math.max(0, 1 - rechazo);
 
   const costoUnitario =
     producida
@@ -1125,122 +1157,16 @@ function renderResumen() {
       ? energia / producida
       : 0;
 
-  const incidentesRegistrados =
-    ssomaRows.length;
-
-
-  function status(
-    value,
-    target,
-    invert = false
-  ) {
-
-    const ok =
-      invert
-        ? value <= target
-        : value >= target;
-
-    const critical =
-      invert
-        ? value > target * 1.5
-        : value < target * 0.85;
-
-    return {
-
-      label:
-        critical
-          ? 'CRÍTICO'
-          : ok
-            ? 'OK'
-            : 'REVISAR',
-
-      cls:
-        critical
-          ? 'critical'
-          : ok
-            ? 'ok'
-            : 'warn'
-    };
-  }
-
-
   const kpis = [
-
-    [
-      'Cumplimiento',
-      pct(cumplimiento),
-      status(
-        cumplimiento,
-        metas.cumplimiento
-      )
-    ],
-
-    [
-      'Yield',
-      pct(yieldRate),
-      status(
-        yieldRate,
-        metas.yield
-      )
-    ],
-
-    [
-      'Merma',
-      pct(mermaRate),
-      status(
-        mermaRate,
-        metas.merma,
-        true
-      )
-    ],
-
-    [
-      'Disponibilidad',
-      pct(disponibilidad),
-      status(
-        disponibilidad,
-        metas.disponibilidad
-      )
-    ],
-
-    [
-      'Asistencia',
-      pct(asistencia),
-      status(
-        asistencia,
-        metas.asistencia
-      )
-    ],
-
-    [
-      'Rechazo',
-      pct(rechazo),
-      status(
-        rechazo,
-        metas.rechazo,
-        true
-      )
-    ],
-
-    [
-      'OEE',
-      pct(oee),
-      status(
-        oee,
-        0.80
-      )
-    ],
-
-    [
-      'OTIF',
-      pct(otif),
-      status(
-        otif,
-        metas.otif
-      )
-    ]
+    ['Cumplimiento', pct(cumplimiento), status(cumplimiento, metas.cumplimiento)],
+    ['Yield', pct(yieldRate), status(yieldRate, metas.yield)],
+    ['Merma', pct(mermaRate), status(mermaRate, metas.merma, true)],
+    ['Disponibilidad', pct(disponibilidad), status(disponibilidad, metas.disponibilidad)],
+    ['Asistencia', pct(asistencia), status(asistencia, metas.asistencia)],
+    ['Rechazo', pct(rechazo), status(rechazo, metas.rechazo, true)],
+    ['OEE', pct(oee), status(oee, 0.80)],
+    ['OTIF', pct(otif), status(otif, metas.otif)]
   ];
-
 
   document.getElementById(
     'content'
@@ -1248,33 +1174,15 @@ function renderResumen() {
 
     <main>
 
-      <div class="titleRow">
+      <h1>Resumen Ejecutivo</h1>
 
-        <div>
-
-          <h1>
-            Resumen Ejecutivo
-          </h1>
-
-          <p>
-            Visión consolidada del desempeño
-            de la planta.
-          </p>
-
-        </div>
-
-        <span class="online">
-          ● EN LÍNEA
-        </span>
-
-      </div>
-
+      <p>
+        Visión consolidada del desempeño de la planta.
+      </p>
 
       <section class="panel">
 
-        <h2>
-          Indicadores principales
-        </h2>
+        <h2>Indicadores principales</h2>
 
         <div class="cards">
 
@@ -1282,16 +1190,11 @@ function renderResumen() {
 
             <div class="card">
 
-              <small>
-                ${k[0]}
-              </small>
+              <small>${k[0]}</small>
 
-              <strong>
-                ${k[1]}
-              </strong>
+              <strong>${k[1]}</strong>
 
-              <span
-                class="badge ${k[2].cls}">
+              <span class="badge ${k[2].cls}">
                 ${k[2].label}
               </span>
 
@@ -1303,534 +1206,132 @@ function renderResumen() {
 
       </section>
 
-
       <section class="panel">
 
-        <h2>
-          Producción
-        </h2>
+        <h2>Producción</h2>
 
         <div class="cards">
 
           <div class="card">
             <small>Producción programada</small>
-            <strong>
-              ${programada.toLocaleString()}
-            </strong>
+            <strong>${programada.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Producción real</small>
-            <strong>
-              ${producida.toLocaleString()}
-            </strong>
+            <strong>${producida.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Materia prima consumida</small>
-            <strong>
-              ${mp.toLocaleString()}
-            </strong>
+            <strong>${mp.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Merma</small>
-            <strong>
-              ${merma.toLocaleString()}
-            </strong>
+            <strong>${merma.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Horas de turno</small>
-            <strong>
-              ${horas.toFixed(1)}
-            </strong>
+            <strong>${horas.toFixed(1)}</strong>
           </div>
 
           <div class="card">
             <small>Horas de parada</small>
-            <strong>
-              ${paradas.toFixed(1)}
-            </strong>
+            <strong>${paradas.toFixed(1)}</strong>
           </div>
 
         </div>
 
       </section>
 
-
       <section class="panel">
 
-        <h2>
-          Costos y eficiencia
-        </h2>
+        <h2>Costos y eficiencia</h2>
 
         <div class="cards">
 
           <div class="card">
-            <small>Costo de producción</small>
-            <strong>
-              S/ ${costo.toLocaleString()}
-            </strong>
+            <small>Costo producción</small>
+            <strong>S/ ${costo.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Costo unitario</small>
-            <strong>
-              S/ ${costoUnitario.toFixed(3)}
-            </strong>
+            <strong>S/ ${costoUnitario.toFixed(3)}</strong>
           </div>
 
           <div class="card">
             <small>Mantenimiento</small>
-            <strong>
-              S/ ${mantenimiento.toLocaleString()}
-            </strong>
+            <strong>S/ ${mantenimiento.toLocaleString()}</strong>
           </div>
 
           <div class="card">
             <small>Energía total</small>
-            <strong>
-              ${energia.toLocaleString()} kWh
-            </strong>
+            <strong>${energia.toLocaleString()} kWh</strong>
           </div>
 
           <div class="card">
             <small>Energía por unidad</small>
-            <strong>
-              ${energiaUnit.toFixed(3)} kWh/kg
-            </strong>
+            <strong>${energiaUnit.toFixed(3)} kWh/unidad</strong>
           </div>
 
         </div>
 
       </section>
 
-
       <section class="panel">
 
-        <h2>
-          Calidad, personal y despacho
-        </h2>
+        <h2>Calidad, personal y despacho</h2>
 
         <div class="cards">
 
           <div class="card">
             <small>Personal programado</small>
-            <strong>
-              ${personalProgramado}
-            </strong>
+            <strong>${personalProgramado}</strong>
           </div>
 
           <div class="card">
             <small>Personal presente</small>
-            <strong>
-              ${personalPresente}
-            </strong>
+            <strong>${personalPresente}</strong>
           </div>
 
           <div class="card">
             <small>Unidades rechazadas</small>
-            <strong>
-              ${rechazadas}
-            </strong>
+            <strong>${rechazadas}</strong>
           </div>
 
           <div class="card">
             <small>Reproceso</small>
-            <strong>
-              ${reproceso}
-            </strong>
+            <strong>${reproceso}</strong>
           </div>
 
           <div class="card">
             <small>No conformidades</small>
-            <strong>
-              ${noConformidades}
-            </strong>
+            <strong>${noConformidades}</strong>
           </div>
 
           <div class="card">
             <small>Pedidos programados</small>
-            <strong>
-              ${pedidos}
-            </strong>
+            <strong>${pedidos}</strong>
           </div>
 
           <div class="card">
             <small>Pedidos a tiempo</small>
-            <strong>
-              ${pedidosTiempo}
-            </strong>
+            <strong>${pedidosTiempo}</strong>
           </div>
 
           <div class="card">
             <small>Incidentes SSOMA</small>
-            <strong>
-              ${incidentesRegistrados}
-            </strong>
+            <strong>${ssomaRows.length}</strong>
           </div>
 
         </div>
 
       </section>
 
-
-      <section class="panel">
-
-        <h2>
-          Situación ejecutiva
-        </h2>
-
-        ${
-          rows.length
-            ? `
-              <p>
-                La planta cuenta actualmente con
-                <b>${rows.length}</b>
-                registros diarios y
-                <b>${incidentesRegistrados}</b>
-                incidentes SSOMA registrados.
-              </p>
-
-              <p>
-                Producción real:
-                <b>${producida.toLocaleString()}</b>
-                unidades.
-                Cumplimiento:
-                <b>${pct(cumplimiento)}</b>.
-                OEE:
-                <b>${pct(oee)}</b>.
-              </p>
-            `
-            : `
-              <div class="empty">
-                Todavía no existen registros diarios.
-                Ingresa información desde
-                <b>Registro Diario</b>
-                para comenzar a generar indicadores.
-              </div>
-            `
-        }
-
-      </section>
-
     </main>
-  `;
-}
-
-
-/* =========================================================
-   ELIMINAR REGISTRO DIARIO
-========================================================= */
-
-async function deleteRecord(id) {
-
-  if (!id) {
-
-    alert(
-      'No se pudo identificar el registro.'
-    );
-
-    return;
-  }
-
-
-  const row =
-    rows.find(
-      r =>
-        String(r.id) ===
-        String(id)
-    );
-
-
-  const detail =
-    row
-      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
-      : 'este registro';
-
-
-  const confirmed =
-    confirm(
-      `¿Eliminar ${detail}?\n\n` +
-      `Esta acción no se puede deshacer.`
-    );
-
-
-  if (!confirmed) return;
-
-
-  const { error } =
-    await supabase
-      .from('daily_records')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
-
-
-  if (error) {
-
-    alert(
-      'No se pudo eliminar el registro:\n' +
-      error.message
-    );
-
-    return;
-  }
-
-
-  await load();
-
-  render();
-}
-
-
-/* =========================================================
-   FORMULARIO REGISTRO DIARIO
-========================================================= */
-
-function renderForm() {
-
-  const r =
-    empty();
-
-
-  document.getElementById(
-    'content'
-  ).innerHTML = `
-
-    <main>
-
-      <h1>
-        Registro Diario
-      </h1>
-
-      <p>
-        Ingresa los datos del turno.
-        Los KPI se calculan automáticamente.
-      </p>
-
-
-      <form
-        id="daily"
-        class="formGrid">
-
-
-        <section>
-
-          <h2>
-            Producción
-          </h2>
-
-          ${fields
-            .slice(0, 7)
-            .map(f => control(f, r))
-            .join('')}
-
-        </section>
-
-
-        <section>
-
-          <h2>
-            Operación y personal
-          </h2>
-
-          ${fields
-            .slice(7, 12)
-            .map(f => control(f, r))
-            .join('')}
-
-        </section>
-
-
-        <section>
-
-          <h2>
-            Costos y energía
-          </h2>
-
-          ${fields
-            .slice(12, 15)
-            .map(f => control(f, r))
-            .join('')}
-
-        </section>
-
-
-        <section>
-
-          <h2>
-            Despacho y SSOMA
-          </h2>
-
-          ${fields
-            .slice(15)
-            .map(f => control(f, r))
-            .join('')}
-
-        </section>
-
-
-        <div
-          id="saveMsg"
-          class="msg full">
-        </div>
-
-
-        <button
-          class="primary full"
-          type="submit">
-
-          Guardar registro diario
-
-        </button>
-
-      </form>
-
-    </main>
-  `;
-
-
-  document.getElementById(
-    'daily'
-  ).onsubmit = async e => {
-
-    e.preventDefault();
-
-
-    const msg =
-      document.getElementById(
-        'saveMsg'
-      );
-
-
-    const payload = {
-      user_id: user.id
-    };
-
-
-    fields.forEach(
-      ([key, , type]) => {
-
-        const el =
-          document.getElementById(
-            'f_' + key
-          );
-
-        payload[key] =
-          type === 'number'
-            ? (
-                el.value === ''
-                  ? null
-                  : n(el.value)
-              )
-            : el.value;
-      }
-    );
-
-
-    msg.textContent =
-      'Guardando…';
-
-
-    const { error } =
-      await supabase
-        .from('daily_records')
-        .insert(payload);
-
-
-    if (error) {
-
-      msg.textContent =
-        error.message;
-
-      return;
-    }
-
-
-    msg.textContent =
-      'Registro guardado correctamente.';
-
-
-    await load();
-
-
-    setTimeout(
-      () => render(),
-      400
-    );
-  };
-}
-
-
-/* =========================================================
-   CONTROLES REGISTRO DIARIO
-========================================================= */
-
-function control(f, r) {
-
-  const [
-    key,
-    label,
-    type
-  ] = f;
-
-
-  let input;
-
-
-  if (type === 'select') {
-
-    input = `
-
-      <select id="f_${key}">
-
-        <option>Mañana</option>
-        <option>Tarde</option>
-        <option>Noche</option>
-
-      </select>
-
-    `;
-
-  } else if (type === 'textarea') {
-
-    input = `
-
-      <textarea
-        id="f_${key}">
-      </textarea>
-
-    `;
-
-  } else {
-
-    input = `
-
-      <input
-        id="f_${key}"
-        type="${type}"
-        value="${esc(r[key])}"
-        ${type === 'number'
-          ? 'step="any"'
-          : ''}
-      >
-
-    `;
-  }
-
-
-  return `
-
-    <label>
-
-      ${label}
-
-      ${input}
-
-    </label>
-
   `;
 }
 
@@ -1841,20 +1342,20 @@ function control(f, r) {
 
 function renderInventory() {
 
-  const totalItems =
-    inventoryRows.length;
-
-
   const lowStock =
-    inventoryRows.filter(
-      r =>
-        n(r.stock_minimo) > 0 &&
+    inventoryRows.filter(r => {
+
+      const stock =
         n(r.stock_inicial) +
         n(r.entradas) -
-        n(r.salidas) <=
-        n(r.stock_minimo)
-    ).length;
+        n(r.salidas);
 
+      return (
+        n(r.stock_minimo) > 0 &&
+        stock <= n(r.stock_minimo)
+      );
+
+    }).length;
 
   document.getElementById(
     'content'
@@ -1862,71 +1363,31 @@ function renderInventory() {
 
     <main>
 
-      <div class="titleRow">
+      <h1>Control de Inventario</h1>
 
-        <div>
-
-          <h1>
-            Control de Inventario
-          </h1>
-
-          <p>
-            Registra entradas, salidas y stock
-            de materiales y productos.
-          </p>
-
-        </div>
-
-        <span class="online">
-          ● EN LÍNEA
-        </span>
-
-      </div>
-
+      <p>
+        Registra entradas, salidas y stock
+        de materiales y productos.
+      </p>
 
       <div class="cards">
 
         <div class="card">
-
-          <small>
-            Ítems registrados
-          </small>
-
-          <strong>
-            ${totalItems}
-          </strong>
-
+          <small>Ítems registrados</small>
+          <strong>${inventoryRows.length}</strong>
         </div>
 
-
         <div class="card">
-
-          <small>
-            Stock bajo
-          </small>
-
-          <strong>
-            ${lowStock}
-          </strong>
-
+          <small>Stock bajo</small>
+          <strong>${lowStock}</strong>
           <span class="badge ${
-            lowStock
-              ? 'critical'
-              : 'ok'
+            lowStock ? 'critical' : 'ok'
           }">
-
-            ${
-              lowStock
-                ? 'REVISAR'
-                : 'OK'
-            }
-
+            ${lowStock ? 'REVISAR' : 'OK'}
           </span>
-
         </div>
 
       </div>
-
 
       <section class="panel">
 
@@ -1938,105 +1399,59 @@ function renderInventory() {
           }
         </h2>
 
-
-        <form
-          id="inventoryForm"
-          class="formGrid">
-
+        <form id="inventoryForm" class="formGrid">
 
           <section>
 
-            <h2>
-              Identificación
-            </h2>
-
+            <h2>Identificación</h2>
 
             <label>
-
               Fecha
-
               <input
                 id="inv_fecha"
                 type="date"
                 value="${today}"
                 required
               >
-
             </label>
 
-
             <label>
-
               Código
-
               <input
                 id="inv_codigo"
                 type="text"
                 placeholder="Ej. MP-001"
               >
-
             </label>
 
-
             <label>
-
               Material / Producto
-
               <input
                 id="inv_material"
                 type="text"
-                placeholder="Ej. Carbonato de calcio"
                 required
               >
-
             </label>
 
-
             <label>
-
               Categoría
 
               <select id="inv_categoria">
-
-                <option value="">
-                  Seleccionar
-                </option>
-
-                <option>
-                  Materia prima
-                </option>
-
-                <option>
-                  Producto terminado
-                </option>
-
-                <option>
-                  Insumo
-                </option>
-
-                <option>
-                  Repuesto
-                </option>
-
-                <option>
-                  Envase / embalaje
-                </option>
-
-                <option>
-                  Otro
-                </option>
-
+                <option value="">Seleccionar</option>
+                <option>Materia prima</option>
+                <option>Producto terminado</option>
+                <option>Insumo</option>
+                <option>Repuesto</option>
+                <option>Envase / embalaje</option>
+                <option>Otro</option>
               </select>
 
             </label>
 
-
             <label>
-
-              Unidad de medida
+              Unidad
 
               <select id="inv_unidad">
-
                 <option>kg</option>
                 <option>t</option>
                 <option>g</option>
@@ -2045,25 +1460,18 @@ function renderInventory() {
                 <option>cajas</option>
                 <option>bolsas</option>
                 <option>otros</option>
-
               </select>
 
             </label>
 
           </section>
 
-
           <section>
 
-            <h2>
-              Movimiento
-            </h2>
-
+            <h2>Movimiento</h2>
 
             <label>
-
               Stock inicial
-
               <input
                 id="inv_stock_inicial"
                 type="number"
@@ -2071,14 +1479,10 @@ function renderInventory() {
                 min="0"
                 value="0"
               >
-
             </label>
 
-
             <label>
-
               Entradas
-
               <input
                 id="inv_entradas"
                 type="number"
@@ -2086,14 +1490,10 @@ function renderInventory() {
                 min="0"
                 value="0"
               >
-
             </label>
 
-
             <label>
-
               Salidas
-
               <input
                 id="inv_salidas"
                 type="number"
@@ -2101,14 +1501,10 @@ function renderInventory() {
                 min="0"
                 value="0"
               >
-
             </label>
 
-
             <label>
-
               Stock mínimo
-
               <input
                 id="inv_stock_minimo"
                 type="number"
@@ -2116,17 +1512,11 @@ function renderInventory() {
                 min="0"
                 value="0"
               >
-
             </label>
 
+            <div class="panel">
 
-            <div
-              class="panel"
-              style="margin-top:15px;">
-
-              <small>
-                STOCK ACTUAL
-              </small>
+              <small>STOCK ACTUAL</small>
 
               <strong
                 id="inv_stock_actual"
@@ -2134,7 +1524,8 @@ function renderInventory() {
                   display:block;
                   font-size:28px;
                   margin-top:8px;
-                ">
+                "
+              >
                 0
               </strong>
 
@@ -2142,54 +1533,35 @@ function renderInventory() {
 
           </section>
 
-
           <section>
 
-            <h2>
-              Observaciones
-            </h2>
-
+            <h2>Observaciones</h2>
 
             <label>
 
-              Observaciones
-
               <textarea
                 id="inv_observaciones"
-                placeholder="Detalle del movimiento o ubicación...">
-              </textarea>
+                placeholder="Detalle..."
+              ></textarea>
 
             </label>
 
           </section>
 
+          <div id="inventoryMsg" class="msg full"></div>
 
-          <div
-            id="inventoryMsg"
-            class="msg full">
-          </div>
-
-
-          <div
-            class="full"
-            style="
-              display:flex;
-              gap:10px;
-              flex-wrap:wrap;
-            ">
+          <div class="full">
 
             <button
               class="primary"
-              type="submit">
-
+              type="submit"
+            >
               ${
                 editingInventoryId
                   ? 'Actualizar inventario'
                   : 'Guardar inventario'
               }
-
             </button>
-
 
             ${
               editingInventoryId
@@ -2197,10 +1569,8 @@ function renderInventory() {
                   <button
                     id="cancelInventory"
                     type="button"
-                    class="link">
-
-                    Cancelar edición
-
+                  >
+                    Cancelar
                   </button>
                 `
                 : ''
@@ -2212,26 +1582,9 @@ function renderInventory() {
 
       </section>
 
-
       <section class="panel">
 
-        <div class="titleRow">
-
-          <div>
-
-            <h2>
-              Inventario registrado
-            </h2>
-
-            <p>
-              Stock actual =
-              stock inicial + entradas - salidas.
-            </p>
-
-          </div>
-
-        </div>
-
+        <h2>Inventario registrado</h2>
 
         ${
           inventoryRows.length
@@ -2245,7 +1598,6 @@ function renderInventory() {
                   <thead>
 
                     <tr>
-
                       <th>Fecha</th>
                       <th>Código</th>
                       <th>Material</th>
@@ -2254,122 +1606,71 @@ function renderInventory() {
                       <th>Inicial</th>
                       <th>Entradas</th>
                       <th>Salidas</th>
-                      <th>Stock actual</th>
+                      <th>Stock</th>
                       <th>Mínimo</th>
                       <th>Estado</th>
                       <th>Acciones</th>
-
                     </tr>
 
                   </thead>
 
-
                   <tbody>
 
-                    ${
-                      inventoryRows
-                        .map(r => {
+                    ${inventoryRows.map(r => {
 
-                          const stock =
-                            n(r.stock_inicial) +
-                            n(r.entradas) -
-                            n(r.salidas);
+                      const stock =
+                        n(r.stock_inicial) +
+                        n(r.entradas) -
+                        n(r.salidas);
 
-                          const minimo =
-                            n(r.stock_minimo);
+                      const low =
+                        n(r.stock_minimo) > 0 &&
+                        stock <= n(r.stock_minimo);
 
-                          const low =
-                            minimo > 0 &&
-                            stock <= minimo;
+                      return `
 
-                          return `
+                        <tr>
 
-                            <tr>
+                          <td>${esc(r.fecha)}</td>
+                          <td>${esc(r.codigo || '')}</td>
+                          <td>${esc(r.material)}</td>
+                          <td>${esc(r.categoria || '')}</td>
+                          <td>${esc(r.unidad)}</td>
+                          <td>${n(r.stock_inicial)}</td>
+                          <td>${n(r.entradas)}</td>
+                          <td>${n(r.salidas)}</td>
+                          <td><strong>${stock}</strong></td>
+                          <td>${n(r.stock_minimo)}</td>
 
-                              <td>
-                                ${esc(r.fecha)}
-                              </td>
+                          <td>
+                            <span class="badge ${
+                              low ? 'critical' : 'ok'
+                            }">
+                              ${low ? 'STOCK BAJO' : 'OK'}
+                            </span>
+                          </td>
 
-                              <td>
-                                ${esc(r.codigo || '')}
-                              </td>
+                          <td>
 
-                              <td>
-                                ${esc(r.material)}
-                              </td>
+                            <button
+                              data-edit-inventory="${esc(r.id)}"
+                            >
+                              Editar
+                            </button>
 
-                              <td>
-                                ${esc(r.categoria || '')}
-                              </td>
+                            <button
+                              data-delete-inventory="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
 
-                              <td>
-                                ${esc(r.unidad)}
-                              </td>
+                          </td>
 
-                              <td>
-                                ${n(r.stock_inicial)}
-                              </td>
+                        </tr>
 
-                              <td>
-                                ${n(r.entradas)}
-                              </td>
+                      `;
 
-                              <td>
-                                ${n(r.salidas)}
-                              </td>
-
-                              <td>
-                                <strong>
-                                  ${stock}
-                                </strong>
-                              </td>
-
-                              <td>
-                                ${minimo}
-                              </td>
-
-                              <td>
-
-                                <span
-                                  class="badge ${
-                                    low
-                                      ? 'critical'
-                                      : 'ok'
-                                  }">
-
-                                  ${
-                                    low
-                                      ? 'STOCK BAJO'
-                                      : 'OK'
-                                  }
-
-                                </span>
-
-                              </td>
-
-                              <td>
-
-                                <button
-                                  type="button"
-                                  data-edit-inventory="${esc(r.id)}">
-                                  Editar
-                                </button>
-
-
-                                <button
-                                  type="button"
-                                  data-delete-inventory="${esc(r.id)}">
-                                  Eliminar
-                                </button>
-
-                              </td>
-
-                            </tr>
-
-                          `;
-                        })
-                        .join('')
-                    }
+                    }).join('')}
 
                   </tbody>
 
@@ -2378,18 +1679,10 @@ function renderInventory() {
               </div>
 
             `
-
             : `
-
               <div class="empty">
-
                 Todavía no hay inventario registrado.
-
-                Utiliza el formulario superior
-                para crear el primer registro.
-
               </div>
-
             `
         }
 
@@ -2398,9 +1691,7 @@ function renderInventory() {
     </main>
   `;
 
-
   updateInventoryStockPreview();
-
 
   [
     'inv_stock_inicial',
@@ -2410,19 +1701,16 @@ function renderInventory() {
 
     document
       .getElementById(id)
-      .addEventListener(
+      ?.addEventListener(
         'input',
         updateInventoryStockPreview
       );
 
   });
 
-
-  document
-    .getElementById('inventoryForm')
-    .onsubmit =
-      saveInventory;
-
+  document.getElementById(
+    'inventoryForm'
+  ).onsubmit = saveInventory;
 
   document
     .querySelectorAll(
@@ -2431,15 +1719,12 @@ function renderInventory() {
     .forEach(button => {
 
       button.onclick = () => {
-
         editInventory(
           button.dataset.editInventory
         );
-
       };
 
     });
-
 
   document
     .querySelectorAll(
@@ -2448,38 +1733,26 @@ function renderInventory() {
     .forEach(button => {
 
       button.onclick = () => {
-
         deleteInventory(
           button.dataset.deleteInventory
         );
-
       };
 
     });
 
-
-  const cancel =
-    document.getElementById(
-      'cancelInventory'
-    );
-
-
-  if (cancel) {
-
-    cancel.onclick = () => {
+  document.getElementById(
+    'cancelInventory'
+  )?.addEventListener(
+    'click',
+    () => {
 
       editingInventoryId = null;
 
       renderInventory();
 
-    };
-  }
+    }
+  );
 }
-
-
-/* =========================================================
-   PREVISUALIZAR STOCK
-========================================================= */
 
 function updateInventoryStockPreview() {
 
@@ -2504,41 +1777,20 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
-
-  const stock =
-    inicial +
-    entradas -
-    salidas;
-
-
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
 
-
   if (output) {
-
     output.textContent =
-      stock;
+      inicial + entradas - salidas;
   }
 }
-
-
-/* =========================================================
-   GUARDAR / ACTUALIZAR INVENTARIO
-========================================================= */
 
 async function saveInventory(e) {
 
   e.preventDefault();
-
-
-  const msg =
-    document.getElementById(
-      'inventoryMsg'
-    );
-
 
   const payload = {
 
@@ -2603,36 +1855,12 @@ async function saveInventory(e) {
       ).value.trim() || null
   };
 
-
-  if (!payload.material) {
-
-    msg.textContent =
-      'Debes ingresar el material o producto.';
-
-    return;
-  }
-
-
-  if (
-    payload.stock_inicial < 0 ||
-    payload.entradas < 0 ||
-    payload.salidas < 0 ||
-    payload.stock_minimo < 0
-  ) {
-
-    msg.textContent =
-      'Los valores de inventario no pueden ser negativos.';
-
-    return;
-  }
-
-
-  msg.textContent =
-    'Guardando inventario…';
-
+  msg(
+    'inventoryMsg',
+    'Guardando inventario…'
+  );
 
   let result;
-
 
   if (editingInventoryId) {
 
@@ -2640,14 +1868,8 @@ async function saveInventory(e) {
       await supabase
         .from('inventory')
         .update(payload)
-        .eq(
-          'id',
-          editingInventoryId
-        )
-        .eq(
-          'user_id',
-          user.id
-        );
+        .eq('id', editingInventoryId)
+        .eq('user_id', user.id);
 
   } else {
 
@@ -2655,35 +1877,26 @@ async function saveInventory(e) {
       await supabase
         .from('inventory')
         .insert(payload);
-  }
 
+  }
 
   if (result.error) {
 
-    msg.textContent =
+    msg(
+      'inventoryMsg',
       'Error: ' +
-      result.error.message;
+      result.error.message
+    );
 
     return;
   }
 
-
   editingInventoryId = null;
-
-
-  msg.textContent =
-    'Inventario guardado correctamente.';
-
 
   await loadInventory();
 
   renderInventory();
 }
-
-
-/* =========================================================
-   EDITAR INVENTARIO
-========================================================= */
 
 function editInventory(id) {
 
@@ -2694,97 +1907,72 @@ function editInventory(id) {
         String(id)
     );
 
-
   if (!row) {
-
-    alert(
-      'No se encontró el registro.'
-    );
-
+    alert('No se encontró el registro.');
     return;
   }
 
-
-  editingInventoryId =
-    row.id;
-
+  editingInventoryId = row.id;
 
   renderInventory();
-
 
   document.getElementById(
     'inv_fecha'
   ).value =
     row.fecha || today;
 
-
   document.getElementById(
     'inv_codigo'
   ).value =
     row.codigo || '';
-
 
   document.getElementById(
     'inv_material'
   ).value =
     row.material || '';
 
-
   document.getElementById(
     'inv_categoria'
   ).value =
     row.categoria || '';
-
 
   document.getElementById(
     'inv_unidad'
   ).value =
     row.unidad || 'kg';
 
-
   document.getElementById(
     'inv_stock_inicial'
   ).value =
     n(row.stock_inicial);
-
 
   document.getElementById(
     'inv_entradas'
   ).value =
     n(row.entradas);
 
-
   document.getElementById(
     'inv_salidas'
   ).value =
     n(row.salidas);
-
 
   document.getElementById(
     'inv_stock_minimo'
   ).value =
     n(row.stock_minimo);
 
-
   document.getElementById(
     'inv_observaciones'
   ).value =
     row.observaciones || '';
 
-
   updateInventoryStockPreview();
-
 
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
   });
 }
-
-
-/* =========================================================
-   ELIMINAR INVENTARIO
-========================================================= */
 
 async function deleteInventory(id) {
 
@@ -2795,26 +1983,13 @@ async function deleteInventory(id) {
         String(id)
     );
 
+  if (!row) return;
 
-  if (!row) {
-
-    alert(
-      'No se encontró el registro.'
-    );
-
-    return;
-  }
-
-
-  const confirmed =
-    confirm(
-      `¿Eliminar "${row.material}"?\n\n` +
-      `Esta acción no se puede deshacer.`
-    );
-
-
-  if (!confirmed) return;
-
+  if (
+    !confirm(
+      `¿Eliminar "${row.material}"?`
+    )
+  ) return;
 
   const { error } =
     await supabase
@@ -2823,17 +1998,13 @@ async function deleteInventory(id) {
       .eq('id', id)
       .eq('user_id', user.id);
 
-
   if (error) {
-
     alert(
-      'No se pudo eliminar el inventario:\n' +
+      'No se pudo eliminar:\n' +
       error.message
     );
-
     return;
   }
-
 
   await loadInventory();
 
@@ -2842,10 +2013,27 @@ async function deleteInventory(id) {
 
 
 /* =========================================================
-   SSOMA
+   PERSONAL
 ========================================================= */
 
-function renderSsoma() {
+function renderPersonal() {
+
+  const activos =
+    personalRows.filter(
+      r =>
+        String(r.estado || '')
+          .toLowerCase() === 'activo'
+    ).length;
+
+  const inactivos =
+    personalRows.length - activos;
+
+  const areas =
+    new Set(
+      personalRows
+        .map(r => r.area)
+        .filter(Boolean)
+    ).size;
 
   document.getElementById(
     'content'
@@ -2858,13 +2046,12 @@ function renderSsoma() {
         <div>
 
           <h1>
-            SSOMA
+            Gestión de Personal
           </h1>
 
           <p>
-            Registro y seguimiento de incidentes
-            de Seguridad, Salud Ocupacional y
-            Medio Ambiente.
+            Registro y control del personal
+            de la planta.
           </p>
 
         </div>
@@ -2881,6 +2068,754 @@ function renderSsoma() {
         <div class="card">
 
           <small>
+            Personal registrado
+          </small>
+
+          <strong>
+            ${personalRows.length}
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Personal activo
+          </small>
+
+          <strong>
+            ${activos}
+          </strong>
+
+          <span class="badge ok">
+            ACTIVO
+          </span>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Personal inactivo
+          </small>
+
+          <strong>
+            ${inactivos}
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Áreas
+          </small>
+
+          <strong>
+            ${areas}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <section class="panel">
+
+        <h2>
+          ${
+            editingPersonalId
+              ? 'Editar trabajador'
+              : 'Registrar trabajador'
+          }
+        </h2>
+
+
+        <form
+          id="personalForm"
+          class="formGrid"
+        >
+
+          <section>
+
+            <h2>
+              Identificación
+            </h2>
+
+            <label>
+              DNI
+
+              <input
+                id="per_dni"
+                type="text"
+                inputmode="numeric"
+                maxlength="20"
+                placeholder="Ej. 12345678"
+                required
+              >
+            </label>
+
+
+            <label>
+              Nombre completo
+
+              <input
+                id="per_nombre"
+                type="text"
+                placeholder="Nombre y apellidos"
+                required
+              >
+            </label>
+
+
+            <label>
+              Fecha de ingreso
+
+              <input
+                id="per_fecha_ingreso"
+                type="date"
+                value="${today}"
+                required
+              >
+            </label>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Puesto
+            </h2>
+
+
+            <label>
+              Cargo
+
+              <input
+                id="per_cargo"
+                type="text"
+                placeholder="Ej. Operador de planta"
+                required
+              >
+            </label>
+
+
+            <label>
+              Área
+
+              <input
+                id="per_area"
+                type="text"
+                placeholder="Ej. Producción"
+                required
+              >
+            </label>
+
+
+            <label>
+              Turno
+
+              <select id="per_turno">
+
+                <option>Mañana</option>
+                <option>Tarde</option>
+                <option>Noche</option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+              Estado
+
+              <select id="per_estado">
+
+                <option>Activo</option>
+                <option>Inactivo</option>
+
+              </select>
+
+            </label>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Observaciones
+            </h2>
+
+            <label>
+
+              <textarea
+                id="per_observaciones"
+                placeholder="Información adicional..."
+              ></textarea>
+
+            </label>
+
+          </section>
+
+
+          <div
+            id="personalMsg"
+            class="msg full"
+          ></div>
+
+
+          <div
+            class="full"
+            style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            "
+          >
+
+            <button
+              class="primary"
+              type="submit"
+            >
+              ${
+                editingPersonalId
+                  ? 'Actualizar trabajador'
+                  : 'Guardar trabajador'
+              }
+            </button>
+
+
+            ${
+              editingPersonalId
+                ? `
+                  <button
+                    id="cancelPersonal"
+                    type="button"
+                  >
+                    Cancelar edición
+                  </button>
+                `
+                : ''
+            }
+
+          </div>
+
+        </form>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Personal registrado
+        </h2>
+
+        ${
+          personalRows.length
+
+            ? `
+
+              <div class="tableWrap">
+
+                <table>
+
+                  <thead>
+
+                    <tr>
+
+                      <th>DNI</th>
+                      <th>Nombre</th>
+                      <th>Cargo</th>
+                      <th>Área</th>
+                      <th>Turno</th>
+                      <th>Ingreso</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody>
+
+                    ${personalRows.map(r => `
+
+                      <tr>
+
+                        <td>
+                          ${esc(r.dni)}
+                        </td>
+
+                        <td>
+                          <strong>
+                            ${esc(r.nombre)}
+                          </strong>
+                        </td>
+
+                        <td>
+                          ${esc(r.cargo)}
+                        </td>
+
+                        <td>
+                          ${esc(r.area)}
+                        </td>
+
+                        <td>
+                          ${esc(r.turno)}
+                        </td>
+
+                        <td>
+                          ${esc(r.fecha_ingreso)}
+                        </td>
+
+                        <td>
+
+                          <span
+                            class="badge ${
+                              r.estado === 'Activo'
+                                ? 'ok'
+                                : 'warn'
+                            }"
+                          >
+                            ${esc(r.estado)}
+                          </span>
+
+                        </td>
+
+                        <td>
+
+                          <button
+                            type="button"
+                            data-edit-personal="${esc(r.id)}"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            type="button"
+                            data-delete-personal="${esc(r.id)}"
+                          >
+                            Eliminar
+                          </button>
+
+                        </td>
+
+                      </tr>
+
+                    `).join('')}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            `
+
+            : `
+
+              <div class="empty">
+
+                Todavía no hay personal registrado.
+
+                Utiliza el formulario superior
+                para registrar al primer trabajador.
+
+              </div>
+
+            `
+        }
+
+      </section>
+
+    </main>
+  `;
+
+
+  document.getElementById(
+    'personalForm'
+  ).onsubmit =
+    savePersonal;
+
+
+  document
+    .querySelectorAll(
+      '[data-edit-personal]'
+    )
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        editPersonal(
+          button.dataset.editPersonal
+        );
+
+      };
+
+    });
+
+
+  document
+    .querySelectorAll(
+      '[data-delete-personal]'
+    )
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        deletePersonal(
+          button.dataset.deletePersonal
+        );
+
+      };
+
+    });
+
+
+  document.getElementById(
+    'cancelPersonal'
+  )?.addEventListener(
+    'click',
+    () => {
+
+      editingPersonalId = null;
+
+      renderPersonal();
+
+    }
+  );
+}
+
+
+async function savePersonal(e) {
+
+  e.preventDefault();
+
+  const payload = {
+
+    user_id: user.id,
+
+    dni:
+      document
+        .getElementById('per_dni')
+        .value
+        .trim(),
+
+    nombre:
+      document
+        .getElementById('per_nombre')
+        .value
+        .trim(),
+
+    fecha_ingreso:
+      document
+        .getElementById('per_fecha_ingreso')
+        .value,
+
+    cargo:
+      document
+        .getElementById('per_cargo')
+        .value
+        .trim(),
+
+    area:
+      document
+        .getElementById('per_area')
+        .value
+        .trim(),
+
+    turno:
+      document
+        .getElementById('per_turno')
+        .value,
+
+    estado:
+      document
+        .getElementById('per_estado')
+        .value,
+
+    observaciones:
+      document
+        .getElementById('per_observaciones')
+        .value
+        .trim() || null
+  };
+
+
+  if (!payload.dni) {
+    msg(
+      'personalMsg',
+      'Debes ingresar el DNI.'
+    );
+    return;
+  }
+
+  if (!payload.nombre) {
+    msg(
+      'personalMsg',
+      'Debes ingresar el nombre completo.'
+    );
+    return;
+  }
+
+  if (!payload.cargo) {
+    msg(
+      'personalMsg',
+      'Debes ingresar el cargo.'
+    );
+    return;
+  }
+
+  if (!payload.area) {
+    msg(
+      'personalMsg',
+      'Debes ingresar el área.'
+    );
+    return;
+  }
+
+  if (!payload.fecha_ingreso) {
+    msg(
+      'personalMsg',
+      'Debes ingresar la fecha de ingreso.'
+    );
+    return;
+  }
+
+
+  msg(
+    'personalMsg',
+    'Guardando trabajador…'
+  );
+
+
+  let result;
+
+
+  if (editingPersonalId) {
+
+    result =
+      await supabase
+        .from('personal')
+        .update(payload)
+        .eq(
+          'id',
+          editingPersonalId
+        )
+        .eq(
+          'user_id',
+          user.id
+        );
+
+  } else {
+
+    result =
+      await supabase
+        .from('personal')
+        .insert(payload);
+
+  }
+
+
+  if (result.error) {
+
+    if (
+      result.error.code === '23505'
+    ) {
+
+      msg(
+        'personalMsg',
+        'Ya existe un trabajador con ese DNI.'
+      );
+
+    } else {
+
+      msg(
+        'personalMsg',
+        'Error: ' +
+        result.error.message
+      );
+
+    }
+
+    return;
+  }
+
+
+  editingPersonalId = null;
+
+  await loadPersonal();
+
+  renderPersonal();
+}
+
+
+function editPersonal(id) {
+
+  const row =
+    personalRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+  if (!row) {
+
+    alert(
+      'No se encontró el trabajador.'
+    );
+
+    return;
+  }
+
+
+  editingPersonalId =
+    row.id;
+
+
+  renderPersonal();
+
+
+  document.getElementById(
+    'per_dni'
+  ).value =
+    row.dni || '';
+
+
+  document.getElementById(
+    'per_nombre'
+  ).value =
+    row.nombre || '';
+
+
+  document.getElementById(
+    'per_fecha_ingreso'
+  ).value =
+    row.fecha_ingreso || today;
+
+
+  document.getElementById(
+    'per_cargo'
+  ).value =
+    row.cargo || '';
+
+
+  document.getElementById(
+    'per_area'
+  ).value =
+    row.area || '';
+
+
+  document.getElementById(
+    'per_turno'
+  ).value =
+    row.turno || 'Mañana';
+
+
+  document.getElementById(
+    'per_estado'
+  ).value =
+    row.estado || 'Activo';
+
+
+  document.getElementById(
+    'per_observaciones'
+  ).value =
+    row.observaciones || '';
+
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+}
+
+
+async function deletePersonal(id) {
+
+  const row =
+    personalRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+  if (!row) return;
+
+
+  if (
+    !confirm(
+      `¿Eliminar a "${row.nombre}"?\n\n` +
+      `DNI: ${row.dni}\n` +
+      `Cargo: ${row.cargo}\n\n` +
+      `Esta acción no se puede deshacer.`
+    )
+  ) return;
+
+
+  const { error } =
+    await supabase
+      .from('personal')
+      .delete()
+      .eq(
+        'id',
+        id
+      )
+      .eq(
+        'user_id',
+        user.id
+      );
+
+
+  if (error) {
+
+    alert(
+      'No se pudo eliminar:\n' +
+      error.message
+    );
+
+    return;
+  }
+
+
+  await loadPersonal();
+
+  renderPersonal();
+}
+
+
+/* =========================================================
+   SSOMA
+========================================================= */
+
+function renderSsoma() {
+
+  document.getElementById(
+    'content'
+  ).innerHTML = `
+
+    <main>
+
+      <h1>SSOMA</h1>
+
+      <p>
+        Registro y seguimiento de incidentes
+        de Seguridad, Salud Ocupacional y
+        Medio Ambiente.
+      </p>
+
+      <div class="cards">
+
+        <div class="card">
+
+          <small>
             Incidentes registrados
           </small>
 
@@ -2889,7 +2824,6 @@ function renderSsoma() {
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -2902,8 +2836,7 @@ function renderSsoma() {
               ssomaRows.filter(
                 r =>
                   String(r.estado || '')
-                    .toLowerCase()
-                    !== 'cerrado'
+                    .toLowerCase() !== 'cerrado'
               ).length
             }
           </strong>
@@ -2926,8 +2859,8 @@ function renderSsoma() {
 
         <form
           id="ssomaForm"
-          class="formGrid">
-
+          class="formGrid"
+        >
 
           <section>
 
@@ -2935,9 +2868,7 @@ function renderSsoma() {
               Identificación
             </h2>
 
-
             <label>
-
               Fecha
 
               <input
@@ -2946,129 +2877,76 @@ function renderSsoma() {
                 value="${today}"
                 required
               >
-
             </label>
 
-
             <label>
-
               Tipo de incidente
 
               <select
                 id="ss_tipo"
-                required>
+                required
+              >
 
                 <option value="">
                   Seleccionar
                 </option>
 
-                <option>
-                  Accidente
-                </option>
-
-                <option>
-                  Incidente
-                </option>
-
-                <option>
-                  Casi accidente
-                </option>
-
-                <option>
-                  Condición insegura
-                </option>
-
-                <option>
-                  Acto inseguro
-                </option>
-
-                <option>
-                  Ambiental
-                </option>
-
-                <option>
-                  Salud ocupacional
-                </option>
-
-                <option>
-                  Otro
-                </option>
+                <option>Accidente</option>
+                <option>Incidente</option>
+                <option>Casi accidente</option>
+                <option>Condición insegura</option>
+                <option>Acto inseguro</option>
+                <option>Ambiental</option>
+                <option>Salud ocupacional</option>
+                <option>Otro</option>
 
               </select>
 
             </label>
 
-
             <label>
-
               Lugar
 
               <input
                 id="ss_lugar"
                 type="text"
-                placeholder="Ej. Área de producción"
                 required
               >
-
             </label>
 
-
             <label>
-
               Gravedad
 
               <select
                 id="ss_gravedad"
-                required>
+                required
+              >
 
                 <option value="">
                   Seleccionar
                 </option>
 
-                <option>
-                  Leve
-                </option>
-
-                <option>
-                  Moderada
-                </option>
-
-                <option>
-                  Grave
-                </option>
-
-                <option>
-                  Crítica
-                </option>
+                <option>Leve</option>
+                <option>Moderada</option>
+                <option>Grave</option>
+                <option>Crítica</option>
 
               </select>
 
             </label>
 
-
             <label>
-
               Estado
 
               <select
                 id="ss_estado"
-                required>
+                required
+              >
 
-                <option>
-                  Abierto
-                </option>
-
-                <option>
-                  En investigación
-                </option>
-
-                <option>
-                  En seguimiento
-                </option>
-
-                <option>
-                  Cerrado
-                </option>
+                <option>Abierto</option>
+                <option>En investigación</option>
+                <option>En seguimiento</option>
+                <option>Cerrado</option>
 
               </select>
 
@@ -3080,44 +2958,35 @@ function renderSsoma() {
           <section>
 
             <h2>
-              Detalle del incidente
+              Detalle
             </h2>
 
-
             <label>
-
               Hechos
 
               <textarea
                 id="ss_hechos"
                 required
-                placeholder="Describe claramente qué ocurrió...">
-              </textarea>
+              ></textarea>
 
             </label>
 
-
             <label>
-
               Acciones tomadas
 
               <textarea
                 id="ss_acciones"
                 required
-                placeholder="Describe las acciones inmediatas y correctivas...">
-              </textarea>
+              ></textarea>
 
             </label>
 
-
             <label>
-
               Personas involucradas
 
               <textarea
                 id="ss_personas"
-                placeholder="Nombres, cargos o cantidad de personas involucradas...">
-              </textarea>
+              ></textarea>
 
             </label>
 
@@ -3130,15 +2999,11 @@ function renderSsoma() {
               Observaciones
             </h2>
 
-
             <label>
-
-              Observaciones
 
               <textarea
                 id="ss_observaciones"
-                placeholder="Información adicional, seguimiento o recomendaciones...">
-              </textarea>
+              ></textarea>
 
             </label>
 
@@ -3147,30 +3012,22 @@ function renderSsoma() {
 
           <div
             id="ssomaMsg"
-            class="msg full">
-          </div>
+            class="msg full"
+          ></div>
 
 
-          <div
-            class="full"
-            style="
-              display:flex;
-              gap:10px;
-              flex-wrap:wrap;
-            ">
+          <div class="full">
 
             <button
               class="primary"
-              type="submit">
-
+              type="submit"
+            >
               ${
                 editingSsomaId
                   ? 'Actualizar incidente'
                   : 'Guardar incidente'
               }
-
             </button>
-
 
             ${
               editingSsomaId
@@ -3178,10 +3035,8 @@ function renderSsoma() {
                   <button
                     id="cancelSsoma"
                     type="button"
-                    class="link">
-
-                    Cancelar edición
-
+                  >
+                    Cancelar
                   </button>
                 `
                 : ''
@@ -3196,22 +3051,9 @@ function renderSsoma() {
 
       <section class="panel">
 
-        <div class="titleRow">
-
-          <div>
-
-            <h2>
-              Incidentes registrados
-            </h2>
-
-            <p>
-              Historial de incidentes SSOMA.
-            </p>
-
-          </div>
-
-        </div>
-
+        <h2>
+          Incidentes registrados
+        </h2>
 
         ${
           ssomaRows.length
@@ -3232,72 +3074,61 @@ function renderSsoma() {
                       <th>Gravedad</th>
                       <th>Estado</th>
                       <th>Hechos</th>
-                      <th>Acciones tomadas</th>
                       <th>Acciones</th>
 
                     </tr>
 
                   </thead>
 
-
                   <tbody>
 
-                    ${
-                      ssomaRows
-                        .map(r => `
+                    ${ssomaRows.map(r => `
 
-                          <tr>
+                      <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                        <td>
+                          ${esc(r.fecha)}
+                        </td>
 
-                            <td>
-                              ${esc(r.tipo || '')}
-                            </td>
+                        <td>
+                          ${esc(r.tipo || '')}
+                        </td>
 
-                            <td>
-                              ${esc(r.lugar || '')}
-                            </td>
+                        <td>
+                          ${esc(r.lugar || '')}
+                        </td>
 
-                            <td>
-                              ${esc(r.gravedad || '')}
-                            </td>
+                        <td>
+                          ${esc(r.gravedad || '')}
+                        </td>
 
-                            <td>
-                              ${esc(r.estado || '')}
-                            </td>
+                        <td>
+                          ${esc(r.estado || '')}
+                        </td>
 
-                            <td>
-                              ${esc(r.hechos || '')}
-                            </td>
+                        <td>
+                          ${esc(r.hechos || '')}
+                        </td>
 
-                            <td>
-                              ${esc(r.acciones_tomadas || '')}
-                            </td>
+                        <td>
 
-                            <td>
+                          <button
+                            data-edit-ssoma="${esc(r.id)}"
+                          >
+                            Editar
+                          </button>
 
-                              <button
-                                type="button"
-                                data-edit-ssoma="${esc(r.id)}">
-                                Editar
-                              </button>
+                          <button
+                            data-delete-ssoma="${esc(r.id)}"
+                          >
+                            Eliminar
+                          </button>
 
+                        </td>
 
-                              <button
-                                type="button"
-                                data-delete-ssoma="${esc(r.id)}">
-                                Eliminar
-                              </button>
+                      </tr>
 
-                            </td>
-
-                          </tr>
-
-                        `)
-                        .join('')
-                    }
+                    `).join('')}
 
                   </tbody>
 
@@ -3310,12 +3141,7 @@ function renderSsoma() {
             : `
 
               <div class="empty">
-
                 Todavía no hay incidentes registrados.
-
-                Utiliza el formulario superior
-                para registrar el primero.
-
               </div>
 
             `
@@ -3327,10 +3153,10 @@ function renderSsoma() {
   `;
 
 
-  document
-    .getElementById('ssomaForm')
-    .onsubmit =
-      saveSsoma;
+  document.getElementById(
+    'ssomaForm'
+  ).onsubmit =
+    saveSsoma;
 
 
   document
@@ -3367,39 +3193,24 @@ function renderSsoma() {
     });
 
 
-  const cancel =
-    document.getElementById(
-      'cancelSsoma'
-    );
-
-
-  if (cancel) {
-
-    cancel.onclick = () => {
+  document.getElementById(
+    'cancelSsoma'
+  )?.addEventListener(
+    'click',
+    () => {
 
       editingSsomaId = null;
 
       renderSsoma();
 
-    };
-  }
+    }
+  );
 }
 
-
-/* =========================================================
-   GUARDAR / ACTUALIZAR SSOMA
-========================================================= */
 
 async function saveSsoma(e) {
 
   e.preventDefault();
-
-
-  const msg =
-    document.getElementById(
-      'ssomaMsg'
-    );
-
 
   const payload = {
 
@@ -3452,62 +3263,10 @@ async function saveSsoma(e) {
   };
 
 
-  if (!payload.fecha) {
-
-    msg.textContent =
-      'Debes ingresar la fecha.';
-
-    return;
-  }
-
-
-  if (!payload.tipo) {
-
-    msg.textContent =
-      'Debes seleccionar el tipo de incidente.';
-
-    return;
-  }
-
-
-  if (!payload.hechos) {
-
-    msg.textContent =
-      'Debes describir los hechos.';
-
-    return;
-  }
-
-
-  if (!payload.lugar) {
-
-    msg.textContent =
-      'Debes indicar el lugar.';
-
-    return;
-  }
-
-
-  if (!payload.acciones_tomadas) {
-
-    msg.textContent =
-      'Debes indicar las acciones tomadas.';
-
-    return;
-  }
-
-
-  if (!payload.gravedad) {
-
-    msg.textContent =
-      'Debes seleccionar la gravedad.';
-
-    return;
-  }
-
-
-  msg.textContent =
-    'Guardando incidente…';
+  msg(
+    'ssomaMsg',
+    'Guardando incidente…'
+  );
 
 
   let result;
@@ -3534,14 +3293,17 @@ async function saveSsoma(e) {
       await supabase
         .from('ssoma_incidents')
         .insert(payload);
+
   }
 
 
   if (result.error) {
 
-    msg.textContent =
+    msg(
+      'ssomaMsg',
       'Error: ' +
-      result.error.message;
+      result.error.message
+    );
 
     return;
   }
@@ -3549,20 +3311,11 @@ async function saveSsoma(e) {
 
   editingSsomaId = null;
 
-
-  msg.textContent =
-    'Incidente guardado correctamente.';
-
-
   await loadSsoma();
 
   renderSsoma();
 }
 
-
-/* =========================================================
-   EDITAR SSOMA
-========================================================= */
 
 function editSsoma(id) {
 
@@ -3573,77 +3326,60 @@ function editSsoma(id) {
         String(id)
     );
 
-
   if (!row) {
-
-    alert(
-      'No se encontró el incidente.'
-    );
-
+    alert('No se encontró el incidente.');
     return;
   }
-
 
   editingSsomaId =
     row.id;
 
-
   renderSsoma();
-
 
   document.getElementById(
     'ss_fecha'
   ).value =
     row.fecha || today;
 
-
   document.getElementById(
     'ss_tipo'
   ).value =
     row.tipo || '';
-
 
   document.getElementById(
     'ss_hechos'
   ).value =
     row.hechos || '';
 
-
   document.getElementById(
     'ss_lugar'
   ).value =
     row.lugar || '';
-
 
   document.getElementById(
     'ss_acciones'
   ).value =
     row.acciones_tomadas || '';
 
-
   document.getElementById(
     'ss_personas'
   ).value =
     row.personas_involucradas || '';
-
 
   document.getElementById(
     'ss_gravedad'
   ).value =
     row.gravedad || '';
 
-
   document.getElementById(
     'ss_estado'
   ).value =
     row.estado || 'Abierto';
 
-
   document.getElementById(
     'ss_observaciones'
   ).value =
     row.observaciones || '';
-
 
   window.scrollTo({
     top: 0,
@@ -3651,10 +3387,6 @@ function editSsoma(id) {
   });
 }
 
-
-/* =========================================================
-   ELIMINAR SSOMA
-========================================================= */
 
 async function deleteSsoma(id) {
 
@@ -3665,26 +3397,13 @@ async function deleteSsoma(id) {
         String(id)
     );
 
+  if (!row) return;
 
-  if (!row) {
-
-    alert(
-      'No se encontró el incidente.'
-    );
-
-    return;
-  }
-
-
-  const confirmed =
-    confirm(
-      `¿Eliminar el incidente del ${row.fecha}?\n\n` +
-      `Esta acción no se puede deshacer.`
-    );
-
-
-  if (!confirmed) return;
-
+  if (
+    !confirm(
+      `¿Eliminar el incidente del ${row.fecha}?`
+    )
+  ) return;
 
   const { error } =
     await supabase
@@ -3699,17 +3418,15 @@ async function deleteSsoma(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
-      'No se pudo eliminar el incidente:\n' +
+      'No se pudo eliminar:\n' +
       error.message
     );
 
     return;
   }
-
 
   await loadSsoma();
 
@@ -3718,14 +3435,14 @@ async function deleteSsoma(id) {
 
 
 /* =========================================================
-   CARGAR SSOMA
+   CARGA DE DATOS
 ========================================================= */
 
-async function loadSsoma() {
+async function load() {
 
-  const result =
+  const r =
     await supabase
-      .from('ssoma_incidents')
+      .from('daily_records')
       .select('*')
       .eq(
         'user_id',
@@ -3734,37 +3451,79 @@ async function loadSsoma() {
       .order(
         'fecha',
         {
-          ascending: false
-        }
-      )
-      .order(
-        'created_at',
-        {
-          ascending: false
+          ascending: true
         }
       );
 
-
-  if (result.error) {
-
+  if (!r.error) {
+    rows = r.data || [];
+  } else {
     console.error(
-      'Error cargando SSOMA:',
-      result.error
+      'Error daily_records:',
+      r.error
     );
-
-    ssomaRows = [];
-
-    return;
+    rows = [];
   }
 
 
-  ssomaRows =
-    result.data || [];
+  const s =
+    await supabase
+      .from('app_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+
+  if (s.data) {
+
+    metas = {
+      ...metas,
+
+      cumplimiento:
+        n(s.data.meta_cumplimiento) ||
+        metas.cumplimiento,
+
+      merma:
+        n(s.data.meta_merma) ||
+        metas.merma,
+
+      yield:
+        n(s.data.meta_yield) ||
+        metas.yield,
+
+      disponibilidad:
+        n(s.data.meta_disponibilidad) ||
+        metas.disponibilidad,
+
+      asistencia:
+        n(s.data.meta_asistencia) ||
+        metas.asistencia,
+
+      rechazo:
+        n(s.data.meta_rechazo) ||
+        metas.rechazo,
+
+      otif:
+        n(s.data.meta_entregas) ||
+        metas.otif,
+
+      incidentes:
+        n(s.data.meta_incidentes)
+    };
+
+  }
+
+
+  await loadInventory();
+
+  await loadSsoma();
+
+  await loadPersonal();
 }
 
 
 /* =========================================================
-   CARGAR INVENTARIO
+   INVENTARIO - CARGA
 ========================================================= */
 
 async function loadInventory() {
@@ -3790,11 +3549,10 @@ async function loadInventory() {
         }
       );
 
-
   if (result.error) {
 
     console.error(
-      'Error cargando inventario:',
+      'Error inventario:',
       result.error
     );
 
@@ -3803,14 +3561,101 @@ async function loadInventory() {
     return;
   }
 
-
   inventoryRows =
     result.data || [];
 }
 
 
 /* =========================================================
-   MÓDULOS PENDIENTES
+   SSOMA - CARGA
+========================================================= */
+
+async function loadSsoma() {
+
+  const result =
+    await supabase
+      .from('ssoma_incidents')
+      .select('*')
+      .eq(
+        'user_id',
+        user.id
+      )
+      .order(
+        'fecha',
+        {
+          ascending: false
+        }
+      )
+      .order(
+        'created_at',
+        {
+          ascending: false
+        }
+      );
+
+  if (result.error) {
+
+    console.error(
+      'Error SSOMA:',
+      result.error
+    );
+
+    ssomaRows = [];
+
+    return;
+  }
+
+  ssomaRows =
+    result.data || [];
+}
+
+
+/* =========================================================
+   PERSONAL - CARGA
+========================================================= */
+
+async function loadPersonal() {
+
+  const result =
+    await supabase
+      .from('personal')
+      .select('*')
+      .eq(
+        'user_id',
+        user.id
+      )
+      .order(
+        'estado',
+        {
+          ascending: true
+        }
+      )
+      .order(
+        'nombre',
+        {
+          ascending: true
+        }
+      );
+
+  if (result.error) {
+
+    console.error(
+      'Error personal:',
+      result.error
+    );
+
+    personalRows = [];
+
+    return;
+  }
+
+  personalRows =
+    result.data || [];
+}
+
+
+/* =========================================================
+   PLACEHOLDER
 ========================================================= */
 
 function renderPlaceholder(title) {
@@ -3829,8 +3674,7 @@ function renderPlaceholder(title) {
 
         <p>
           Este módulo está preparado para
-          enlazarse con su tabla correspondiente
-          de Supabase en la siguiente fase.
+          enlazarse con su tabla correspondiente.
         </p>
 
         <span class="badge ok">
@@ -3846,199 +3690,36 @@ function renderPlaceholder(title) {
 
 
 /* =========================================================
-   CARGAR DATOS
-========================================================= */
-
-async function load() {
-
-  const r =
-    await supabase
-      .from('daily_records')
-      .select('*')
-      .eq(
-        'user_id',
-        user.id
-      )
-      .order(
-        'fecha',
-        {
-          ascending: true
-        }
-      );
-
-
-  if (!r.error) {
-
-    rows =
-      r.data || [];
-
-  } else {
-
-    console.error(
-      'Error cargando registros:',
-      r.error
-    );
-
-    rows = [];
-  }
-
-
-  const s =
-    await supabase
-      .from('app_settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
-
-
-  if (s.data) {
-
-    metas = {
-      ...metas,
-
-      cumplimiento:
-        n(
-          s.data.meta_cumplimiento
-        ) ||
-        metas.cumplimiento,
-
-      merma:
-        n(
-          s.data.meta_merma
-        ) ||
-        metas.merma,
-
-      yield:
-        n(
-          s.data.meta_yield
-        ) ||
-        metas.yield,
-
-      disponibilidad:
-        n(
-          s.data.meta_disponibilidad
-        ) ||
-        metas.disponibilidad,
-
-      asistencia:
-        n(
-          s.data.meta_asistencia
-        ) ||
-        metas.asistencia,
-
-      rechazo:
-        n(
-          s.data.meta_rechazo
-        ) ||
-        metas.rechazo,
-
-      otif:
-        n(
-          s.data.meta_entregas
-        ) ||
-        metas.otif,
-
-      incidentes:
-        n(
-          s.data.meta_incidentes
-        )
-    };
-  }
-
-
-  await loadInventory();
-
-  await loadSsoma();
-}
-
-
-/* =========================================================
    INICIO
 ========================================================= */
 
-async function init() {
+supabase.auth
+  .getSession()
+  .then(
+    async ({ data }) => {
 
-  try {
+      user =
+        data.session?.user ||
+        null;
 
-    const {
-      data,
-      error
-    } =
-      await supabase.auth.getSession();
-
-
-    if (error) {
-
-      console.error(
-        'Error obteniendo sesión:',
-        error
-      );
-
-      user = null;
+      if (user) {
+        await load();
+      }
 
       render();
 
-      return;
     }
-
-
-    user =
-      data.session?.user ||
-      null;
-
-
-    if (user) {
-
-      await load();
-
-    }
-
-
-    render();
-
-  } catch (error) {
+  )
+  .catch(error => {
 
     console.error(
       'Error inicializando QUIMFLUX:',
       error
     );
 
-    hideBoot();
+    renderAuth();
 
-    app.innerHTML = `
-
-      <div class="auth">
-
-        <h1>
-          QUIMFLUX V5
-        </h1>
-
-        <div class="alert danger">
-
-          Error al iniciar la aplicación.
-
-          <br><br>
-
-          ${esc(
-            error?.message ||
-            String(error)
-          )}
-
-        </div>
-
-        <button
-          class="primary"
-          onclick="location.reload()">
-
-          Recargar
-
-        </button>
-
-      </div>
-
-    `;
-  }
-}
+  });
 
 
 /* =========================================================
@@ -4053,23 +3734,16 @@ supabase.auth
         session?.user ||
         null;
 
-
       if (!user) {
 
         rows = [];
         inventoryRows = [];
         ssomaRows = [];
+        personalRows = [];
 
       }
 
-
       render();
+
     }
   );
-
-
-/* =========================================================
-   ARRANCAR
-========================================================= */
-
-init();
