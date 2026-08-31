@@ -74,8 +74,35 @@ function esc(v=''){
 
 
 function n(v){
+
+  if(
+    v === null ||
+    v === undefined ||
+    v === ''
+  ){
+    return 0;
+  }
+
+  if(
+    typeof v === 'string' &&
+    v.includes('%')
+  ){
+
+    const x =
+      Number(
+        v.replace('%','').trim()
+      );
+
+    return Number.isFinite(x)
+      ? x / 100
+      : 0;
+  }
+
   const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
+
+  return Number.isFinite(x)
+    ? x
+    : 0;
 }
 
 
@@ -84,23 +111,57 @@ function pct(v){
 }
 
 
+/* ==========================================================
+   SEMÁFORO CORREGIDO
+   ========================================================== */
+
 function status(
   value,
   target,
   invert=false
 ){
 
-  const ok = invert
-    ? value <= target
-    : value >= target;
+  const valueNum = n(value);
+  const targetNum = n(target);
 
-  const critical = invert
-    ? value > target * 1.5
-    : value < target * 0.85;
+  let ok;
+  let critical;
+
+  if(invert){
+
+    ok =
+      valueNum <= targetNum;
+
+    if(targetNum === 0){
+
+      critical =
+        valueNum > 0;
+
+    }else{
+
+      critical =
+        valueNum >
+        targetNum * 1.5;
+
+    }
+
+  }else{
+
+    ok =
+      valueNum >= targetNum;
+
+    critical =
+      valueNum <
+      targetNum * 0.85;
+
+  }
 
   return {
+
     ok,
+
     critical,
+
     label:
       critical
         ? 'CRÍTICO'
@@ -114,9 +175,14 @@ function status(
         : ok
           ? 'ok'
           : 'warn'
+
   };
 }
 
+
+/* ==========================================================
+   REGISTRO VACÍO
+   ========================================================== */
 
 function empty(){
 
@@ -173,53 +239,53 @@ function empty(){
 
 function derive(r){
 
-  const p = n(r.programada);
+  const p =
+    n(r.programada);
 
-  const q = n(r.producida);
+  const q =
+    n(r.producida);
 
-  const mp = n(r.mp);
+  const mp =
+    n(r.mp);
 
-  const merma = n(r.merma);
+  const merma =
+    n(r.merma);
 
-  const h = n(r.horas_turno);
+  const h =
+    n(r.horas_turno);
 
-  const stop = n(r.horas_paradas);
+  const stop =
+    n(r.horas_paradas);
 
-  const pp = n(r.personal_programado);
+  const pp =
+    n(r.personal_programado);
 
-  const pa = n(r.personal_presente);
+  const pa =
+    n(r.personal_presente);
 
-  const rej = n(r.rechazadas);
+  const rej =
+    n(r.rechazadas);
 
-  const pedidos = n(r.pedidos_programados);
+  const pedidos =
+    n(r.pedidos_programados);
 
-  const at = n(r.pedidos_tiempo);
+  const at =
+    n(r.pedidos_tiempo);
 
+
+  /* ----------------------------------------------------------
+     CUMPLIMIENTO
+     ---------------------------------------------------------- */
 
   const cumplimiento =
-    p ? q / p : 0;
-
-
-  /* ========================================================
-     YIELD CORREGIDO
-     
-     Yield = (MP - Merma) / MP
-     
-     Mide el aprovechamiento de materia prima.
-     Nunca puede superar 100%.
-     ======================================================== */
-
-  const yieldRate =
-    mp
-      ? Math.max(
-          0,
-          Math.min(
-            1,
-            (mp - merma) / mp
-          )
-        )
+    p
+      ? q / p
       : 0;
 
+
+  /* ----------------------------------------------------------
+     MERMA
+     ---------------------------------------------------------- */
 
   const mermaRate =
     mp
@@ -230,6 +296,25 @@ function derive(r){
       : 0;
 
 
+  /* ----------------------------------------------------------
+     YIELD CORREGIDO
+     
+     Yield = (MP - Merma) / MP
+     ---------------------------------------------------------- */
+
+  const yieldRate =
+    mp
+      ? Math.max(
+          0,
+          (mp - merma) / mp
+        )
+      : 0;
+
+
+  /* ----------------------------------------------------------
+     DISPONIBILIDAD
+     ---------------------------------------------------------- */
+
   const disponibilidad =
     h
       ? Math.max(
@@ -239,25 +324,55 @@ function derive(r){
       : 0;
 
 
-  const asistencia =
-    pp ? pa / pp : 0;
+  /* ----------------------------------------------------------
+     ASISTENCIA
+     ---------------------------------------------------------- */
 
+  const asistencia =
+    pp
+      ? pa / pp
+      : 0;
+
+
+  /* ----------------------------------------------------------
+     RECHAZO
+     ---------------------------------------------------------- */
 
   const rechazo =
-    q ? rej / q : 0;
+    q
+      ? rej / q
+      : 0;
 
+
+  /* ----------------------------------------------------------
+     OTIF
+     ---------------------------------------------------------- */
 
   const otif =
-    pedidos ? at / pedidos : 0;
+    pedidos
+      ? at / pedidos
+      : 0;
+
+
+  /* ----------------------------------------------------------
+     OEE
+     
+     OEE = Disponibilidad × Yield × Calidad
+     
+     Calidad = 1 - Rechazo
+     ---------------------------------------------------------- */
+
+  const calidad =
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
 
   const oee =
     disponibilidad *
     yieldRate *
-    Math.max(
-      0,
-      1-rechazo
-    );
+    calidad;
 
 
   return {
@@ -266,7 +381,11 @@ function derive(r){
 
     cumplimiento,
 
-    merma:mermaRate,
+    merma:
+      mermaRate,
+
+    mermaCantidad:
+      merma,
 
     yieldRate,
 
@@ -275,6 +394,8 @@ function derive(r){
     asistencia,
 
     rechazo,
+
+    calidad,
 
     oee,
 
@@ -396,6 +517,7 @@ function renderAuth(){
 
           password:
             document.getElementById('password').value
+
         });
 
 
@@ -408,7 +530,8 @@ function renderAuth(){
       }
 
 
-      user = data.user;
+      user =
+        data.user;
 
       await load();
 
@@ -551,6 +674,7 @@ function render(){
           button.dataset.tab;
 
         render();
+
       };
 
     });
@@ -590,7 +714,8 @@ function indicador(
   label,
   value,
   target,
-  invert=false
+  invert=false,
+  format='pct'
 ){
 
   const s =
@@ -599,6 +724,27 @@ function indicador(
       target,
       invert
     );
+
+
+  let displayValue;
+
+
+  if(format === 'pct'){
+
+    displayValue =
+      pct(value);
+
+  }else if(format === 'number'){
+
+    displayValue =
+      n(value).toLocaleString();
+
+  }else{
+
+    displayValue =
+      value;
+
+  }
 
 
   return `
@@ -610,7 +756,7 @@ function indicador(
       </small>
 
       <strong>
-        ${value}
+        ${displayValue}
       </strong>
 
       <span
@@ -638,6 +784,7 @@ function tendencia(
       label:'SIN DATOS',
       cls:'ok'
     };
+
   }
 
 
@@ -646,10 +793,14 @@ function tendencia(
 
 
   const primero =
-    ultimos[0];
+    n(ultimos[0]);
 
   const ultimo =
-    ultimos[ultimos.length-1];
+    n(
+      ultimos[
+        ultimos.length - 1
+      ]
+    );
 
 
   const diferencia =
@@ -664,6 +815,7 @@ function tendencia(
       label:'→ ESTABLE',
       cls:'ok'
     };
+
   }
 
 
@@ -762,6 +914,7 @@ function graficoTendencia(
         i/(data.length-1)
       ) * plotWidth
     );
+
   };
 
 
@@ -772,7 +925,7 @@ function graficoTendencia(
         0,
         Math.min(
           1.6,
-          value
+          n(value)
         )
       );
 
@@ -783,6 +936,7 @@ function graficoTendencia(
         v/1.6
       ) * plotHeight
     );
+
   };
 
 
@@ -827,6 +981,7 @@ function graficoTendencia(
         </text>
 
       `;
+
     });
 
 
@@ -893,6 +1048,7 @@ function graficoTendencia(
         />
 
       `;
+
     });
 
   });
@@ -927,6 +1083,7 @@ function graficoTendencia(
       </text>
 
     `;
+
   });
 
 
@@ -1006,8 +1163,8 @@ function renderDashboard(){
     mp:
       sums('mp'),
 
-    merma:
-      sums('merma'),
+    mermaCantidad:
+      sums('mermaCantidad'),
 
     stop:
       sums('horas_paradas'),
@@ -1048,28 +1205,21 @@ function renderDashboard(){
           sums('programada')
         : 0,
 
-    /*
-      YIELD HISTÓRICO:
-      (MP total - Merma total) / MP total
-    */
     yield:
       sums('mp')
         ? Math.max(
             0,
-            Math.min(
-              1,
-              (
-                sums('mp') -
-                sums('merma')
-              ) /
-              sums('mp')
-            )
+            (
+              sums('mp') -
+              sums('mermaCantidad')
+            ) /
+            sums('mp')
           )
         : 0,
 
     mermaRate:
       sums('mp')
-        ? sums('merma') /
+        ? sums('mermaCantidad') /
           sums('mp')
         : 0,
 
@@ -1106,13 +1256,17 @@ function renderDashboard(){
   };
 
 
-  k.oee =
-    k.disponibilidad *
-    k.yield *
+  const calidad =
     Math.max(
       0,
       1-k.rechazo
     );
+
+
+  k.oee =
+    k.disponibilidad *
+    k.yield *
+    calidad;
 
 
   const last =
@@ -1130,17 +1284,26 @@ function renderDashboard(){
 
   if(last){
 
-    if(
-      last.cumplimiento <
-      metas.cumplimiento
-    ){
+    const sc =
+      status(
+        last.cumplimiento,
+        metas.cumplimiento
+      );
+
+
+    if(!sc.ok){
 
       alerts.push({
 
-        tipo:'warn',
+        tipo:
+          sc.critical
+            ? 'critical'
+            : 'warn',
 
         titulo:
-          'Cumplimiento requiere revisión',
+          sc.critical
+            ? 'Cumplimiento en nivel crítico'
+            : 'Cumplimiento requiere revisión',
 
         valor:
           pct(last.cumplimiento),
@@ -1153,17 +1316,26 @@ function renderDashboard(){
     }
 
 
-    if(
-      last.yieldRate <
-      metas.yield
-    ){
+    const sy =
+      status(
+        last.yieldRate,
+        metas.yield
+      );
+
+
+    if(!sy.ok){
 
       alerts.push({
 
-        tipo:'warn',
+        tipo:
+          sy.critical
+            ? 'critical'
+            : 'warn',
 
         titulo:
-          'Yield requiere revisión',
+          sy.critical
+            ? 'Yield en nivel crítico'
+            : 'Yield requiere revisión',
 
         valor:
           pct(last.yieldRate),
@@ -1176,17 +1348,27 @@ function renderDashboard(){
     }
 
 
-    if(
-      last.merma >
-      metas.merma
-    ){
+    const sm =
+      status(
+        last.merma,
+        metas.merma,
+        true
+      );
+
+
+    if(!sm.ok){
 
       alerts.push({
 
-        tipo:'critical',
+        tipo:
+          sm.critical
+            ? 'critical'
+            : 'warn',
 
         titulo:
-          'Merma en nivel crítico',
+          sm.critical
+            ? 'Merma en nivel crítico'
+            : 'Merma requiere revisión',
 
         valor:
           pct(last.merma),
@@ -1199,16 +1381,26 @@ function renderDashboard(){
     }
 
 
-    if(
-      last.oee < .80
-    ){
+    const so =
+      status(
+        last.oee,
+        .80
+      );
+
+
+    if(!so.ok){
 
       alerts.push({
 
-        tipo:'critical',
+        tipo:
+          so.critical
+            ? 'critical'
+            : 'warn',
 
         titulo:
-          'OEE en nivel crítico',
+          so.critical
+            ? 'OEE en nivel crítico'
+            : 'OEE requiere revisión',
 
         valor:
           pct(last.oee),
@@ -1237,6 +1429,7 @@ function renderDashboard(){
 
       ${
         alerts.length
+
           ?
 
           `
@@ -1329,51 +1522,51 @@ function renderDashboard(){
 
           ${indicador(
             'Cumplimiento',
-            pct(last.cumplimiento),
+            last.cumplimiento,
             metas.cumplimiento
           )}
 
           ${indicador(
             'Yield',
-            pct(last.yieldRate),
+            last.yieldRate,
             metas.yield
           )}
 
           ${indicador(
             'Merma',
-            pct(last.merma),
+            last.merma,
             metas.merma,
             true
           )}
 
           ${indicador(
             'Disponibilidad',
-            pct(last.disponibilidad),
+            last.disponibilidad,
             metas.disponibilidad
           )}
 
           ${indicador(
             'Asistencia',
-            pct(last.asistencia),
+            last.asistencia,
             metas.asistencia
           )}
 
           ${indicador(
             'Rechazo',
-            pct(last.rechazo),
+            last.rechazo,
             metas.rechazo,
             true
           )}
 
           ${indicador(
             'OEE',
-            pct(last.oee),
+            last.oee,
             .80
           )}
 
           ${indicador(
             'OTIF',
-            pct(last.otif),
+            last.otif,
             metas.otif
           )}
 
@@ -1427,51 +1620,53 @@ function renderDashboard(){
 
         ${indicador(
           'Producción total',
-          k.prod.toLocaleString(),
-          0
+          k.prod,
+          0,
+          false,
+          'number'
         )}
 
         ${indicador(
           'Cumplimiento',
-          pct(k.cumplimiento),
+          k.cumplimiento,
           metas.cumplimiento
         )}
 
         ${indicador(
           'Yield',
-          pct(k.yield),
+          k.yield,
           metas.yield
         )}
 
         ${indicador(
           'Merma',
-          pct(k.mermaRate),
+          k.mermaRate,
           metas.merma,
           true
         )}
 
         ${indicador(
           'Disponibilidad',
-          pct(k.disponibilidad),
+          k.disponibilidad,
           metas.disponibilidad
         )}
 
         ${indicador(
           'Asistencia',
-          pct(k.asistencia),
+          k.asistencia,
           metas.asistencia
         )}
 
         ${indicador(
           'Rechazo calidad',
-          pct(k.rechazo),
+          k.rechazo,
           metas.rechazo,
           true
         )}
 
         ${indicador(
           'OEE',
-          pct(k.oee),
+          k.oee,
           .80
         )}
 
@@ -1487,6 +1682,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1499,6 +1695,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1510,6 +1707,7 @@ function renderDashboard(){
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -1531,6 +1729,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1551,17 +1750,20 @@ function renderDashboard(){
 
         </div>
 
+
         ${indicador(
           'Entregas a tiempo',
-          pct(k.otif),
+          k.otif,
           metas.otif
         )}
 
+
         ${indicador(
           'Incidentes SSOMA',
-          String(k.incidentes),
+          k.incidentes,
           metas.incidentes,
-          true
+          true,
+          'number'
         )}
 
       </div>
@@ -1636,52 +1838,170 @@ function renderDashboard(){
             <tbody>
 
               <tr>
-                <td>Cumplimiento</td>
-                <td>${pct(last.cumplimiento)}</td>
-                <td>${pct(k.cumplimiento)}</td>
-                <td>${diferencia(last.cumplimiento,k.cumplimiento)}</td>
+
+                <td>
+                  Cumplimiento
+                </td>
+
+                <td>
+                  ${pct(last.cumplimiento)}
+                </td>
+
+                <td>
+                  ${pct(k.cumplimiento)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.cumplimiento,
+                    k.cumplimiento
+                  )}
+                </td>
+
               </tr>
 
-              <tr>
-                <td>Yield</td>
-                <td>${pct(last.yieldRate)}</td>
-                <td>${pct(k.yield)}</td>
-                <td>${diferencia(last.yieldRate,k.yield)}</td>
-              </tr>
 
               <tr>
-                <td>Merma</td>
-                <td>${pct(last.merma)}</td>
-                <td>${pct(k.mermaRate)}</td>
-                <td>${diferencia(last.merma,k.mermaRate)}</td>
+
+                <td>
+                  Yield
+                </td>
+
+                <td>
+                  ${pct(last.yieldRate)}
+                </td>
+
+                <td>
+                  ${pct(k.yield)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.yieldRate,
+                    k.yield
+                  )}
+                </td>
+
               </tr>
 
-              <tr>
-                <td>Disponibilidad</td>
-                <td>${pct(last.disponibilidad)}</td>
-                <td>${pct(k.disponibilidad)}</td>
-                <td>${diferencia(last.disponibilidad,k.disponibilidad)}</td>
-              </tr>
 
               <tr>
-                <td>Asistencia</td>
-                <td>${pct(last.asistencia)}</td>
-                <td>${pct(k.asistencia)}</td>
-                <td>${diferencia(last.asistencia,k.asistencia)}</td>
+
+                <td>
+                  Merma
+                </td>
+
+                <td>
+                  ${pct(last.merma)}
+                </td>
+
+                <td>
+                  ${pct(k.mermaRate)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.merma,
+                    k.mermaRate
+                  )}
+                </td>
+
               </tr>
 
-              <tr>
-                <td>Rechazo</td>
-                <td>${pct(last.rechazo)}</td>
-                <td>${pct(k.rechazo)}</td>
-                <td>${diferencia(last.rechazo,k.rechazo)}</td>
-              </tr>
 
               <tr>
-                <td>OEE</td>
-                <td>${pct(last.oee)}</td>
-                <td>${pct(k.oee)}</td>
-                <td>${diferencia(last.oee,k.oee)}</td>
+
+                <td>
+                  Disponibilidad
+                </td>
+
+                <td>
+                  ${pct(last.disponibilidad)}
+                </td>
+
+                <td>
+                  ${pct(k.disponibilidad)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.disponibilidad,
+                    k.disponibilidad
+                  )}
+                </td>
+
+              </tr>
+
+
+              <tr>
+
+                <td>
+                  Asistencia
+                </td>
+
+                <td>
+                  ${pct(last.asistencia)}
+                </td>
+
+                <td>
+                  ${pct(k.asistencia)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.asistencia,
+                    k.asistencia
+                  )}
+                </td>
+
+              </tr>
+
+
+              <tr>
+
+                <td>
+                  Rechazo
+                </td>
+
+                <td>
+                  ${pct(last.rechazo)}
+                </td>
+
+                <td>
+                  ${pct(k.rechazo)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.rechazo,
+                    k.rechazo
+                  )}
+                </td>
+
+              </tr>
+
+
+              <tr>
+
+                <td>
+                  OEE
+                </td>
+
+                <td>
+                  ${pct(last.oee)}
+                </td>
+
+                <td>
+                  ${pct(k.oee)}
+                </td>
+
+                <td>
+                  ${diferencia(
+                    last.oee,
+                    k.oee
+                  )}
+                </td>
+
               </tr>
 
             </tbody>
@@ -1705,10 +2025,12 @@ function renderDashboard(){
       r => r.cumplimiento
     );
 
+
   const yieldValores =
     d.map(
       r => r.yieldRate
     );
+
 
   const oeeValores =
     d.map(
@@ -1721,10 +2043,12 @@ function renderDashboard(){
       cumplimientoValores
     );
 
+
   const tYield =
     tendencia(
       yieldValores
     );
+
 
   const tOee =
     tendencia(
@@ -1807,6 +2131,7 @@ function renderDashboard(){
       k.prod.toLocaleString()
     ],
 
+
     [
       'Cumplimiento',
       pct(k.cumplimiento),
@@ -1816,6 +2141,7 @@ function renderDashboard(){
       )
     ],
 
+
     [
       'Yield',
       pct(k.yield),
@@ -1824,6 +2150,7 @@ function renderDashboard(){
         metas.yield
       )
     ],
+
 
     [
       'Merma',
@@ -1835,6 +2162,7 @@ function renderDashboard(){
       )
     ],
 
+
     [
       'Disponibilidad',
       pct(k.disponibilidad),
@@ -1844,6 +2172,7 @@ function renderDashboard(){
       )
     ],
 
+
     [
       'Asistencia',
       pct(k.asistencia),
@@ -1852,6 +2181,7 @@ function renderDashboard(){
         metas.asistencia
       )
     ],
+
 
     [
       'Rechazo calidad',
@@ -1863,6 +2193,7 @@ function renderDashboard(){
       )
     ],
 
+
     [
       'OEE',
       pct(k.oee),
@@ -1872,30 +2203,35 @@ function renderDashboard(){
       )
     ],
 
+
     [
       'Costo producción',
       'S/ '+k.costo.toLocaleString()
     ],
+
 
     [
       'Costo mantenimiento',
       'S/ '+k.mnt.toLocaleString()
     ],
 
+
     [
       'Horas parada',
       k.stop.toFixed(2)+' h'
     ],
 
+
     [
       'Costo unitario',
-      'S/ '+
+      'S/'+
       (
         k.prod
           ? k.costo/k.prod
           : 0
       ).toFixed(3)
     ],
+
 
     [
       'Energía',
@@ -1907,6 +2243,7 @@ function renderDashboard(){
       +' kWh/unidad'
     ],
 
+
     [
       'Entregas a tiempo',
       pct(k.otif),
@@ -1915,6 +2252,7 @@ function renderDashboard(){
         metas.otif
       )
     ],
+
 
     [
       'Incidentes SSOMA',
@@ -1997,7 +2335,7 @@ function renderDashboard(){
                     </td>
 
                     <td>
-                      ${n(r.merma)}
+                      ${n(r.mermaCantidad)}
                     </td>
 
                     <td>
@@ -2311,6 +2649,7 @@ function renderForm(){
               :
 
               el.value;
+
         }
       );
 
@@ -2425,6 +2764,7 @@ function control(
       >
 
     `;
+
   }
 
 
