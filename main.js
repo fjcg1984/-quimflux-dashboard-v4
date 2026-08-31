@@ -74,49 +74,15 @@ function esc(v=''){
 
 
 function n(v){
-
-  /*
-   * CORRECCIÓN:
-   * Permite trabajar tanto con números normales
-   * como con porcentajes escritos como "92.0%".
-   */
-
-  if(
-    typeof v === 'string' &&
-    v.trim().endsWith('%')
-  ){
-
-    const x =
-      parseFloat(
-        v.replace('%','')
-      );
-
-    return Number.isFinite(x)
-      ? x / 100
-      : 0;
-  }
-
-
   const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : 0;
+  return Number.isFinite(x) ? x : 0;
 }
 
 
 function pct(v){
-
-  return (
-    n(v) * 100
-  ).toFixed(1) + '%';
-
+  return (n(v) * 100).toFixed(1) + '%';
 }
 
-
-/* ==========================================================
-   SEMÁFORO
-   ========================================================== */
 
 function status(
   value,
@@ -124,32 +90,17 @@ function status(
   invert=false
 ){
 
-  /*
-   * CORRECCIÓN:
-   * status siempre convierte el valor y la meta
-   * a números antes de comparar.
-   */
-
-  const numericValue = n(value);
-  const numericTarget = n(target);
-
-
   const ok = invert
-    ? numericValue <= numericTarget
-    : numericValue >= numericTarget;
-
+    ? value <= target
+    : value >= target;
 
   const critical = invert
-    ? numericValue > numericTarget * 1.5
-    : numericValue < numericTarget * 0.85;
-
+    ? value > target * 1.5
+    : value < target * 0.85;
 
   return {
-
     ok,
-
     critical,
-
     label:
       critical
         ? 'CRÍTICO'
@@ -163,114 +114,9 @@ function status(
         : ok
           ? 'ok'
           : 'warn'
-
   };
-
 }
 
-
-/* ==========================================================
-   TARJETA KPI
-   ========================================================== */
-
-function indicador(
-  label,
-  value,
-  target,
-  invert=false
-){
-
-  /*
-   * CORRECCIÓN PRINCIPAL:
-   *
-   * El valor puede venir como:
-   *
-   *   0.92
-   *
-   * o como:
-   *
-   *   "92.0%"
-   *
-   * El semáforo siempre utiliza el valor numérico real.
-   */
-
-
-  const numericValue =
-    n(value);
-
-
-  const s =
-    status(
-      numericValue,
-      target,
-      invert
-    );
-
-
-  let displayValue;
-
-
-  /*
-   * Si el valor original ya era un porcentaje
-   * o el valor es decimal entre 0 y 1,
-   * lo mostramos como porcentaje.
-   */
-
-  if(
-    typeof value === 'string' &&
-    value.trim().endsWith('%')
-  ){
-
-    displayValue = value;
-
-  }
-
-  else if(
-    Math.abs(numericValue) <= 1 &&
-    target !== 0
-  ){
-
-    displayValue =
-      pct(numericValue);
-
-  }
-
-  else{
-
-    displayValue =
-      String(value);
-
-  }
-
-
-  return `
-
-    <div class="card">
-
-      <small>
-        ${esc(label)}
-      </small>
-
-      <strong>
-        ${esc(displayValue)}
-      </strong>
-
-      <span
-        class="badge ${s.cls}"
-      >
-        ${s.label}
-      </span>
-
-    </div>
-
-  `;
-
-}
-
-
-/* ==========================================================
-   REGISTRO VACÍO
-   ========================================================== */
 
 function empty(){
 
@@ -317,9 +163,7 @@ function empty(){
     no_conformidades:0,
 
     observaciones:''
-
   };
-
 }
 
 
@@ -334,6 +178,8 @@ function derive(r){
   const q = n(r.producida);
 
   const mp = n(r.mp);
+
+  const merma = n(r.merma);
 
   const h = n(r.horas_turno);
 
@@ -351,20 +197,36 @@ function derive(r){
 
 
   const cumplimiento =
-    p
-      ? q / p
-      : 0;
+    p ? q / p : 0;
 
 
-  const merma =
-    mp
-      ? n(r.merma) / mp
-      : 0;
-
+  /* ========================================================
+     YIELD CORREGIDO
+     
+     Yield = (MP - Merma) / MP
+     
+     Mide el aprovechamiento de materia prima.
+     Nunca puede superar 100%.
+     ======================================================== */
 
   const yieldRate =
     mp
-      ? q / mp
+      ? Math.max(
+          0,
+          Math.min(
+            1,
+            (mp - merma) / mp
+          )
+        )
+      : 0;
+
+
+  const mermaRate =
+    mp
+      ? Math.max(
+          0,
+          merma / mp
+        )
       : 0;
 
 
@@ -378,21 +240,15 @@ function derive(r){
 
 
   const asistencia =
-    pp
-      ? pa / pp
-      : 0;
+    pp ? pa / pp : 0;
 
 
   const rechazo =
-    q
-      ? rej / q
-      : 0;
+    q ? rej / q : 0;
 
 
   const otif =
-    pedidos
-      ? at / pedidos
-      : 0;
+    pedidos ? at / pedidos : 0;
 
 
   const oee =
@@ -400,7 +256,7 @@ function derive(r){
     yieldRate *
     Math.max(
       0,
-      1 - rechazo
+      1-rechazo
     );
 
 
@@ -410,7 +266,7 @@ function derive(r){
 
     cumplimiento,
 
-    merma,
+    merma:mermaRate,
 
     yieldRate,
 
@@ -433,9 +289,7 @@ function derive(r){
       q
         ? n(r.energia) / q
         : 0
-
   };
-
 }
 
 
@@ -515,7 +369,6 @@ function renderAuth(){
       </div>
 
     </div>
-
   `;
 
 
@@ -525,10 +378,8 @@ function renderAuth(){
 
       e.preventDefault();
 
-
       const msg =
         document.getElementById('authMsg');
-
 
       msg.textContent =
         'Procesando…';
@@ -545,7 +396,6 @@ function renderAuth(){
 
           password:
             document.getElementById('password').value
-
         });
 
 
@@ -555,18 +405,14 @@ function renderAuth(){
           error.message;
 
         return;
-
       }
 
 
-      user =
-        data.user;
-
+      user = data.user;
 
       await load();
 
       render();
-
     };
 
 
@@ -580,7 +426,6 @@ function renderAuth(){
 
       const email =
         document.getElementById('email').value;
-
 
       const password =
         document.getElementById('password').value;
@@ -609,9 +454,7 @@ function renderAuth(){
               ? 'Cuenta creada.'
               : 'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.'
           );
-
     };
-
 }
 
 
@@ -626,7 +469,6 @@ function render(){
     renderAuth();
 
     return;
-
   }
 
 
@@ -696,7 +538,6 @@ function render(){
 
 
     <div id="content"></div>
-
   `;
 
 
@@ -710,7 +551,6 @@ function render(){
           button.dataset.tab;
 
         render();
-
       };
 
     });
@@ -726,15 +566,11 @@ function render(){
 
     renderDashboard();
 
-  }
-
-  else if(tab === 'registro'){
+  }else if(tab === 'registro'){
 
     renderForm();
 
-  }
-
-  else{
+  }else{
 
     renderPlaceholder(
       nav.find(
@@ -743,7 +579,48 @@ function render(){
     );
 
   }
+}
 
+
+/* ==========================================================
+   TARJETA KPI
+   ========================================================== */
+
+function indicador(
+  label,
+  value,
+  target,
+  invert=false
+){
+
+  const s =
+    status(
+      value,
+      target,
+      invert
+    );
+
+
+  return `
+
+    <div class="card">
+
+      <small>
+        ${label}
+      </small>
+
+      <strong>
+        ${value}
+      </strong>
+
+      <span
+        class="badge ${s.cls}"
+      >
+        ${s.label}
+      </span>
+
+    </div>
+  `;
 }
 
 
@@ -761,7 +638,6 @@ function tendencia(
       label:'SIN DATOS',
       cls:'ok'
     };
-
   }
 
 
@@ -772,11 +648,8 @@ function tendencia(
   const primero =
     ultimos[0];
 
-
   const ultimo =
-    ultimos[
-      ultimos.length - 1
-    ];
+    ultimos[ultimos.length-1];
 
 
   const diferencia =
@@ -791,7 +664,6 @@ function tendencia(
       label:'→ ESTABLE',
       cls:'ok'
     };
-
   }
 
 
@@ -806,7 +678,6 @@ function tendencia(
         label:'↓ EMPEORANDO',
         cls:'warn'
       };
-
 }
 
 
@@ -831,7 +702,6 @@ function graficoTendencia(
       </div>
 
     `;
-
   }
 
 
@@ -875,32 +745,23 @@ function graficoTendencia(
 
 
   const plotWidth =
-    width -
-    left -
-    right;
-
+    width-left-right;
 
   const plotHeight =
-    height -
-    top -
-    bottom;
+    height-top-bottom;
 
 
   const x = i => {
 
-    if(data.length === 1)
+    if(data.length===1)
       return left;
-
 
     return (
       left +
       (
-        i /
-        (data.length - 1)
-      ) *
-      plotWidth
+        i/(data.length-1)
+      ) * plotWidth
     );
-
   };
 
 
@@ -911,20 +772,17 @@ function graficoTendencia(
         0,
         Math.min(
           1.6,
-          n(value)
+          value
         )
       );
-
 
     return (
       top +
       plotHeight -
       (
-        v / 1.6
-      ) *
-      plotHeight
+        v/1.6
+      ) * plotHeight
     );
-
   };
 
 
@@ -969,7 +827,6 @@ function graficoTendencia(
         </text>
 
       `;
-
     });
 
 
@@ -1036,7 +893,6 @@ function graficoTendencia(
         />
 
       `;
-
     });
 
   });
@@ -1045,9 +901,7 @@ function graficoTendencia(
   const paso =
     Math.max(
       1,
-      Math.ceil(
-        data.length / 8
-      )
+      Math.ceil(data.length/8)
     );
 
 
@@ -1073,7 +927,6 @@ function graficoTendencia(
       </text>
 
     `;
-
   });
 
 
@@ -1119,12 +972,11 @@ function graficoTendencia(
     </div>
 
   `;
-
 }
 
 
 /* ==========================================================
-   DASHBOARD
+   RENDER DASHBOARD
    ========================================================== */
 
 function renderDashboard(){
@@ -1138,7 +990,7 @@ function renderDashboard(){
   const sums = key =>
     d.reduce(
       (s,r) =>
-        s + n(r[key]),
+        s+n(r[key]),
       0
     );
 
@@ -1196,10 +1048,23 @@ function renderDashboard(){
           sums('programada')
         : 0,
 
+    /*
+      YIELD HISTÓRICO:
+      (MP total - Merma total) / MP total
+    */
     yield:
       sums('mp')
-        ? sums('producida') /
-          sums('mp')
+        ? Math.max(
+            0,
+            Math.min(
+              1,
+              (
+                sums('mp') -
+                sums('merma')
+              ) /
+              sums('mp')
+            )
+          )
         : 0,
 
     mermaRate:
@@ -1372,7 +1237,6 @@ function renderDashboard(){
 
       ${
         alerts.length
-
           ?
 
           `
@@ -1465,51 +1329,51 @@ function renderDashboard(){
 
           ${indicador(
             'Cumplimiento',
-            last.cumplimiento,
+            pct(last.cumplimiento),
             metas.cumplimiento
           )}
 
           ${indicador(
             'Yield',
-            last.yieldRate,
+            pct(last.yieldRate),
             metas.yield
           )}
 
           ${indicador(
             'Merma',
-            last.merma,
+            pct(last.merma),
             metas.merma,
             true
           )}
 
           ${indicador(
             'Disponibilidad',
-            last.disponibilidad,
+            pct(last.disponibilidad),
             metas.disponibilidad
           )}
 
           ${indicador(
             'Asistencia',
-            last.asistencia,
+            pct(last.asistencia),
             metas.asistencia
           )}
 
           ${indicador(
             'Rechazo',
-            last.rechazo,
+            pct(last.rechazo),
             metas.rechazo,
             true
           )}
 
           ${indicador(
             'OEE',
-            last.oee,
+            pct(last.oee),
             .80
           )}
 
           ${indicador(
             'OTIF',
-            last.otif,
+            pct(last.otif),
             metas.otif
           )}
 
@@ -1563,51 +1427,51 @@ function renderDashboard(){
 
         ${indicador(
           'Producción total',
-          k.prod,
+          k.prod.toLocaleString(),
           0
         )}
 
         ${indicador(
           'Cumplimiento',
-          k.cumplimiento,
+          pct(k.cumplimiento),
           metas.cumplimiento
         )}
 
         ${indicador(
           'Yield',
-          k.yield,
+          pct(k.yield),
           metas.yield
         )}
 
         ${indicador(
           'Merma',
-          k.mermaRate,
+          pct(k.mermaRate),
           metas.merma,
           true
         )}
 
         ${indicador(
           'Disponibilidad',
-          k.disponibilidad,
+          pct(k.disponibilidad),
           metas.disponibilidad
         )}
 
         ${indicador(
           'Asistencia',
-          k.asistencia,
+          pct(k.asistencia),
           metas.asistencia
         )}
 
         ${indicador(
           'Rechazo calidad',
-          k.rechazo,
+          pct(k.rechazo),
           metas.rechazo,
           true
         )}
 
         ${indicador(
           'OEE',
-          k.oee,
+          pct(k.oee),
           .80
         )}
 
@@ -1623,7 +1487,6 @@ function renderDashboard(){
 
         </div>
 
-
         <div class="card">
 
           <small>
@@ -1636,7 +1499,6 @@ function renderDashboard(){
 
         </div>
 
-
         <div class="card">
 
           <small>
@@ -1648,7 +1510,6 @@ function renderDashboard(){
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -1670,7 +1531,6 @@ function renderDashboard(){
 
         </div>
 
-
         <div class="card">
 
           <small>
@@ -1691,17 +1551,15 @@ function renderDashboard(){
 
         </div>
 
-
         ${indicador(
           'Entregas a tiempo',
-          k.otif,
+          pct(k.otif),
           metas.otif
         )}
 
-
         ${indicador(
           'Incidentes SSOMA',
-          k.incidentes,
+          String(k.incidentes),
           metas.incidentes,
           true
         )}
@@ -1835,7 +1693,6 @@ function renderDashboard(){
       </section>
 
     `;
-
   }
 
 
@@ -1848,12 +1705,10 @@ function renderDashboard(){
       r => r.cumplimiento
     );
 
-
   const yieldValores =
     d.map(
       r => r.yieldRate
     );
-
 
   const oeeValores =
     d.map(
@@ -1866,12 +1721,10 @@ function renderDashboard(){
       cumplimientoValores
     );
 
-
   const tYield =
     tendencia(
       yieldValores
     );
-
 
   const tOee =
     tendencia(
@@ -2036,7 +1889,7 @@ function renderDashboard(){
 
     [
       'Costo unitario',
-      'S/' +
+      'S/ '+
       (
         k.prod
           ? k.costo/k.prod
@@ -2290,9 +2143,7 @@ function renderDashboard(){
         </section>
 
       </main>
-
   `;
-
 }
 
 
@@ -2415,7 +2266,6 @@ function renderForm(){
         </form>
 
       </main>
-
   `;
 
 
@@ -2461,7 +2311,6 @@ function renderForm(){
               :
 
               el.value;
-
         }
       );
 
@@ -2484,7 +2333,6 @@ function renderForm(){
           error.message;
 
         return;
-
       }
 
 
@@ -2501,7 +2349,6 @@ function renderForm(){
       );
 
     };
-
 }
 
 
@@ -2550,7 +2397,6 @@ function control(
 
   }
 
-
   else if(type === 'textarea'){
 
     input = `
@@ -2562,7 +2408,6 @@ function control(
     `;
 
   }
-
 
   else{
 
@@ -2580,7 +2425,6 @@ function control(
       >
 
     `;
-
   }
 
 
@@ -2595,7 +2439,6 @@ function control(
     </label>
 
   `;
-
 }
 
 
@@ -2632,7 +2475,6 @@ function renderPlaceholder(title){
       </main>
 
     `;
-
 }
 
 
