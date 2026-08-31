@@ -756,7 +756,6 @@ function renderDashboard() {
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button type="button" data-view-daily="${esc(latest.id)}">Visualizar</button>
-              <button type="button" data-edit-daily="${esc(latest.id)}">Editar</button>
             </div>
           </div>
 
@@ -846,7 +845,6 @@ function renderDashboard() {
                     <td>
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button type="button" data-view-daily="${esc(r.id)}">Visualizar</button>
-                        <button type="button" data-edit-daily="${esc(r.id)}">Editar</button>
                         <button type="button" data-delete-id="${esc(r.id)}">Eliminar</button>
                       </div>
                     </td>
@@ -862,10 +860,6 @@ function renderDashboard() {
 
   document.querySelectorAll('[data-view-daily]').forEach(b => {
     b.onclick = () => viewDaily(b.dataset.viewDaily);
-  });
-
-  document.querySelectorAll('[data-edit-daily]').forEach(b => {
-    b.onclick = () => editDaily(b.dataset.editDaily);
   });
 
   document.querySelectorAll('[data-delete-id]').forEach(b => {
