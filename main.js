@@ -35,6 +35,7 @@ let rows = [];
 let inventoryRows = [];
 let ssomaRows = [];
 let personalRows = [];
+let novedadesRows = [];
 let maintenanceRows = [];
 
 let tab = 'dashboard';
@@ -1210,9 +1211,11 @@ function renderDashboard() {
                     <td>${esc(r.fecha)}</td><td>${esc(r.turno)}</td><td>${esc(r.producto)}</td>
                     <td>${n(r.programada).toLocaleString()}</td><td>${n(r.producida).toLocaleString()}</td>
                     <td>${pct(r.merma)}</td><td>${pct(r.oee)}</td>
-                    <td>
-                      <button type="button" class="link" data-view-id="${esc(r.id)}">Visualizar</button>
-                      <button type="button" data-delete-id="${esc(r.id)}">Eliminar</button>
+                    <td style="min-width:150px;white-space:nowrap;">
+                      <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;">
+                        <button type="button" class="link" data-view-id="${esc(r.id)}" style="padding:6px 10px;font-size:12px;white-space:nowrap;">Visualizar</button>
+                        <button type="button" data-delete-id="${esc(r.id)}" style="padding:6px 10px;font-size:12px;white-space:nowrap;">Eliminar</button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -1436,9 +1439,9 @@ function viewDaily(id) {
           <h1>Visualizar registro diario</h1>
           <p>${esc(r.fecha)} · ${esc(r.turno)} · ${esc(r.producto || 'Sin producto')}</p>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button id="editDaily" class="primary" type="button">Editar</button>
-          <button id="backDailyView" type="button">Volver</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button id="editDaily" class="primary" type="button" style="min-width:92px;">Editar</button>
+          <button id="backDailyView" type="button" style="min-width:92px;">Volver</button>
         </div>
       </div>
 
@@ -2772,6 +2775,16 @@ function renderPersonal() {
       </div>
 
       <section class="panel">
+        <h2>Control de novedades</h2>
+        <p>Registro y seguimiento de permisos, vacaciones y faltas.</p>
+        <div class="cards">
+          <div class="card"><small>Permisos</small><strong>${novedadesRows.filter(x => x.tipo === 'PERMISO').length}</strong></div>
+          <div class="card"><small>Vacaciones</small><strong>${novedadesRows.filter(x => x.tipo === 'VACACIONES').length}</strong></div>
+          <div class="card"><small>Faltas</small><strong>${novedadesRows.filter(x => x.tipo === 'FALTA').length}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>
           ${editingPersonalId ? 'Editar trabajador' : 'Registrar trabajador'}
         </h2>
@@ -2900,14 +2913,27 @@ function renderPersonal() {
                           </span>
                         </td>
                         <td>
-                          <button
-                            data-edit-personal="${esc(r.id)}">
-                            Editar
-                          </button>
-                          <button
-                            data-delete-personal="${esc(r.id)}">
-                            Eliminar
-                          </button>
+                          <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap;">
+                            <button
+                              type="button"
+                              class="link"
+                              data-novedad-personal="${esc(r.dni)}"
+                              style="padding:5px 8px;font-size:12px;">
+                              Novedad
+                            </button>
+                            <button
+                              type="button"
+                              data-edit-personal="${esc(r.id)}"
+                              style="padding:5px 8px;font-size:12px;">
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              data-delete-personal="${esc(r.id)}"
+                              style="padding:5px 8px;font-size:12px;">
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     `).join('')}
@@ -2933,6 +2959,13 @@ function renderPersonal() {
     .forEach(button => {
       button.onclick = () =>
         editPersonal(button.dataset.editPersonal);
+    });
+
+  document
+    .querySelectorAll('[data-novedad-personal]')
+    .forEach(button => {
+      button.onclick = () =>
+        showNovedadForm(button.dataset.novedadPersonal);
     });
 
   document
@@ -3117,6 +3150,122 @@ async function deletePersonal(id) {
 
   await loadPersonal();
   renderPersonal();
+}
+
+
+function showNovedadForm(dni) {
+  document.getElementById('content').innerHTML = `
+    <main>
+      <div class="titleRow">
+        <div>
+          <h1>Nueva novedad</h1>
+          <p>Registro de permisos, vacaciones y faltas.</p>
+        </div>
+        <button id="backNovedad" class="link" type="button">← Volver</button>
+      </div>
+
+      <section class="panel">
+        <form id="novedadForm" class="formGrid">
+          <section>
+            <h2>Registro</h2>
+
+            <label>
+              DNI
+              <input id="n_dni" value="${esc(dni)}" readonly>
+            </label>
+
+            <label>
+              Tipo
+              <select id="n_tipo">
+                <option>PERMISO</option>
+                <option>VACACIONES</option>
+                  <option>FALTA</option>
+                <option>DESCANSO_MEDICO</option>
+                <option>OTRO</option>
+              </select>
+            </label>
+
+            <label>
+              Fecha inicio
+              <input id="n_inicio" type="date" required value="${today}">
+            </label>
+
+            <label>
+              Fecha fin
+              <input id="n_fin" type="date" required value="${today}">
+            </label>
+          </section>
+
+          <section>
+            <h2>Detalle</h2>
+
+            <label>
+              Motivo
+              <input id="n_motivo" placeholder="Ej. ingreso tardío, permiso personal...">
+            </label>
+
+            <label>
+              Estado
+              <select id="n_estado">
+                <option>REGISTRADO</option>
+                <option>APROBADO</option>
+                <option>RECHAZADO</option>
+                <option>CERRADO</option>
+              </select>
+            </label>
+
+            <label>
+              Observaciones
+              <textarea id="n_observaciones" placeholder="Información adicional..."></textarea>
+            </label>
+          </section>
+
+          <div id="novedadMsg" class="msg full"></div>
+          <button class="primary full" type="submit">Guardar novedad</button>
+        </form>
+      </section>
+    </main>
+  `;
+
+  document.getElementById('backNovedad').onclick = () => renderPersonal();
+
+  document.getElementById('novedadForm').onsubmit = async e => {
+    e.preventDefault();
+
+    const msgEl = document.getElementById('novedadMsg');
+    msgEl.textContent = 'Guardando…';
+
+    const inicio = document.getElementById('n_inicio').value;
+    const fin = document.getElementById('n_fin').value;
+
+    if (fin < inicio) {
+      msgEl.textContent = 'La fecha fin no puede ser anterior a la fecha inicio.';
+      return;
+    }
+
+    const payload = {
+      user_id: user.id,
+      dni: document.getElementById('n_dni').value.trim(),
+      tipo: document.getElementById('n_tipo').value,
+      fecha_inicio: inicio,
+      fecha_fin: fin,
+      motivo: document.getElementById('n_motivo').value.trim(),
+      estado: document.getElementById('n_estado').value,
+      observaciones: document.getElementById('n_observaciones').value.trim()
+    };
+
+    const { error } = await supabase
+      .from('personal_novedades')
+      .insert(payload);
+
+    if (error) {
+      msgEl.textContent = error.message;
+      return;
+    }
+
+    await loadPersonal();
+    renderPersonal();
+  };
 }
 
 /* =========================================================
@@ -3616,10 +3765,24 @@ async function loadPersonal() {
   if (result.error) {
     console.error('Error personal:', result.error);
     personalRows = [];
-    return;
+  } else {
+    personalRows = result.data || [];
   }
 
-  personalRows = result.data || [];
+  const nov =
+    await supabase
+      .from('personal_novedades')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('fecha_inicio', { ascending: false })
+      .order('created_at', { ascending: false });
+
+  if (nov.error) {
+    console.error('Error personal_novedades:', nov.error);
+    novedadesRows = [];
+  } else {
+    novedadesRows = nov.data || [];
+  }
 }
 
 /* =========================================================
