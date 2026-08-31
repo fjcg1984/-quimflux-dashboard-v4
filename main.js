@@ -16,7 +16,7 @@ const app = document.getElementById('app');
 
 
 /* =========================================================
-   CAMPOS REGISTRO DIARIO
+   REGISTRO DIARIO
 ========================================================= */
 
 const fields = [
@@ -46,46 +46,25 @@ const fields = [
   ['observaciones', 'Observaciones', 'textarea']
 ];
 
-
 const today =
   new Date().toISOString().slice(0, 10);
 
-
-/* =========================================================
-   ESTADO DE LA APLICACIÓN
-========================================================= */
-
 let user = null;
-
 let rows = [];
-
 let inventoryRows = [];
-
 let tab = 'dashboard';
 
-
-/* =========================================================
-   METAS
-========================================================= */
+let editingInventoryId = null;
 
 let metas = {
-
   cumplimiento: 0.95,
-
   merma: 0.02,
-
   yield: 0.95,
-
   disponibilidad: 0.90,
-
   asistencia: 0.95,
-
   rechazo: 0.03,
-
   otif: 0.95,
-
   incidentes: 0
-
 };
 
 
@@ -94,7 +73,6 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
-
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -105,154 +83,90 @@ function esc(v = '') {
       "'": '&#039;'
     }[c])
   );
-
 }
-
 
 function n(v) {
-
   const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : 0;
-
+  return Number.isFinite(x) ? x : 0;
 }
 
-
 function pct(v) {
-
-  return (
-    n(v) * 100
-  ).toFixed(1) + '%';
-
+  return (n(v) * 100).toFixed(1) + '%';
 }
 
 
 /* =========================================================
-   KPI PRODUCCIÓN
+   KPI
 ========================================================= */
 
 function derive(r) {
 
   const p = n(r.programada);
-
   const q = n(r.producida);
-
   const mp = n(r.mp);
 
   const h = n(r.horas_turno);
-
   const stop = n(r.horas_paradas);
 
-  const pp =
-    n(r.personal_programado);
+  const pp = n(r.personal_programado);
+  const pa = n(r.personal_presente);
 
-  const pa =
-    n(r.personal_presente);
+  const rej = n(r.rechazadas);
 
-  const rej =
-    n(r.rechazadas);
-
-  const pedidos =
-    n(r.pedidos_programados);
-
-  const at =
-    n(r.pedidos_tiempo);
-
+  const pedidos = n(r.pedidos_programados);
+  const at = n(r.pedidos_tiempo);
 
   const merma =
-    mp
-      ? n(r.merma) / mp
-      : 0;
-
+    mp ? n(r.merma) / mp : 0;
 
   const yieldRate =
-    mp
-      ? q / mp
-      : 0;
-
+    mp ? q / mp : 0;
 
   const disponibilidad =
     h
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
+      ? Math.max(0, (h - stop) / h)
       : 0;
-
 
   const asistencia =
-    pp
-      ? pa / pp
-      : 0;
-
+    pp ? pa / pp : 0;
 
   const rechazo =
-    q
-      ? rej / q
-      : 0;
-
+    q ? rej / q : 0;
 
   const cumplimiento =
-    p
-      ? q / p
-      : 0;
-
+    p ? q / p : 0;
 
   const otif =
-    pedidos
-      ? at / pedidos
-      : 0;
-
+    pedidos ? at / pedidos : 0;
 
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
+    Math.max(0, 1 - rechazo);
 
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
       : 0;
 
-
   const energiaUnit =
     q
       ? n(r.energia) / q
       : 0;
 
-
   return {
-
     ...r,
-
     cumplimiento,
-
     merma,
-
     yieldRate,
-
     disponibilidad,
-
     asistencia,
-
     rechazo,
-
     oee,
-
     otif,
-
     costoUnitario,
-
     energiaUnit
-
   };
-
 }
 
 
@@ -263,51 +177,36 @@ function derive(r) {
 function empty() {
 
   return {
-
     fecha: today,
-
     turno: 'Mañana',
-
     producto: '',
-
     programada: 0,
-
     producida: 0,
-
     mp: 0,
-
     merma: 0,
 
     horas_turno: 8,
-
     horas_paradas: 0,
 
     personal_programado: 0,
-
     personal_presente: 0,
 
     rechazadas: 0,
 
     costo_produccion: 0,
-
     energia: 0,
-
     costo_mantenimiento: 0,
 
     incidentes: 0,
 
     pedidos_programados: 0,
-
     pedidos_tiempo: 0,
 
     reproceso: 0,
-
     no_conformidades: 0,
 
     observaciones: ''
-
   };
-
 }
 
 
@@ -318,7 +217,6 @@ function empty() {
 function renderAuth() {
 
   app.innerHTML = `
-
     <div class="auth">
 
       <div class="authCard">
@@ -335,11 +233,9 @@ function renderAuth() {
           Inicia sesión para acceder al dashboard.
         </p>
 
-
         <form id="authForm">
 
           <label>
-
             Correo
 
             <input
@@ -348,12 +244,9 @@ function renderAuth() {
               required
               autocomplete="email"
             >
-
           </label>
 
-
           <label>
-
             Contraseña
 
             <input
@@ -363,32 +256,21 @@ function renderAuth() {
               required
               autocomplete="current-password"
             >
-
           </label>
 
-
-          <div
-            id="authMsg"
-            class="msg">
-          </div>
-
+          <div id="authMsg" class="msg"></div>
 
           <button
             class="primary"
             type="submit">
-
             Entrar
-
           </button>
-
 
           <button
             class="link"
             id="signup"
             type="button">
-
             Crear una cuenta
-
           </button>
 
         </form>
@@ -396,21 +278,13 @@ function renderAuth() {
       </div>
 
     </div>
-
   `;
 
-
   const emailInput =
-    document.getElementById(
-      'email'
-    );
-
+    document.getElementById('email');
 
   const passwordInput =
-    document.getElementById(
-      'password'
-    );
-
+    document.getElementById('password');
 
   document
     .getElementById('authForm')
@@ -418,51 +292,31 @@ function renderAuth() {
 
       e.preventDefault();
 
-
       const msg =
-        document.getElementById(
-          'authMsg'
-        );
-
+        document.getElementById('authMsg');
 
       msg.textContent =
         'Procesando…';
-
 
       const {
         data,
         error
       } =
-        await supabase.auth
-          .signInWithPassword({
-
-            email:
-              emailInput.value.trim(),
-
-            password:
-              passwordInput.value
-
-          });
-
+        await supabase.auth.signInWithPassword({
+          email: emailInput.value.trim(),
+          password: passwordInput.value
+        });
 
       if (error) {
-
-        msg.textContent =
-          error.message;
-
+        msg.textContent = error.message;
         return;
-
       }
 
-
-      user =
-        data.user;
-
+      user = data.user;
 
       await load();
 
       render();
-
     };
 
 
@@ -470,20 +324,14 @@ function renderAuth() {
     .getElementById('signup')
     .onclick = async () => {
 
-
       const msg =
-        document.getElementById(
-          'authMsg'
-        );
-
+        document.getElementById('authMsg');
 
       const email =
         emailInput.value.trim();
 
-
       const password =
         passwordInput.value;
-
 
       if (!email || !password) {
 
@@ -491,27 +339,19 @@ function renderAuth() {
           'Ingresa correo y contraseña.';
 
         return;
-
       }
-
 
       msg.textContent =
         'Creando cuenta…';
-
 
       const {
         data,
         error
       } =
-        await supabase.auth
-          .signUp({
-
-            email,
-
-            password
-
-          });
-
+        await supabase.auth.signUp({
+          email,
+          password
+        });
 
       if (error) {
 
@@ -519,19 +359,13 @@ function renderAuth() {
           error.message;
 
         return;
-
       }
-
 
       msg.textContent =
         data.session
-
           ? 'Cuenta creada correctamente.'
-
           : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
-
     };
-
 }
 
 
@@ -546,56 +380,37 @@ function render() {
     renderAuth();
 
     return;
-
   }
 
-
   const nav = [
-
     ['dashboard', 'Dashboard'],
-
     ['registro', 'Registro Diario'],
-
     ['resumen', 'Resumen Ejecutivo'],
-
     ['costos', 'Costos'],
-
     ['mantenimiento', 'Mantenimiento'],
-
     ['inventario', 'Inventario'],
-
     ['personal', 'Personal'],
-
     ['ssoma', 'SSOMA']
-
   ];
-
 
   app.innerHTML = `
 
     <header>
 
       <div>
-
         <b>QUIMFLUX</b>
-
         <span>
           · Administrador de Planta V4
         </span>
-
       </div>
-
 
       <button
         id="logout"
         class="logout">
-
         Salir
-
       </button>
 
     </header>
-
 
     <nav>
 
@@ -603,95 +418,65 @@ function render() {
 
         <button
           data-tab="${x[0]}"
-          class="${
-            tab === x[0]
-              ? 'active'
-              : ''
-          }">
-
+          class="${tab === x[0] ? 'active' : ''}">
           ${x[1]}
-
         </button>
 
       `).join('')}
 
     </nav>
 
-
     <div id="content"></div>
-
   `;
 
 
   document
-    .querySelectorAll(
-      'nav button'
-    )
+    .querySelectorAll('nav button')
     .forEach(button => {
 
-      button.onclick =
-        () => {
+      button.onclick = () => {
 
-          tab =
-            button.dataset.tab;
+        tab =
+          button.dataset.tab;
 
-          render();
-
-        };
-
+        render();
+      };
     });
 
 
   document
     .getElementById('logout')
-    .onclick =
-      async () => {
+    .onclick = async () => {
 
-        await supabase.auth
-          .signOut();
+      await supabase.auth.signOut();
 
-        user = null;
+      user = null;
+      rows = [];
+      inventoryRows = [];
 
-        rows = [];
-
-        inventoryRows = [];
-
-        render();
-
-      };
+      render();
+    };
 
 
   if (tab === 'dashboard') {
 
     renderDashboard();
 
-  }
-
-  else if (tab === 'registro') {
+  } else if (tab === 'registro') {
 
     renderForm();
 
-  }
-
-  else if (tab === 'inventario') {
+  } else if (tab === 'inventario') {
 
     renderInventory();
 
-  }
-
-  else {
+  } else {
 
     renderPlaceholder(
-
-      nav.find(
-        x => x[0] === tab
-      )?.[1]
+      nav.find(x => x[0] === tab)?.[1]
       || 'QUIMFLUX'
-
     );
-
   }
-
 }
 
 
@@ -704,76 +489,49 @@ function renderDashboard() {
   const d =
     rows.map(derive);
 
-
   const sum = key =>
     d.reduce(
-      (s, r) =>
-        s + n(r[key]),
+      (s, r) => s + n(r[key]),
       0
     );
 
+  const programada = sum('programada');
+  const producida = sum('producida');
+  const mp = sum('mp');
+  const merma = sum('merma');
 
-  const programada =
-    sum('programada');
-
-
-  const producida =
-    sum('producida');
-
-
-  const mp =
-    sum('mp');
-
-
-  const merma =
-    sum('merma');
-
-
-  const horas =
-    sum('horas_turno');
-
-
-  const paradas =
-    sum('horas_paradas');
-
+  const horas = sum('horas_turno');
+  const paradas = sum('horas_paradas');
 
   const personalProgramado =
     sum('personal_programado');
 
-
   const personalPresente =
     sum('personal_presente');
-
 
   const rechazadas =
     sum('rechazadas');
 
-
   const pedidos =
     sum('pedidos_programados');
 
-
   const pedidosTiempo =
     sum('pedidos_tiempo');
-
 
   const cumplimiento =
     programada
       ? producida / programada
       : 0;
 
-
   const yieldRate =
     mp
       ? producida / mp
       : 0;
 
-
   const mermaRate =
     mp
       ? merma / mp
       : 0;
-
 
   const disponibilidad =
     horas
@@ -783,54 +541,42 @@ function renderDashboard() {
         )
       : 0;
 
-
   const asistencia =
     personalProgramado
       ? personalPresente /
         personalProgramado
       : 0;
 
-
   const rechazo =
     producida
       ? rechazadas / producida
       : 0;
-
 
   const otif =
     pedidos
       ? pedidosTiempo / pedidos
       : 0;
 
-
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
-
+    Math.max(0, 1 - rechazo);
 
   const costo =
     sum('costo_produccion');
 
-
   const mantenimiento =
     sum('costo_mantenimiento');
-
 
   const costoUnitario =
     producida
       ? costo / producida
       : 0;
 
-
   const energia =
     producida
       ? sum('energia') / producida
       : 0;
-
 
   const incidentes =
     sum('incidentes');
@@ -847,12 +593,10 @@ function renderDashboard() {
         ? value <= target
         : value >= target;
 
-
     const critical =
       invert
         ? value > target * 1.5
         : value < target * 0.85;
-
 
     return {
 
@@ -863,16 +607,13 @@ function renderDashboard() {
             ? 'OK'
             : 'REVISAR',
 
-
       cls:
         critical
           ? 'critical'
           : ok
             ? 'ok'
             : 'warn'
-
     };
-
   }
 
 
@@ -942,10 +683,7 @@ function renderDashboard() {
     [
       'OEE',
       pct(oee),
-      status(
-        oee,
-        0.80
-      )
+      status(oee, 0.80)
     ],
 
     [
@@ -990,7 +728,6 @@ function renderDashboard() {
         true
       )
     ]
-
   ];
 
 
@@ -1015,7 +752,6 @@ function renderDashboard() {
 
         </div>
 
-
         <span class="online">
           ● EN LÍNEA
         </span>
@@ -1033,28 +769,19 @@ function renderDashboard() {
               ${c[0]}
             </small>
 
-
             <strong>
               ${c[1]}
             </strong>
 
-
             ${
               c.length > 2
-
                 ? `
-
                   <span
                     class="badge ${c[2].cls}">
-
                     ${c[2].label}
-
                   </span>
-
                 `
-
                 : ''
-
             }
 
           </div>
@@ -1095,7 +822,6 @@ function renderDashboard() {
                   <thead>
 
                     <tr>
-
                       <th>Fecha</th>
                       <th>Turno</th>
                       <th>Producto</th>
@@ -1104,7 +830,6 @@ function renderDashboard() {
                       <th>Merma</th>
                       <th>OEE</th>
                       <th>Acción</th>
-
                     </tr>
 
                   </thead>
@@ -1148,7 +873,6 @@ function renderDashboard() {
                               ${pct(r.oee)}
                             </td>
 
-
                             <td>
 
                               <button
@@ -1163,9 +887,7 @@ function renderDashboard() {
                                   font-weight:600;
                                   cursor:pointer;
                                 ">
-
                                 Eliminar
-
                               </button>
 
                             </td>
@@ -1202,27 +924,22 @@ function renderDashboard() {
       </section>
 
     </main>
-
   `;
 
 
   document
-    .querySelectorAll(
-      '[data-delete-id]'
-    )
+    .querySelectorAll('[data-delete-id]')
     .forEach(button => {
 
-      button.onclick =
-        () => {
+      button.onclick = () => {
 
-          deleteRecord(
-            button.dataset.deleteId
-          );
+        deleteRecord(
+          button.dataset.deleteId
+        );
 
-        };
+      };
 
     });
-
 }
 
 
@@ -1239,9 +956,7 @@ async function deleteRecord(id) {
     );
 
     return;
-
   }
-
 
   const row =
     rows.find(
@@ -1250,50 +965,25 @@ async function deleteRecord(id) {
         String(id)
     );
 
-
   const detail =
     row
-
-      ? `${row.fecha} · ${row.turno} · ${
-          row.producto ||
-          'Sin producto'
-        }`
-
+      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
       : 'este registro';
-
 
   const confirmed =
     confirm(
-
       `¿Eliminar ${detail}?\n\n` +
       `Esta acción no se puede deshacer.`
-
     );
 
+  if (!confirmed) return;
 
-  if (!confirmed) {
-
-    return;
-
-  }
-
-
-  const {
-    error
-  } =
+  const { error } =
     await supabase
-
       .from('daily_records')
-
       .delete()
-
       .eq('id', id)
-
-      .eq(
-        'user_id',
-        user.id
-      );
-
+      .eq('user_id', user.id);
 
   if (error) {
 
@@ -1303,26 +993,21 @@ async function deleteRecord(id) {
     );
 
     return;
-
   }
-
 
   await load();
 
   render();
-
 }
 
 
 /* =========================================================
-   REGISTRO DIARIO
+   FORMULARIO REGISTRO DIARIO
 ========================================================= */
 
 function renderForm() {
 
-  const r =
-    empty();
-
+  const r = empty();
 
   document.getElementById(
     'content'
@@ -1334,17 +1019,14 @@ function renderForm() {
         Registro Diario
       </h1>
 
-
       <p>
         Ingresa los datos del turno.
         Los KPI se calculan automáticamente.
       </p>
 
-
       <form
         id="daily"
         class="formGrid">
-
 
         <section>
 
@@ -1353,10 +1035,8 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(0,7)
-            .map(
-              f => control(f,r)
-            )
+            .slice(0, 7)
+            .map(f => control(f, r))
             .join('')}
 
         </section>
@@ -1369,10 +1049,8 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(7,12)
-            .map(
-              f => control(f,r)
-            )
+            .slice(7, 12)
+            .map(f => control(f, r))
             .join('')}
 
         </section>
@@ -1385,10 +1063,8 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(12,15)
-            .map(
-              f => control(f,r)
-            )
+            .slice(12, 15)
+            .map(f => control(f, r))
             .join('')}
 
         </section>
@@ -1402,9 +1078,7 @@ function renderForm() {
 
           ${fields
             .slice(15)
-            .map(
-              f => control(f,r)
-            )
+            .map(f => control(f, r))
             .join('')}
 
         </section>
@@ -1424,107 +1098,80 @@ function renderForm() {
 
         </button>
 
-
       </form>
 
     </main>
-
   `;
 
 
-  document
-    .getElementById('daily')
-    .onsubmit =
-      async e => {
+  document.getElementById(
+    'daily'
+  ).onsubmit = async e => {
 
-        e.preventDefault();
+    e.preventDefault();
 
+    const msg =
+      document.getElementById(
+        'saveMsg'
+      );
 
-        const msg =
+    const payload = {
+      user_id: user.id
+    };
+
+    fields.forEach(
+      ([key, , type]) => {
+
+        const el =
           document.getElementById(
-            'saveMsg'
+            'f_' + key
           );
 
+        payload[key] =
+          type === 'number'
+            ? (
+                el.value === ''
+                  ? null
+                  : n(el.value)
+              )
+            : el.value;
+      }
+    );
 
-        const payload = {
+    msg.textContent =
+      'Guardando…';
 
-          user_id:
-            user.id
+    const { error } =
+      await supabase
+        .from('daily_records')
+        .insert(payload);
 
-        };
+    if (error) {
 
+      msg.textContent =
+        error.message;
 
-        fields.forEach(
-          ([key,,type]) => {
+      return;
+    }
 
-            const el =
-              document.getElementById(
-                'f_' + key
-              );
+    msg.textContent =
+      'Registro guardado correctamente.';
 
+    await load();
 
-            payload[key] =
-
-              type === 'number'
-
-                ? (
-                    el.value === ''
-                      ? null
-                      : n(el.value)
-                  )
-
-                : el.value;
-
-          }
-        );
-
-
-        msg.textContent =
-          'Guardando…';
-
-
-        const {
-          error
-        } =
-          await supabase
-
-            .from('daily_records')
-
-            .insert(payload);
-
-
-        if (error) {
-
-          msg.textContent =
-            error.message;
-
-          return;
-
-        }
-
-
-        msg.textContent =
-          'Registro guardado correctamente.';
-
-
-        await load();
-
-
-        setTimeout(
-          () => render(),
-          400
-        );
-
-      };
-
+    setTimeout(
+      () => render(),
+      400
+    );
+  };
 }
 
 
 /* =========================================================
-   CONTROL FORMULARIO
+   CONTROLES REGISTRO DIARIO
 ========================================================= */
 
-function control(f,r) {
+function control(f, r) {
 
   const [
     key,
@@ -1532,30 +1179,23 @@ function control(f,r) {
     type
   ] = f;
 
-
   let input;
-
 
   if (type === 'select') {
 
     input = `
 
-      <select
-        id="f_${key}">
+      <select id="f_${key}">
 
         <option>Mañana</option>
-
         <option>Tarde</option>
-
         <option>Noche</option>
 
       </select>
 
     `;
 
-  }
-
-  else if (type === 'textarea') {
+  } else if (type === 'textarea') {
 
     input = `
 
@@ -1565,9 +1205,7 @@ function control(f,r) {
 
     `;
 
-  }
-
-  else {
+  } else {
 
     input = `
 
@@ -1575,17 +1213,13 @@ function control(f,r) {
         id="f_${key}"
         type="${type}"
         value="${esc(r[key])}"
-        ${
-          type === 'number'
-            ? 'step="any"'
-            : ''
-        }
+        ${type === 'number'
+          ? 'step="any"'
+          : ''}
       >
 
     `;
-
   }
-
 
   return `
 
@@ -1598,7 +1232,6 @@ function control(f,r) {
     </label>
 
   `;
-
 }
 
 
@@ -1607,6 +1240,19 @@ function control(f,r) {
 ========================================================= */
 
 function renderInventory() {
+
+  const totalItems =
+    inventoryRows.length;
+
+  const lowStock =
+    inventoryRows.filter(
+      r => n(r.stock_minimo) > 0 &&
+           n(r.stock_inicial) +
+           n(r.entradas) -
+           n(r.salidas) <=
+           n(r.stock_minimo)
+    ).length;
+
 
   document.getElementById(
     'content'
@@ -1623,7 +1269,8 @@ function renderInventory() {
           </h1>
 
           <p>
-            Registra y controla las existencias de materiales y productos.
+            Registra entradas, salidas y stock
+            de materiales y productos.
           </p>
 
         </div>
@@ -1635,10 +1282,56 @@ function renderInventory() {
       </div>
 
 
+      <div class="cards">
+
+        <div class="card">
+
+          <small>
+            Ítems registrados
+          </small>
+
+          <strong>
+            ${totalItems}
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Stock bajo
+          </small>
+
+          <strong>
+            ${lowStock}
+          </strong>
+
+          <span class="badge ${
+            lowStock
+              ? 'critical'
+              : 'ok'
+          }">
+
+            ${
+              lowStock
+                ? 'REVISAR'
+                : 'OK'
+            }
+
+          </span>
+
+        </div>
+
+      </div>
+
+
       <section class="panel">
 
         <h2>
-          Registrar inventario
+          ${editingInventoryId
+            ? 'Editar inventario'
+            : 'Registrar inventario'}
         </h2>
 
 
@@ -1683,12 +1376,12 @@ function renderInventory() {
 
             <label>
 
-              Producto / Material
+              Material / Producto
 
               <input
-                id="inv_producto"
+                id="inv_material"
                 type="text"
-                placeholder="Nombre del material"
+                placeholder="Ej. Carbonato de calcio"
                 required
               >
 
@@ -1699,8 +1392,7 @@ function renderInventory() {
 
               Categoría
 
-              <select
-                id="inv_categoria">
+              <select id="inv_categoria">
 
                 <option value="">
                   Seleccionar
@@ -1719,15 +1411,11 @@ function renderInventory() {
                 </option>
 
                 <option>
-                  Envase
-                </option>
-
-                <option>
                   Repuesto
                 </option>
 
                 <option>
-                  EPP
+                  Envase / embalaje
                 </option>
 
                 <option>
@@ -1741,26 +1429,18 @@ function renderInventory() {
 
             <label>
 
-              Unidad
+              Unidad de medida
 
-              <select
-                id="inv_unidad">
+              <select id="inv_unidad">
 
                 <option>kg</option>
-
-                <option>L</option>
-
+                <option>t</option>
+                <option>g</option>
+                <option>litros</option>
                 <option>unidades</option>
-
                 <option>cajas</option>
-
-                <option>sacos</option>
-
-                <option>galones</option>
-
-                <option>metros</option>
-
-                <option>otro</option>
+                <option>bolsas</option>
+                <option>otros</option>
 
               </select>
 
@@ -1772,7 +1452,7 @@ function renderInventory() {
           <section>
 
             <h2>
-              Existencias
+              Movimiento
             </h2>
 
 
@@ -1783,8 +1463,8 @@ function renderInventory() {
               <input
                 id="inv_stock_inicial"
                 type="number"
-                min="0"
                 step="any"
+                min="0"
                 value="0"
               >
 
@@ -1798,8 +1478,8 @@ function renderInventory() {
               <input
                 id="inv_entradas"
                 type="number"
-                min="0"
                 step="any"
+                min="0"
                 value="0"
               >
 
@@ -1808,13 +1488,13 @@ function renderInventory() {
 
             <label>
 
-              Salidas / Consumo
+              Salidas
 
               <input
                 id="inv_salidas"
                 type="number"
-                min="0"
                 step="any"
+                min="0"
                 value="0"
               >
 
@@ -1828,12 +1508,42 @@ function renderInventory() {
               <input
                 id="inv_stock_minimo"
                 type="number"
-                min="0"
                 step="any"
+                min="0"
                 value="0"
               >
 
             </label>
+
+
+            <div
+              class="panel"
+              style="margin-top:15px;">
+
+              <small>
+                STOCK ACTUAL
+              </small>
+
+              <strong
+                id="inv_stock_actual"
+                style="
+                  display:block;
+                  font-size:28px;
+                  margin-top:8px;
+                ">
+                0
+              </strong>
+
+            </div>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Observaciones
+            </h2>
 
 
             <label>
@@ -1842,7 +1552,7 @@ function renderInventory() {
 
               <textarea
                 id="inv_observaciones"
-                placeholder="Observaciones del inventario">
+                placeholder="Detalle del movimiento o ubicación...">
               </textarea>
 
             </label>
@@ -1856,14 +1566,43 @@ function renderInventory() {
           </div>
 
 
-          <button
-            class="primary full"
-            type="submit">
+          <div
+            class="full"
+            style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
 
-            Guardar inventario
+            <button
+              class="primary"
+              type="submit">
 
-          </button>
+              ${
+                editingInventoryId
+                  ? 'Actualizar inventario'
+                  : 'Guardar inventario'
+              }
 
+            </button>
+
+
+            ${
+              editingInventoryId
+                ? `
+                  <button
+                    id="cancelInventory"
+                    type="button"
+                    class="link">
+
+                    Cancelar edición
+
+                  </button>
+                `
+                : ''
+            }
+
+          </div>
 
         </form>
 
@@ -1877,11 +1616,12 @@ function renderInventory() {
           <div>
 
             <h2>
-              Existencias registradas
+              Inventario registrado
             </h2>
 
             <p>
-              Stock actual = Stock inicial + Entradas − Salidas
+              Stock actual =
+              stock inicial + entradas - salidas.
             </p>
 
           </div>
@@ -1889,48 +1629,331 @@ function renderInventory() {
         </div>
 
 
-        <div id="inventoryTable"></div>
+        ${
+          inventoryRows.length
+
+            ? `
+
+              <div class="tableWrap">
+
+                <table>
+
+                  <thead>
+
+                    <tr>
+
+                      <th>Fecha</th>
+                      <th>Código</th>
+                      <th>Material</th>
+                      <th>Categoría</th>
+                      <th>Unidad</th>
+                      <th>Inicial</th>
+                      <th>Entradas</th>
+                      <th>Salidas</th>
+                      <th>Stock actual</th>
+                      <th>Mínimo</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody>
+
+                    ${
+                      inventoryRows
+                        .map(r => {
+
+                          const stock =
+                            n(r.stock_inicial) +
+                            n(r.entradas) -
+                            n(r.salidas);
+
+                          const minimo =
+                            n(r.stock_minimo);
+
+                          const low =
+                            minimo > 0 &&
+                            stock <= minimo;
+
+                          return `
+
+                            <tr>
+
+                              <td>
+                                ${esc(r.fecha)}
+                              </td>
+
+                              <td>
+                                ${esc(r.codigo || '')}
+                              </td>
+
+                              <td>
+                                ${esc(r.material)}
+                              </td>
+
+                              <td>
+                                ${esc(r.categoria || '')}
+                              </td>
+
+                              <td>
+                                ${esc(r.unidad)}
+                              </td>
+
+                              <td>
+                                ${n(r.stock_inicial)}
+                              </td>
+
+                              <td>
+                                ${n(r.entradas)}
+                              </td>
+
+                              <td>
+                                ${n(r.salidas)}
+                              </td>
+
+                              <td>
+                                <strong>
+                                  ${stock}
+                                </strong>
+                              </td>
+
+                              <td>
+                                ${minimo}
+                              </td>
+
+                              <td>
+
+                                <span
+                                  class="badge ${
+                                    low
+                                      ? 'critical'
+                                      : 'ok'
+                                  }">
+
+                                  ${
+                                    low
+                                      ? 'STOCK BAJO'
+                                      : 'OK'
+                                  }
+
+                                </span>
+
+                              </td>
+
+                              <td>
+
+                                <button
+                                  type="button"
+                                  data-edit-inventory="${esc(r.id)}"
+                                  style="
+                                    background:#1d4ed8;
+                                    color:#fff;
+                                    border:0;
+                                    border-radius:8px;
+                                    padding:7px 10px;
+                                    font-weight:600;
+                                    margin-right:5px;
+                                  ">
+
+                                  Editar
+
+                                </button>
+
+
+                                <button
+                                  type="button"
+                                  data-delete-inventory="${esc(r.id)}"
+                                  style="
+                                    background:#7f1d1d;
+                                    color:#fff;
+                                    border:0;
+                                    border-radius:8px;
+                                    padding:7px 10px;
+                                    font-weight:600;
+                                  ">
+
+                                  Eliminar
+
+                                </button>
+
+                              </td>
+
+                            </tr>
+
+                          `;
+                        })
+                        .join('')
+                    }
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            `
+
+            : `
+
+              <div class="empty">
+
+                Todavía no hay inventario registrado.
+
+                Utiliza el formulario superior
+                para crear el primer registro.
+
+              </div>
+
+            `
+        }
 
       </section>
 
-
     </main>
-
   `;
 
 
+  updateInventoryStockPreview();
+
+
+  [
+    'inv_stock_inicial',
+    'inv_entradas',
+    'inv_salidas'
+  ].forEach(id => {
+
+    document
+      .getElementById(id)
+      .addEventListener(
+        'input',
+        updateInventoryStockPreview
+      );
+
+  });
+
+
   document
-    .getElementById(
-      'inventoryForm'
-    )
+    .getElementById('inventoryForm')
     .onsubmit =
       saveInventory;
 
 
-  renderInventoryTable();
+  document
+    .querySelectorAll(
+      '[data-edit-inventory]'
+    )
+    .forEach(button => {
 
+      button.onclick = () => {
+
+        editInventory(
+          button.dataset.editInventory
+        );
+
+      };
+
+    });
+
+
+  document
+    .querySelectorAll(
+      '[data-delete-inventory]'
+    )
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        deleteInventory(
+          button.dataset.deleteInventory
+        );
+
+      };
+
+    });
+
+
+  const cancel =
+    document.getElementById(
+      'cancelInventory'
+    );
+
+  if (cancel) {
+
+    cancel.onclick = () => {
+
+      editingInventoryId = null;
+
+      renderInventory();
+
+    };
+  }
 }
 
 
 /* =========================================================
-   GUARDAR INVENTARIO
+   PREVISUALIZAR STOCK
+========================================================= */
+
+function updateInventoryStockPreview() {
+
+  const inicial =
+    n(
+      document.getElementById(
+        'inv_stock_inicial'
+      )?.value
+    );
+
+  const entradas =
+    n(
+      document.getElementById(
+        'inv_entradas'
+      )?.value
+    );
+
+  const salidas =
+    n(
+      document.getElementById(
+        'inv_salidas'
+      )?.value
+    );
+
+  const stock =
+    inicial +
+    entradas -
+    salidas;
+
+  const output =
+    document.getElementById(
+      'inv_stock_actual'
+    );
+
+  if (output) {
+
+    output.textContent =
+      stock;
+  }
+}
+
+
+/* =========================================================
+   GUARDAR / ACTUALIZAR INVENTARIO
 ========================================================= */
 
 async function saveInventory(e) {
 
   e.preventDefault();
 
-
   const msg =
     document.getElementById(
       'inventoryMsg'
     );
 
-
   const payload = {
 
-    user_id:
-      user.id,
+    user_id: user.id,
 
     fecha:
       document.getElementById(
@@ -1940,17 +1963,17 @@ async function saveInventory(e) {
     codigo:
       document.getElementById(
         'inv_codigo'
-      ).value.trim(),
+      ).value.trim() || null,
 
-    producto:
+    material:
       document.getElementById(
-        'inv_producto'
+        'inv_material'
       ).value.trim(),
 
     categoria:
       document.getElementById(
         'inv_categoria'
-      ).value,
+      ).value || null,
 
     unidad:
       document.getElementById(
@@ -1988,18 +2011,16 @@ async function saveInventory(e) {
     observaciones:
       document.getElementById(
         'inv_observaciones'
-      ).value.trim()
-
+      ).value.trim() || null
   };
 
 
-  if (!payload.producto) {
+  if (!payload.material) {
 
     msg.textContent =
-      'Debes ingresar el producto o material.';
+      'Debes ingresar el material o producto.';
 
     return;
-
   }
 
 
@@ -2014,7 +2035,6 @@ async function saveInventory(e) {
       'Los valores de inventario no pueden ser negativos.';
 
     return;
-
   }
 
 
@@ -2022,24 +2042,44 @@ async function saveInventory(e) {
     'Guardando inventario…';
 
 
-  const {
-    error
-  } =
-    await supabase
-      .from('inventory')
-      .insert(payload);
+  let result;
 
 
-  if (error) {
+  if (editingInventoryId) {
 
-    msg.textContent =
-      'No se pudo guardar: ' +
-      error.message;
+    result =
+      await supabase
+        .from('inventory')
+        .update(payload)
+        .eq(
+          'id',
+          editingInventoryId
+        )
+        .eq(
+          'user_id',
+          user.id
+        );
 
-    return;
+  } else {
 
+    result =
+      await supabase
+        .from('inventory')
+        .insert(payload);
   }
 
+
+  if (result.error) {
+
+    msg.textContent =
+      'Error: ' +
+      result.error.message;
+
+    return;
+  }
+
+
+  editingInventoryId = null;
 
   msg.textContent =
     'Inventario guardado correctamente.';
@@ -2047,295 +2087,107 @@ async function saveInventory(e) {
 
   await loadInventory();
 
-
-  renderInventoryTable();
-
-
-  document
-    .getElementById(
-      'inventoryForm'
-    )
-    .reset();
-
-
-  document.getElementById(
-    'inv_fecha'
-  ).value = today;
-
-
-  document.getElementById(
-    'inv_stock_inicial'
-  ).value = 0;
-
-
-  document.getElementById(
-    'inv_entradas'
-  ).value = 0;
-
-
-  document.getElementById(
-    'inv_salidas'
-  ).value = 0;
-
-
-  document.getElementById(
-    'inv_stock_minimo'
-  ).value = 0;
-
+  renderInventory();
 }
 
 
 /* =========================================================
-   TABLA INVENTARIO
+   EDITAR INVENTARIO
 ========================================================= */
 
-function renderInventoryTable() {
+function editInventory(id) {
 
-  const container =
-    document.getElementById(
-      'inventoryTable'
+  const row =
+    inventoryRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
     );
 
 
-  if (!container) {
+  if (!row) {
+
+    alert(
+      'No se encontró el registro.'
+    );
 
     return;
-
   }
 
 
-  if (!inventoryRows.length) {
+  editingInventoryId =
+    row.id;
 
-    container.innerHTML = `
 
-      <div class="empty">
+  renderInventory();
 
-        Todavía no hay registros de inventario.
 
-        Usa el formulario de arriba
-        para registrar el primero.
+  document.getElementById(
+    'inv_fecha'
+  ).value =
+    row.fecha || today;
 
-      </div>
 
-    `;
+  document.getElementById(
+    'inv_codigo'
+  ).value =
+    row.codigo || '';
 
-    return;
 
-  }
+  document.getElementById(
+    'inv_material'
+  ).value =
+    row.material || '';
 
 
-  container.innerHTML = `
+  document.getElementById(
+    'inv_categoria'
+  ).value =
+    row.categoria || '';
 
-    <div class="tableWrap">
 
-      <table>
+  document.getElementById(
+    'inv_unidad'
+  ).value =
+    row.unidad || 'kg';
 
-        <thead>
 
-          <tr>
+  document.getElementById(
+    'inv_stock_inicial'
+  ).value =
+    n(row.stock_inicial);
 
-            <th>Fecha</th>
 
-            <th>Código</th>
+  document.getElementById(
+    'inv_entradas'
+  ).value =
+    n(row.entradas);
 
-            <th>Producto</th>
 
-            <th>Categoría</th>
+  document.getElementById(
+    'inv_salidas'
+  ).value =
+    n(row.salidas);
 
-            <th>Unidad</th>
 
-            <th>Inicial</th>
+  document.getElementById(
+    'inv_stock_minimo'
+  ).value =
+    n(row.stock_minimo);
 
-            <th>Entradas</th>
 
-            <th>Salidas</th>
+  document.getElementById(
+    'inv_observaciones'
+  ).value =
+    row.observaciones || '';
 
-            <th>Stock actual</th>
 
-            <th>Mínimo</th>
+  updateInventoryStockPreview();
 
-            <th>Estado</th>
-
-            <th>Acción</th>
-
-          </tr>
-
-        </thead>
-
-
-        <tbody>
-
-          ${
-            inventoryRows
-              .map(item => {
-
-                const stockActual =
-
-                  n(
-                    item.stock_inicial
-                  ) +
-
-                  n(
-                    item.entradas
-                  ) -
-
-                  n(
-                    item.salidas
-                  );
-
-
-                let estado;
-
-                let clase;
-
-
-                if (stockActual <= 0) {
-
-                  estado =
-                    'AGOTADO';
-
-                  clase =
-                    'critical';
-
-                }
-
-                else if (
-                  stockActual <=
-                  n(item.stock_minimo)
-                ) {
-
-                  estado =
-                    'STOCK BAJO';
-
-                  clase =
-                    'warn';
-
-                }
-
-                else {
-
-                  estado =
-                    'OK';
-
-                  clase =
-                    'ok';
-
-                }
-
-
-                return `
-
-                  <tr>
-
-                    <td>
-                      ${esc(item.fecha)}
-                    </td>
-
-                    <td>
-                      ${esc(item.codigo || '')}
-                    </td>
-
-                    <td>
-                      ${esc(item.producto)}
-                    </td>
-
-                    <td>
-                      ${esc(item.categoria || '')}
-                    </td>
-
-                    <td>
-                      ${esc(item.unidad)}
-                    </td>
-
-                    <td>
-                      ${n(item.stock_inicial)}
-                    </td>
-
-                    <td>
-                      ${n(item.entradas)}
-                    </td>
-
-                    <td>
-                      ${n(item.salidas)}
-                    </td>
-
-                    <td>
-                      <strong>
-                        ${stockActual}
-                      </strong>
-                    </td>
-
-                    <td>
-                      ${n(item.stock_minimo)}
-                    </td>
-
-                    <td>
-
-                      <span
-                        class="badge ${clase}">
-
-                        ${estado}
-
-                      </span>
-
-                    </td>
-
-                    <td>
-
-                      <button
-                        type="button"
-                        data-inventory-delete="${esc(item.id)}"
-                        style="
-                          background:#7f1d1d;
-                          color:#fff;
-                          border:0;
-                          border-radius:8px;
-                          padding:7px 10px;
-                          font-weight:600;
-                          cursor:pointer;
-                        ">
-
-                        Eliminar
-
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                `;
-
-              })
-              .join('')
-          }
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-  `;
-
-
-  document
-    .querySelectorAll(
-      '[data-inventory-delete]'
-    )
-    .forEach(button => {
-
-      button.onclick =
-        () => {
-
-          deleteInventory(
-            button.dataset
-              .inventoryDelete
-          );
-
-        };
-
-    });
-
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
 }
 
 
@@ -2345,7 +2197,7 @@ function renderInventoryTable() {
 
 async function deleteInventory(id) {
 
-  const item =
+  const row =
     inventoryRows.find(
       r =>
         String(r.id) ===
@@ -2353,67 +2205,91 @@ async function deleteInventory(id) {
     );
 
 
-  if (!item) {
+  if (!row) {
 
     alert(
       'No se encontró el registro.'
     );
 
     return;
-
   }
 
 
   const confirmed =
     confirm(
-
-      `¿Eliminar el inventario de "${item.producto}"?\n\n` +
+      `¿Eliminar "${row.material}"?\n\n` +
       `Esta acción no se puede deshacer.`
-
     );
 
 
-  if (!confirmed) {
-
-    return;
-
-  }
+  if (!confirmed) return;
 
 
-  const {
-    error
-  } =
+  const { error } =
     await supabase
-
       .from('inventory')
-
       .delete()
-
       .eq('id', id)
-
-      .eq(
-        'user_id',
-        user.id
-      );
+      .eq('user_id', user.id);
 
 
   if (error) {
 
     alert(
-      'No se pudo eliminar:\n' +
+      'No se pudo eliminar el inventario:\n' +
       error.message
     );
 
     return;
-
   }
 
 
   await loadInventory();
 
+  renderInventory();
+}
 
-  renderInventoryTable();
 
+/* =========================================================
+   CARGAR INVENTARIO
+========================================================= */
+
+async function loadInventory() {
+
+  const result =
+    await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_id', user.id)
+      .order(
+        'fecha',
+        {
+          ascending: false
+        }
+      )
+      .order(
+        'created_at',
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      'Error cargando inventario:',
+      result.error
+    );
+
+    inventoryRows = [];
+
+    return;
+  }
+
+
+  inventoryRows =
+    result.data || [];
 }
 
 
@@ -2433,7 +2309,6 @@ function renderPlaceholder(title) {
         ${esc(title)}
       </h1>
 
-
       <section class="panel">
 
         <p>
@@ -2442,11 +2317,8 @@ function renderPlaceholder(title) {
           de Supabase en la siguiente fase.
         </p>
 
-
         <span class="badge ok">
-
           Módulo preparado
-
         </span>
 
       </section>
@@ -2454,32 +2326,19 @@ function renderPlaceholder(title) {
     </main>
 
   `;
-
 }
 
 
 /* =========================================================
-   CARGAR REGISTROS DIARIOS
+   CARGAR DATOS
 ========================================================= */
 
 async function load() {
 
-  if (!user) {
-
-    rows = [];
-
-    return;
-
-  }
-
-
   const r =
     await supabase
-
       .from('daily_records')
-
       .select('*')
-
       .order(
         'fecha',
         {
@@ -2493,34 +2352,26 @@ async function load() {
     rows =
       r.data || [];
 
-  }
-
-  else {
+  } else {
 
     console.error(
-      'Error cargando daily_records:',
+      'Error cargando registros:',
       r.error
     );
-
   }
 
 
   const s =
     await supabase
-
       .from('app_settings')
-
       .select('*')
-
       .limit(1)
-
       .maybeSingle();
 
 
   if (s.data) {
 
     metas = {
-
       ...metas,
 
       cumplimiento:
@@ -2569,64 +2420,11 @@ async function load() {
         n(
           s.data.meta_incidentes
         )
-
     };
-
   }
 
 
   await loadInventory();
-
-}
-
-
-/* =========================================================
-   CARGAR INVENTARIO
-========================================================= */
-
-async function loadInventory() {
-
-  if (!user) {
-
-    inventoryRows = [];
-
-    return;
-
-  }
-
-
-  const result =
-    await supabase
-
-      .from('inventory')
-
-      .select('*')
-
-      .order(
-        'fecha',
-        {
-          ascending: false
-        }
-      );
-
-
-  if (result.error) {
-
-    console.error(
-      'Error cargando inventory:',
-      result.error
-    );
-
-    inventoryRows = [];
-
-    return;
-
-  }
-
-
-  inventoryRows =
-    result.data || [];
-
 }
 
 
@@ -2669,15 +2467,12 @@ supabase.auth
         session?.user ||
         null;
 
-
       if (!user) {
 
         rows = [];
-
         inventoryRows = [];
 
       }
-
 
       render();
 
