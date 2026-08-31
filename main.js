@@ -6590,6 +6590,7 @@ supabase.auth
         session?.user ||
         null;
 
+      
       if (!user) {
 
         rows = [];
