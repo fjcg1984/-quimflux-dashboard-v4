@@ -624,22 +624,38 @@ function trendData() {
   });
 }
 
+function formatChartDate(value) {
+  const raw = String(value || '');
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}` : raw;
+}
+
 function renderTrendChart(data) {
   if (!data.length) {
     return `<div class="empty">Todavía no hay suficientes registros para mostrar la tendencia.</div>`;
   }
 
-  const W = 1000, H = 360, left = 58, right = 22, top = 24, bottom = 58;
+  const W = 1100, H = 410, left = 66, right = 28, top = 34, bottom = 72;
   const plotW = W - left - right;
   const plotH = H - top - bottom;
-  const maxY = 120, minY = 0;
+
+  const allValues = data.flatMap(r =>
+    [r.cumplimiento, r.yieldRate, r.oee].filter(v => v !== null && Number.isFinite(v))
+  );
+  const rawMin = allValues.length ? Math.min(...allValues) : 0;
+  const rawMax = allValues.length ? Math.max(...allValues) : 100;
+  const minY = Math.max(0, Math.floor((rawMin - 10) / 10) * 10);
+  const maxY = Math.min(120, Math.max(100, Math.ceil((rawMax + 8) / 10) * 10));
+  const range = Math.max(20, maxY - minY);
 
   const x = i => data.length === 1 ? left + plotW / 2 : left + (i * plotW) / (data.length - 1);
-  const y = value => top + plotH - ((value - minY) / (maxY - minY)) * plotH;
+  const y = value => top + plotH - ((value - minY) / range) * plotH;
 
-  const grid = [0, 20, 40, 60, 80, 100, 120].map(v => `
-    <line x1="${left}" y1="${y(v)}" x2="${W - right}" y2="${y(v)}" stroke="currentColor" opacity="0.14"/>
-    <text x="${left - 10}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="currentColor" opacity="0.72">${v}%</text>
+  const ticks = [];
+  for (let v = minY; v <= maxY; v += 10) ticks.push(v);
+  const grid = ticks.map(v => `
+    <line x1="${left}" y1="${y(v)}" x2="${W-right}" y2="${y(v)}" class="chartGrid"/>
+    <text x="${left-12}" y="${y(v)+4}" text-anchor="end" class="chartAxis">${v}%</text>
   `).join('');
 
   const colors = {
@@ -652,34 +668,33 @@ function renderTrendChart(data) {
   const makePath = key => {
     const segments = [];
     let segment = [];
-
-    data.forEach((r, i) => {
+    data.forEach((r,i) => {
       if (r[key] === null || !Number.isFinite(r[key])) {
         if (segment.length) segments.push(segment);
-        segment = [];
+        segment=[];
       } else {
         segment.push(`${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`);
       }
     });
-
     if (segment.length) segments.push(segment);
-
     return segments.map(points =>
-      `<polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`
+      `<polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`
     ).join('');
   };
 
-  const lines = ['cumplimiento', 'yieldRate', 'oee'].map(key => `
+  const lines = ['cumplimiento','yieldRate','oee'].map(key => `
     <g style="color:${colors[key]}">
       ${makePath(key)}
-      ${data.map((r, i) =>
-        r[key] === null ? '' :
-        `<circle cx="${x(i)}" cy="${y(r[key])}" r="4" fill="currentColor"/>`
-      ).join('')}
+      ${data.map((r,i) => r[key] === null ? '' : `
+        <circle cx="${x(i)}" cy="${y(r[key])}" r="5" fill="currentColor" stroke="currentColor">
+          <title>${key === 'cumplimiento' ? 'Cumplimiento' : key === 'yieldRate' ? 'Yield' : 'OEE'} · ${formatChartDate(r.fecha)} · ${Number(r[key]).toFixed(1)}%</title>
+        </circle>`).join('')}
     </g>
   `).join('');
 
-  const metaY = y(metas.cumplimiento * 100);
+  const metaValue = metas.cumplimiento * 100;
+  const metaY = y(metaValue);
+  const labelStep = Math.max(1, Math.ceil(data.length / 8));
 
   return `
     <div class="trendLegend">
@@ -688,20 +703,19 @@ function renderTrendChart(data) {
       <span><i style="background:${colors.oee}"></i>OEE</span>
       <span><i class="dash" style="background:${colors.meta}"></i>Meta ${pct(metas.cumplimiento)}</span>
     </div>
-    <div style="width:100%;overflow-x:auto;">
-      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Tendencias">
+    <div class="trendChartWrap">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Tendencias de cumplimiento, Yield y OEE">
         ${grid}
-        <line x1="${left}" y1="${metaY}" x2="${W-right}" y2="${metaY}" stroke="${colors.meta}" stroke-width="2" stroke-dasharray="8 6"/>
-        <text x="${W-right-4}" y="${metaY-8}" text-anchor="end" font-size="12" fill="${colors.meta}">META ${pct(metas.cumplimiento)}</text>
+        <line x1="${left}" y1="${metaY}" x2="${W-right}" y2="${metaY}" stroke="${colors.meta}" stroke-width="2.5" stroke-dasharray="9 7"/>
+        <text x="${W-right-2}" y="${metaY-10}" text-anchor="end" class="chartMeta">META ${pct(metas.cumplimiento)}</text>
         ${lines}
-        ${data.map((r, i) => {
-          const show = data.length <= 8 || i === 0 || i === data.length - 1 || i % Math.ceil(data.length / 8) === 0;
-          return show
-            ? `<text x="${x(i)}" y="${H-20}" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">${esc(r.fecha)}</text>`
-            : '';
+        ${data.map((r,i) => {
+          const show = data.length <= 8 || i === 0 || i === data.length-1 || i % labelStep === 0;
+          return show ? `<text x="${x(i)}" y="${H-30}" text-anchor="middle" class="chartDate">${esc(formatChartDate(r.fecha))}</text>` : '';
         }).join('')}
       </svg>
     </div>
+    <div class="chartHint">Pasa el cursor sobre un punto para ver el valor exacto.</div>
   `;
 }
 
@@ -773,7 +787,7 @@ function renderDashboard() {
               ['OTIF', latest.otif, metas.otif]
             ].map(k => {
               const st = status(k[1], k[2], k[3] || false);
-              return `<div class="card"><small>${k[0]}</small><strong>${pct(k[1])}</strong><span class="badge ${st.cls}">${st.label}</span></div>`;
+              return `<div class="card kpiCard"><small class="kpiLabel">${k[0]}</small><strong class="kpiValue">${pct(k[1])}</strong><span class="badge ${st.cls} kpiStatus">${st.label}</span></div>`;
             }).join('')}
           </div>
 
@@ -809,7 +823,7 @@ function renderDashboard() {
         <h2>Indicadores generales</h2>
         <div class="cards">
           ${cards.slice(0, 8).map(c => `
-            <div class="card"><small>${esc(c[0])}</small><strong>${esc(c[1])}</strong>${c.length > 2 ? `<span class="badge ${c[2].cls}">${c[2].label}</span>` : ''}</div>
+            <div class="card kpiCard"><small class="kpiLabel">${esc(c[0])}</small><strong class="kpiValue">${esc(c[1])}</strong>${c.length > 2 ? `<span class="badge ${c[2].cls} kpiStatus">${c[2].label}</span>` : ''}</div>
           `).join('')}
         </div>
       </section>
@@ -1042,7 +1056,7 @@ function renderDailyView(id) {
             ['OTIF', r.otif, metas.otif]
           ].map(k => {
             const st = status(k[1], k[2], k[3] || false);
-            return `<div class="card"><small>${k[0]}</small><strong>${pct(k[1])}</strong><span class="badge ${st.cls}">${st.label}</span></div>`;
+            return `<div class="card kpiCard"><small class="kpiLabel">${k[0]}</small><strong class="kpiValue">${pct(k[1])}</strong><span class="badge ${st.cls} kpiStatus">${st.label}</span></div>`;
           }).join('')}
         </div>
       </section>
@@ -1123,7 +1137,7 @@ function renderResumen() {
         <div class="cards">
           ${kpis.map(k => {
             const st = status(k[1], k[2], k[3] || false);
-            return `<div class="card"><small>${k[0]}</small><strong>${pct(k[1])}</strong><span class="badge ${st.cls}">${st.label}</span></div>`;
+            return `<div class="card kpiCard"><small class="kpiLabel">${k[0]}</small><strong class="kpiValue">${pct(k[1])}</strong><span class="badge ${st.cls} kpiStatus">${st.label}</span></div>`;
           }).join('')}
         </div>
       </section>
