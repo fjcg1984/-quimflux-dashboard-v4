@@ -1581,8 +1581,43 @@ function renderCosts(){
 
   const last = d[d.length-1];
 
+  /*
+     REFERENCIA HISTÓRICA ANTERIOR
+     No mezclamos el último turno dentro de su propia referencia.
+     La comparación usa todos los registros anteriores al último.
+  */
+  const anteriores = d.slice(0,-1);
+
+  const totalAnterior = key =>
+    anteriores.reduce(
+      (s,r) => s + n(r[key]),
+      0
+    );
+
+  const produccionAnterior = totalAnterior('producida');
+  const costoProduccionAnterior = totalAnterior('costo_produccion');
+  const costoMantenimientoAnterior = totalAnterior('costo_mantenimiento');
+  const energiaAnterior = totalAnterior('energia');
+
+  const costoUnitarioHistorico =
+    produccionAnterior
+      ? costoProduccionAnterior / produccionAnterior
+      : 0;
+
+  const mantenimientoUnitarioHistorico =
+    produccionAnterior
+      ? costoMantenimientoAnterior / produccionAnterior
+      : 0;
+
+  const energiaUnitHistorica =
+    produccionAnterior
+      ? energiaAnterior / produccionAnterior
+      : 0;
+
+  /* El valor histórico mostrado en la tarjeta es ahora
+     explícitamente la referencia anterior al último turno. */
   const historicoUnitario =
-    costoUnitario;
+    costoUnitarioHistorico;
 
   const costoLast =
     n(last.costo_produccion);
@@ -1615,14 +1650,20 @@ function renderCosts(){
     }
 
     const diff =
-      (
-        (actual-historico) /
-        historico
-      ) * 100;
+      ((actual-historico) / historico) * 100;
 
-    return (
-      diff > 0 ? '+' : ''
-    ) + diff.toFixed(1) + '%';
+    return (diff > 0 ? '+' : '') + diff.toFixed(1) + '%';
+  };
+
+  const diferenciaCosto = (actual,historico) => {
+
+    if(!historico){
+      return '—';
+    }
+
+    const diff = actual-historico;
+
+    return (diff > 0 ? '+' : '') + 'S/ ' + diff.toFixed(3);
   };
 
   const tendenciaCostos =
@@ -1645,22 +1686,10 @@ function renderCosts(){
           cls:'ok'
         };
 
-  const costoReferencia =
-    d.length >= 2
-      ? d
-          .slice(0,-1)
-          .filter(r => r.costoUnitario > 0)
-          .reduce(
-            (s,r,_,arr) =>
-              s + r.costoUnitario / arr.length,
-            0
-          )
-      : 0;
-
   const statusCosto =
     statusCostoUnitario(
       costoUnitarioLast,
-      costoReferencia
+      costoUnitarioHistorico
     );
 
   const rowsCosto =
@@ -1864,8 +1893,13 @@ function renderCosts(){
       <section class="panel">
 
         <h2>
-          Comparativa: último turno vs histórico
+          Comparativa: último turno vs histórico anterior
         </h2>
+
+        <p>
+          La referencia histórica excluye el último turno.
+          Se calcula con todos los registros anteriores disponibles.
+        </p>
 
         <div class="tableWrap">
 
@@ -1876,11 +1910,8 @@ function renderCosts(){
               <tr>
 
                 <th>Indicador</th>
-
                 <th>Último turno</th>
-
-                <th>Histórico</th>
-
+                <th>Histórico anterior</th>
                 <th>Variación</th>
 
               </tr>
@@ -1890,61 +1921,78 @@ function renderCosts(){
             <tbody>
 
               <tr>
-
-                <td>Costo producción</td>
-
-                <td>S/ ${costoLast.toFixed(2)}</td>
-
-                <td>S/ ${costoProduccion.toFixed(2)}</td>
-
-                <td>—</td>
-
-              </tr>
-
-              <tr>
-
-                <td>Costo unitario</td>
-
+                <td>Costo unitario producción</td>
                 <td>S/ ${costoUnitarioLast.toFixed(3)}</td>
-
-                <td>S/ ${costoUnitario.toFixed(3)}</td>
-
+                <td>
+                  ${costoUnitarioHistorico
+                    ? 'S/ ' + costoUnitarioHistorico.toFixed(3)
+                    : 'Sin referencia'}
+                </td>
                 <td>
                   ${diferenciaPct(
                     costoUnitarioLast,
-                    costoUnitario
+                    costoUnitarioHistorico
                   )}
                 </td>
-
               </tr>
 
               <tr>
-
-                <td>Costo mantenimiento</td>
-
-                <td>S/ ${mantenimientoLast.toFixed(2)}</td>
-
-                <td>S/ ${costoMantenimiento.toFixed(2)}</td>
-
-                <td>—</td>
-
+                <td>Costo mantenimiento / unidad</td>
+                <td>S/ ${mantenimientoUnitLast.toFixed(3)}</td>
+                <td>
+                  ${mantenimientoUnitarioHistorico
+                    ? 'S/ ' + mantenimientoUnitarioHistorico.toFixed(3)
+                    : 'Sin referencia'}
+                </td>
+                <td>
+                  ${diferenciaPct(
+                    mantenimientoUnitLast,
+                    mantenimientoUnitarioHistorico
+                  )}
+                </td>
               </tr>
 
               <tr>
-
                 <td>Energía específica</td>
-
                 <td>${energiaLast.toFixed(3)} kWh/u</td>
-
-                <td>${energiaUnit.toFixed(3)} kWh/u</td>
-
+                <td>
+                  ${energiaUnitHistorica
+                    ? energiaUnitHistorica.toFixed(3) + ' kWh/u'
+                    : 'Sin referencia'}
+                </td>
                 <td>
                   ${diferenciaPct(
                     energiaLast,
-                    energiaUnit
+                    energiaUnitHistorica
                   )}
                 </td>
+              </tr>
 
+              <tr>
+                <td>Costo total / unidad</td>
+                <td>
+                  S/
+                  ${(
+                    costoUnitarioLast + mantenimientoUnitLast
+                  ).toFixed(3)}
+                </td>
+                <td>
+                  ${produccionAnterior
+                    ? 'S/ ' + (
+                        (costoProduccionAnterior + costoMantenimientoAnterior) /
+                        produccionAnterior
+                      ).toFixed(3)
+                    : 'Sin referencia'}
+                </td>
+                <td>
+                  ${diferenciaPct(
+                    costoUnitarioLast + mantenimientoUnitLast,
+                    produccionAnterior
+                      ? (costoProduccionAnterior + costoMantenimientoAnterior) /
+                        produccionAnterior
+                      : 0
+                  )}
+                </td>
               </tr>
 
             </tbody>
@@ -1995,7 +2043,7 @@ function renderCosts(){
           <div class="card">
 
             <small>
-              Costo unitario histórico
+              Costo unitario histórico anterior
             </small>
 
             <strong>
@@ -2132,6 +2180,8 @@ function renderCosts(){
 
           El costo unitario se calcula como
           <b>costo de producción ÷ producción realizada</b>.
+          Para comparar el último turno, la referencia histórica
+          usa los registros anteriores y excluye el último turno.
           El consumo específico de energía se calcula como
           <b>kWh ÷ unidades producidas</b>.
           Por ahora no se separan materias primas,
