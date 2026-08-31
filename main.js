@@ -378,6 +378,20 @@ function renderAuth() {
 
 function render() {
 
+  /*
+   * IMPORTANTE:
+   * El index.html contiene una pantalla de arranque
+   * llamada #boot. Una vez que main.js está funcionando,
+   * la eliminamos para que no quede encima del login.
+   */
+
+  const boot =
+    document.getElementById('boot');
+
+  if (boot) {
+    boot.remove();
+  }
+
   if (!user) {
 
     renderAuth();
@@ -403,7 +417,7 @@ function render() {
       <div>
         <b>QUIMFLUX</b>
         <span>
-          ·Administrador de Planta V5 PRUEBA
+          ·Administrador de Planta V5
         </span>
       </div>
 
@@ -1017,10 +1031,6 @@ function renderResumen() {
 
   const noConformidades =
     sum('no_conformidades');
-
-  const incidentesDiarios =
-    sum('incidentes');
-
 
   const cumplimiento =
     programada
@@ -3806,6 +3816,10 @@ async function load() {
     await supabase
       .from('daily_records')
       .select('*')
+      .eq(
+        'user_id',
+        user.id
+      )
       .order(
         'fecha',
         {
@@ -3921,7 +3935,17 @@ supabase.auth
       render();
 
     }
-  );
+  )
+  .catch(error => {
+
+    console.error(
+      'Error inicializando sesión:',
+      error
+    );
+
+    render();
+
+  });
 
 
 /* =========================================================
