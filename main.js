@@ -36,6 +36,7 @@ let inventoryRows = [];
 let ssomaRows = [];
 let personalRows = [];
 let novedadesRows = [];
+let selectedPersonalDni = 'TODOS';
 let maintenanceRows = [];
 
 let tab = 'dashboard';
@@ -356,6 +357,8 @@ function render() {
     inventoryRows = [];
     ssomaRows = [];
     personalRows = [];
+    novedadesRows = [];
+    selectedPersonalDni = 'TODOS';
     maintenanceRows = [];
 
     render();
@@ -2727,19 +2730,48 @@ async function deleteInventory(id) {
 function renderPersonal() {
   const activos =
     personalRows.filter(
-      r =>
-        String(r.estado || '').toLowerCase() === 'activo'
+      r => String(r.estado || '').toLowerCase() === 'activo'
     ).length;
 
-  const inactivos =
-    personalRows.length - activos;
+  const inactivos = personalRows.length - activos;
 
   const areas =
     new Set(
-      personalRows
-        .map(r => r.area)
-        .filter(Boolean)
+      personalRows.map(r => r.area).filter(Boolean)
     ).size;
+
+  const selected =
+    selectedPersonalDni !== 'TODOS'
+      ? personalRows.find(r => String(r.dni) === String(selectedPersonalDni))
+      : null;
+
+  const filteredNovedades = selected
+    ? novedadesRows.filter(x => String(x.dni) === String(selected.dni))
+    : novedadesRows;
+
+  const countType = tipo =>
+    filteredNovedades.filter(x => x.tipo === tipo).length;
+
+  const daysType = tipo =>
+    filteredNovedades
+      .filter(x => x.tipo === tipo)
+      .reduce((total, x) => total + noveltyDays(x.fecha_inicio, x.fecha_fin), 0);
+
+  const totalDays = filteredNovedades.reduce(
+    (total, x) => total + noveltyDays(x.fecha_inicio, x.fecha_fin),
+    0
+  );
+
+  const activeNovelty = selected
+    ? filteredNovedades.find(x =>
+        x.fecha_inicio <= today && x.fecha_fin >= today &&
+        x.estado !== 'RECHAZADO' && x.estado !== 'CERRADO'
+      )
+    : null;
+
+  const statusLabel = selected
+    ? (activeNovelty ? activeNovelty.tipo : 'SIN NOVEDAD VIGENTE')
+    : 'VISTA GENERAL';
 
   document.getElementById('content').innerHTML = `
     <main>
@@ -2756,33 +2788,20 @@ function renderPersonal() {
           <small>Personal registrado</small>
           <strong>${personalRows.length}</strong>
         </div>
-
         <div class="card">
           <small>Personal activo</small>
           <strong>${activos}</strong>
           <span class="badge ok">ACTIVO</span>
         </div>
-
         <div class="card">
           <small>Personal inactivo</small>
           <strong>${inactivos}</strong>
         </div>
-
         <div class="card">
           <small>Áreas</small>
           <strong>${areas}</strong>
         </div>
       </div>
-
-      <section class="panel">
-        <h2>Control de novedades</h2>
-        <p>Registro y seguimiento de permisos, vacaciones y faltas.</p>
-        <div class="cards">
-          <div class="card"><small>Permisos</small><strong>${novedadesRows.filter(x => x.tipo === 'PERMISO').length}</strong></div>
-          <div class="card"><small>Vacaciones</small><strong>${novedadesRows.filter(x => x.tipo === 'VACACIONES').length}</strong></div>
-          <div class="card"><small>Faltas</small><strong>${novedadesRows.filter(x => x.tipo === 'FALTA').length}</strong></div>
-        </div>
-      </section>
 
       <section class="panel">
         <h2>
@@ -2873,113 +2892,202 @@ function renderPersonal() {
         </form>
       </section>
 
+
       <section class="panel">
-        <h2>Personal registrado</h2>
+        <div class="titleRow">
+          <div>
+            <h2>Consulta por trabajador</h2>
+            <p>Selecciona un trabajador para consultar toda su actividad agrupada.</p>
+          </div>
+        </div>
 
-        ${
-          personalRows.length
-            ? `
-              <div class="tableWrap">
-                <table>
-                  <thead>
+        <label>
+          Personal
+          <select id="personalFilter">
+            <option value="TODOS" ${selectedPersonalDni === 'TODOS' ? 'selected' : ''}>
+              Todos los trabajadores
+            </option>
+            ${personalRows.map(r => `
+              <option value="${esc(r.dni)}" ${String(selectedPersonalDni) === String(r.dni) ? 'selected' : ''}>
+                ${esc(r.nombre)} · DNI ${esc(r.dni)}
+              </option>
+            `).join('')}
+          </select>
+        </label>
+      </section>
+
+      ${selected ? `
+        <section class="panel">
+          <div class="titleRow">
+            <div>
+              <h2>${esc(selected.nombre)}</h2>
+              <p>${esc(selected.cargo)} · ${esc(selected.area)} · Turno ${esc(selected.turno)}</p>
+            </div>
+            <span class="badge ${selected.estado === 'Activo' ? 'ok' : 'warn'}">
+              ${esc(selected.estado)}
+            </span>
+          </div>
+
+          <div class="cards">
+            <div class="card"><small>DNI</small><strong>${esc(selected.dni)}</strong></div>
+            <div class="card"><small>Fecha de ingreso</small><strong>${esc(selected.fecha_ingreso || '—')}</strong></div>
+            <div class="card"><small>Estado actual</small><strong>${esc(statusLabel)}</strong></div>
+            <div class="card"><small>Total novedades</small><strong>${filteredNovedades.length}</strong></div>
+            <div class="card"><small>Permisos</small><strong>${countType('PERMISO')}</strong><span class="badge ok">${daysType('PERMISO')} día(s)</span></div>
+            <div class="card"><small>Vacaciones</small><strong>${countType('VACACIONES')}</strong><span class="badge ok">${daysType('VACACIONES')} día(s)</span></div>
+            <div class="card"><small>Faltas</small><strong>${countType('FALTA')}</strong><span class="badge ${countType('FALTA') ? 'warn' : 'ok'}">${daysType('FALTA')} día(s)</span></div>
+            <div class="card"><small>Otros eventos</small><strong>${filteredNovedades.filter(x => !['PERMISO','VACACIONES','FALTA'].includes(x.tipo)).length}</strong><span class="badge ok">${totalDays} día(s) total</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="titleRow">
+            <div>
+              <h2>Historial de ${esc(selected.nombre)}</h2>
+              <p>Actividad registrada por permisos, vacaciones, faltas y otros eventos.</p>
+            </div>
+            <button type="button" class="primary" data-novedad-personal="${esc(selected.dni)}">+ Nueva novedad</button>
+          </div>
+
+          ${filteredNovedades.length ? `
+            <div class="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Días</th>
+                    <th>Tipo</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filteredNovedades.map(x => `
                     <tr>
-                      <th>DNI</th>
-                      <th>Nombre</th>
-                      <th>Cargo</th>
-                      <th>Área</th>
-                      <th>Turno</th>
-                      <th>Ingreso</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
+                      <td>${esc(x.fecha_inicio)}</td>
+                      <td>${esc(x.fecha_fin)}</td>
+                      <td><strong>${noveltyDays(x.fecha_inicio, x.fecha_fin)}</strong></td>
+                      <td>${esc(x.tipo)}</td>
+                      <td>${esc(x.motivo || '')}</td>
+                      <td><span class="badge ${x.estado === 'APROBADO' ? 'ok' : x.estado === 'RECHAZADO' ? 'critical' : 'warn'}">${esc(x.estado)}</span></td>
+                      <td>${esc(x.observaciones || '')}</td>
                     </tr>
-                  </thead>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : '<div class="empty">Este trabajador todavía no tiene novedades registradas.</div>'}
+        </section>
+      ` : `
+        <section class="panel">
+          <h2>Control de novedades</h2>
+          <p>Resumen general de permisos, vacaciones y faltas registrados.</p>
+          <div class="cards">
+            <div class="card"><small>Permisos</small><strong>${countType('PERMISO')}</strong><span class="badge ok">${daysType('PERMISO')} día(s)</span></div>
+            <div class="card"><small>Vacaciones</small><strong>${countType('VACACIONES')}</strong><span class="badge ok">${daysType('VACACIONES')} día(s)</span></div>
+            <div class="card"><small>Faltas</small><strong>${countType('FALTA')}</strong><span class="badge ${countType('FALTA') ? 'warn' : 'ok'}">${daysType('FALTA')} día(s)</span></div>
+            <div class="card"><small>Otros eventos</small><strong>${filteredNovedades.filter(x => !['PERMISO','VACACIONES','FALTA'].includes(x.tipo)).length}</strong><span class="badge ok">${totalDays} día(s) total</span></div>
+          </div>
+        </section>
+      `}
 
-                  <tbody>
-                    ${personalRows.map(r => `
-                      <tr>
-                        <td>${esc(r.dni)}</td>
-                        <td><strong>${esc(r.nombre)}</strong></td>
-                        <td>${esc(r.cargo)}</td>
-                        <td>${esc(r.area)}</td>
-                        <td>${esc(r.turno)}</td>
-                        <td>${esc(r.fecha_ingreso)}</td>
-                        <td>
-                          <span class="badge ${
-                            r.estado === 'Activo'
-                              ? 'ok'
-                              : 'warn'
-                          }">
-                            ${esc(r.estado)}
-                          </span>
-                        </td>
-                        <td>
-                          <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap;">
-                            <button
-                              type="button"
-                              class="link"
-                              data-novedad-personal="${esc(r.dni)}"
-                              style="padding:5px 8px;font-size:12px;">
-                              Novedad
-                            </button>
-                            <button
-                              type="button"
-                              data-edit-personal="${esc(r.id)}"
-                              style="padding:5px 8px;font-size:12px;">
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              data-delete-personal="${esc(r.id)}"
-                              style="padding:5px 8px;font-size:12px;">
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `
-            : `
-              <div class="empty">
-                Todavía no hay personal registrado.
-              </div>
-            `
-        }
+      <section class="panel">
+        <h2>${selected ? 'Ficha maestra del trabajador' : 'Personal registrado'}</h2>
+
+        ${personalRows.length ? `
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>DNI</th>
+                  <th>Nombre</th>
+                  <th>Cargo</th>
+                  <th>Área</th>
+                  <th>Turno</th>
+                  <th>Ingreso</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${personalRows.map(r => `
+                  <tr>
+                    <td>${esc(r.dni)}</td>
+                    <td><strong>${esc(r.nombre)}</strong></td>
+                    <td>${esc(r.cargo)}</td>
+                    <td>${esc(r.area)}</td>
+                    <td>${esc(r.turno)}</td>
+                    <td>${esc(r.fecha_ingreso)}</td>
+                    <td>
+                      <span class="badge ${r.estado === 'Activo' ? 'ok' : 'warn'}">${esc(r.estado)}</span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap;">
+                        <button type="button" class="link" data-select-personal="${esc(r.dni)}" style="padding:5px 8px;font-size:12px;">Ver ficha</button>
+                        <button type="button" class="link" data-novedad-personal="${esc(r.dni)}" style="padding:5px 8px;font-size:12px;">Novedad</button>
+                        <button type="button" data-edit-personal="${esc(r.id)}" style="padding:5px 8px;font-size:12px;">Editar</button>
+                        <button type="button" data-delete-personal="${esc(r.id)}" style="padding:5px 8px;font-size:12px;">Eliminar</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : '<div class="empty">Todavía no hay personal registrado.</div>'}
+      </section>
+
+      <section class="panel">
+        <h2>${selected ? 'Observaciones del trabajador' : 'Novedades registradas'}</h2>
+        ${selected
+          ? `<p>${esc(selected.observaciones || 'Sin observaciones registradas.')}</p>`
+          : novedadesRows.length
+            ? `<div class="tableWrap"><table><thead><tr><th>DNI</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Estado</th><th>Motivo</th></tr></thead><tbody>${novedadesRows.map(x => `<tr><td>${esc(x.dni)}</td><td>${esc(x.tipo)}</td><td>${esc(x.fecha_inicio)}</td><td>${esc(x.fecha_fin)}</td><td>${noveltyDays(x.fecha_inicio,x.fecha_fin)}</td><td>${esc(x.estado)}</td><td>${esc(x.motivo || '')}</td></tr>`).join('')}</tbody></table></div>`
+            : '<div class="empty">Todavía no hay novedades registradas.</div>'}
       </section>
     </main>
   `;
 
-  document.getElementById('personalForm').onsubmit =
-    savePersonal;
+  document.getElementById('personalFilter')?.addEventListener('change', e => {
+    selectedPersonalDni = e.target.value;
+    renderPersonal();
+  });
 
-  document
-    .querySelectorAll('[data-edit-personal]')
-    .forEach(button => {
-      button.onclick = () =>
-        editPersonal(button.dataset.editPersonal);
-    });
+  document.getElementById('personalForm').onsubmit = savePersonal;
 
-  document
-    .querySelectorAll('[data-novedad-personal]')
-    .forEach(button => {
-      button.onclick = () =>
-        showNovedadForm(button.dataset.novedadPersonal);
-    });
-
-  document
-    .querySelectorAll('[data-delete-personal]')
-    .forEach(button => {
-      button.onclick = () =>
-        deletePersonal(button.dataset.deletePersonal);
-    });
-
-  document.getElementById('cancelPersonal')
-    ?.addEventListener('click', () => {
-      editingPersonalId = null;
+  document.querySelectorAll('[data-select-personal]').forEach(button => {
+    button.onclick = () => {
+      selectedPersonalDni = button.dataset.selectPersonal;
       renderPersonal();
-    });
+    };
+  });
+
+  document.querySelectorAll('[data-edit-personal]').forEach(button => {
+    button.onclick = () => editPersonal(button.dataset.editPersonal);
+  });
+
+  document.querySelectorAll('[data-novedad-personal]').forEach(button => {
+    button.onclick = () => showNovedadForm(button.dataset.novedadPersonal);
+  });
+
+  document.querySelectorAll('[data-delete-personal]').forEach(button => {
+    button.onclick = () => deletePersonal(button.dataset.deletePersonal);
+  });
+
+  document.getElementById('cancelPersonal')?.addEventListener('click', () => {
+    editingPersonalId = null;
+    renderPersonal();
+  });
+}
+
+function noveltyDays(inicio, fin) {
+  if (!inicio || !fin) return 0;
+  const a = new Date(`${inicio}T00:00:00`);
+  const b = new Date(`${fin}T00:00:00`);
+  const diff = Math.floor((b.getTime() - a.getTime()) / 86400000);
+  return diff >= 0 ? diff + 1 : 0;
 }
 
 async function savePersonal(e) {
