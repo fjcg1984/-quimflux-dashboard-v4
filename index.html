@@ -2,18 +2,152 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>QUIMFLUX Dashboard V5</title>
 
   <link rel="stylesheet" href="./styles.css">
+
+  <style>
+    #boot {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #0b1220;
+      color: #f4f7fb;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
+
+    #bootBox {
+      width: min(100%, 600px);
+      padding: 24px;
+      border: 1px solid #26354d;
+      border-radius: 18px;
+      background: #111b2d;
+      box-shadow: 0 20px 50px rgba(0,0,0,.35);
+    }
+
+    #bootTitle {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    #bootStatus {
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    #bootError {
+      display: none;
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #450a0a;
+      border: 1px solid #ef4444;
+      color: #fecaca;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 13px;
+    }
+  </style>
 </head>
 
 <body>
 
+  <div id="boot">
+    <div id="bootBox">
+
+      <div id="bootTitle">
+        QUIMFLUX V5
+      </div>
+
+      <div id="bootStatus">
+        Cargando aplicación...
+      </div>
+
+      <div id="bootError"></div>
+
+    </div>
+  </div>
+
   <div id="app"></div>
 
-  <script type="module" src="./main.js"></script>
+  <script>
+    window.addEventListener(
+      'error',
+      function (event) {
+
+        const errorBox =
+          document.getElementById('bootError');
+
+        const status =
+          document.getElementById('bootStatus');
+
+        if (status) {
+          status.textContent =
+            'ERROR AL INICIAR QUIMFLUX';
+        }
+
+        if (errorBox) {
+
+          errorBox.style.display = 'block';
+
+          errorBox.textContent =
+            'Error: ' +
+            (event.message || 'Error desconocido') +
+            '\n\nArchivo: ' +
+            (event.filename || 'desconocido') +
+            '\n\nLínea: ' +
+            (event.lineno || '?') +
+            '\nColumna: ' +
+            (event.colno || '?');
+        }
+      }
+    );
+
+    window.addEventListener(
+      'unhandledrejection',
+      function (event) {
+
+        const errorBox =
+          document.getElementById('bootError');
+
+        const status =
+          document.getElementById('bootStatus');
+
+        if (status) {
+          status.textContent =
+            'ERROR AL INICIAR QUIMFLUX';
+        }
+
+        if (errorBox) {
+
+          errorBox.style.display = 'block';
+
+          errorBox.textContent =
+            'Error de promesa:\n\n' +
+            String(event.reason);
+        }
+      }
+    );
+  </script>
+
+  <script
+    type="module"
+    src="./main.js">
+  </script>
 
 </body>
 </html>
