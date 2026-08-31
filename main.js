@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
 
+
+/* =========================================================
+   SUPABASE
+========================================================= */
+
 const SUPABASE_URL =
   'https://cgkdztwtodmdteohvuoh.supabase.co';
 
@@ -12,10 +17,21 @@ const supabase = createClient(
   SUPABASE_KEY
 );
 
-const app = document.getElementById('app');
+
+/* =========================================================
+   APLICACIÓN
+========================================================= */
+
+const app =
+  document.getElementById('app');
 
 const today =
   new Date().toISOString().slice(0, 10);
+
+
+/* =========================================================
+   ESTADO
+========================================================= */
 
 let user = null;
 
@@ -32,15 +48,29 @@ let editingSsomaId = null;
 let editingPersonalId = null;
 let editingMaintenanceId = null;
 
+
+/* =========================================================
+   METAS
+========================================================= */
+
 let metas = {
+
   cumplimiento: 0.95,
+
   merma: 0.02,
+
   yield: 0.95,
+
   disponibilidad: 0.90,
+
   asistencia: 0.95,
+
   rechazo: 0.03,
+
   otif: 0.95,
+
   incidentes: 0
+
 };
 
 
@@ -49,6 +79,7 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
+
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -61,16 +92,27 @@ function esc(v = '') {
   );
 }
 
+
 function n(v) {
+
   const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
+
+  return Number.isFinite(x)
+    ? x
+    : 0;
 }
+
 
 function pct(v) {
-  return (n(v) * 100).toFixed(1) + '%';
+
+  return (
+    n(v) * 100
+  ).toFixed(1) + '%';
 }
 
+
 function msg(id, text) {
+
   const el =
     document.getElementById(id);
 
@@ -85,45 +127,77 @@ function msg(id, text) {
 ========================================================= */
 
 const fields = [
+
   ['fecha', 'Fecha', 'date'],
+
   ['turno', 'Turno', 'select'],
+
   ['producto', 'Producto', 'text'],
+
   ['programada', 'Cantidad programada', 'number'],
+
   ['producida', 'Cantidad producida', 'number'],
+
   ['mp', 'Materia prima consumida', 'number'],
+
   ['merma', 'Merma', 'number'],
 
   ['horas_turno', 'Horas de turno', 'number'],
+
   ['horas_paradas', 'Horas de parada', 'number'],
+
   ['personal_programado', 'Personal programado', 'number'],
+
   ['personal_presente', 'Personal presente', 'number'],
+
   ['rechazadas', 'Unidades rechazadas', 'number'],
 
   ['costo_produccion', 'Costo producción (S/)', 'number'],
+
   ['energia', 'Energía (kWh)', 'number'],
+
   ['costo_mantenimiento', 'Costo mantenimiento (S/)', 'number'],
 
   ['incidentes', 'Incidentes SSOMA', 'number'],
+
   ['pedidos_programados', 'Pedidos programados', 'number'],
+
   ['pedidos_tiempo', 'Pedidos a tiempo', 'number'],
+
   ['reproceso', 'Reproceso', 'number'],
+
   ['no_conformidades', 'No conformidades', 'number'],
+
   ['observaciones', 'Observaciones', 'textarea']
+
 ];
+
 
 function derive(r) {
 
-  const p = n(r.programada);
-  const q = n(r.producida);
-  const mp = n(r.mp);
+  const p =
+    n(r.programada);
 
-  const h = n(r.horas_turno);
-  const stop = n(r.horas_paradas);
+  const q =
+    n(r.producida);
 
-  const pp = n(r.personal_programado);
-  const pa = n(r.personal_presente);
+  const mp =
+    n(r.mp);
 
-  const rej = n(r.rechazadas);
+  const h =
+    n(r.horas_turno);
+
+  const stop =
+    n(r.horas_paradas);
+
+  const pp =
+    n(r.personal_programado);
+
+  const pa =
+    n(r.personal_presente);
+
+  const rej =
+    n(r.rechazadas);
 
   const pedidos =
     n(r.pedidos_programados);
@@ -131,92 +205,150 @@ function derive(r) {
   const at =
     n(r.pedidos_tiempo);
 
+
   const merma =
-    mp ? n(r.merma) / mp : 0;
+    mp
+      ? n(r.merma) / mp
+      : 0;
+
 
   const yieldRate =
-    mp ? q / mp : 0;
+    mp
+      ? q / mp
+      : 0;
+
 
   const disponibilidad =
     h
-      ? Math.max(0, (h - stop) / h)
+      ? Math.max(
+          0,
+          (h - stop) / h
+        )
       : 0;
 
+
   const asistencia =
-    pp ? pa / pp : 0;
+    pp
+      ? pa / pp
+      : 0;
+
 
   const rechazo =
-    q ? rej / q : 0;
+    q
+      ? rej / q
+      : 0;
+
 
   const cumplimiento =
-    p ? q / p : 0;
+    p
+      ? q / p
+      : 0;
+
 
   const otif =
-    pedidos ? at / pedidos : 0;
+    pedidos
+      ? at / pedidos
+      : 0;
+
 
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(0, 1 - rechazo);
+    Math.max(
+      0,
+      1 - rechazo
+    );
+
 
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
       : 0;
 
+
   const energiaUnit =
     q
       ? n(r.energia) / q
       : 0;
 
+
   return {
+
     ...r,
+
     cumplimiento,
+
     merma,
+
     yieldRate,
+
     disponibilidad,
+
     asistencia,
+
     rechazo,
+
     oee,
+
     otif,
+
     costoUnitario,
+
     energiaUnit
+
   };
+
 }
+
 
 function empty() {
 
   return {
+
     fecha: today,
+
     turno: 'Mañana',
+
     producto: '',
+
     programada: 0,
+
     producida: 0,
+
     mp: 0,
+
     merma: 0,
 
     horas_turno: 8,
+
     horas_paradas: 0,
 
     personal_programado: 0,
+
     personal_presente: 0,
 
     rechazadas: 0,
 
     costo_produccion: 0,
+
     energia: 0,
+
     costo_mantenimiento: 0,
 
     incidentes: 0,
 
     pedidos_programados: 0,
+
     pedidos_tiempo: 0,
 
     reproceso: 0,
+
     no_conformidades: 0,
 
     observaciones: ''
+
   };
+
 }
 
 
@@ -230,9 +362,7 @@ function renderAuth() {
 
     <div class="auth">
 
-      <h1>
-        QUIMFLUX
-      </h1>
+      <h1>QUIMFLUX</h1>
 
       <h2>
         Administrador de Planta
@@ -253,6 +383,7 @@ function renderAuth() {
             required
             autocomplete="email"
           >
+
         </label>
 
         <label>
@@ -265,36 +396,42 @@ function renderAuth() {
             required
             autocomplete="current-password"
           >
+
         </label>
 
         <div
           id="authMsg"
-          class="msg">
-        </div>
+          class="msg"
+        ></div>
 
         <button
           class="primary"
-          type="submit">
+          type="submit"
+        >
           Entrar
         </button>
 
         <button
           class="link"
           id="signup"
-          type="button">
+          type="button"
+        >
           Crear una cuenta
         </button>
 
       </form>
 
     </div>
+
   `;
+
 
   const emailInput =
     document.getElementById('email');
 
   const passwordInput =
     document.getElementById('password');
+
 
   document.getElementById(
     'authForm'
@@ -307,17 +444,21 @@ function renderAuth() {
       'Iniciando sesión…'
     );
 
+
     const {
       data,
       error
     } =
       await supabase.auth.signInWithPassword({
+
         email:
           emailInput.value.trim(),
 
         password:
           passwordInput.value
+
       });
+
 
     if (error) {
 
@@ -329,11 +470,15 @@ function renderAuth() {
       return;
     }
 
-    user = data.user;
+
+    user =
+      data.user;
+
 
     await load();
 
     render();
+
   };
 
 
@@ -347,6 +492,7 @@ function renderAuth() {
     const password =
       passwordInput.value;
 
+
     if (!email || !password) {
 
       msg(
@@ -357,19 +503,25 @@ function renderAuth() {
       return;
     }
 
+
     msg(
       'authMsg',
       'Creando cuenta…'
     );
+
 
     const {
       data,
       error
     } =
       await supabase.auth.signUp({
+
         email,
+
         password
+
       });
+
 
     if (error) {
 
@@ -381,13 +533,20 @@ function renderAuth() {
       return;
     }
 
+
     msg(
       'authMsg',
+
       data.session
+
         ? 'Cuenta creada correctamente.'
+
         : 'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.'
+
     );
+
   };
+
 }
 
 
@@ -402,7 +561,9 @@ function render() {
     renderAuth();
 
     return;
+
   }
+
 
   const nav = [
 
@@ -421,6 +582,7 @@ function render() {
     ['personal', 'Personal'],
 
     ['ssoma', 'SSOMA']
+
   ];
 
 
@@ -430,9 +592,7 @@ function render() {
 
       <div>
 
-        <b>
-          QUIMFLUX
-        </b>
+        <b>QUIMFLUX</b>
 
         <span>
           · Administrador de Planta V5
@@ -440,11 +600,8 @@ function render() {
 
       </div>
 
-      <button
-        id="logout">
-
+      <button id="logout">
         Salir
-
       </button>
 
     </header>
@@ -460,10 +617,9 @@ function render() {
             tab === x[0]
               ? 'active'
               : ''
-          }">
-
+          }"
+        >
           ${x[1]}
-
         </button>
 
       `).join('')}
@@ -501,17 +657,17 @@ function render() {
     user = null;
 
     rows = [];
+
     inventoryRows = [];
+
     ssomaRows = [];
+
     personalRows = [];
+
     maintenanceRows = [];
 
-    editingInventoryId = null;
-    editingSsomaId = null;
-    editingPersonalId = null;
-    editingMaintenanceId = null;
-
     render();
+
   };
 
 
@@ -527,14 +683,6 @@ function render() {
 
     renderResumen();
 
-  } else if (tab === 'costos') {
-
-    renderPlaceholder('Costos');
-
-  } else if (tab === 'mantenimiento') {
-
-    renderMaintenance();
-
   } else if (tab === 'inventario') {
 
     renderInventory();
@@ -547,14 +695,22 @@ function render() {
 
     renderSsoma();
 
+  } else if (tab === 'mantenimiento') {
+
+    renderMaintenance();
+
   } else {
 
     renderPlaceholder(
       nav.find(
-        x => x[0] === tab
-      )?.[1] || 'QUIMFLUX'
+        x =>
+          x[0] === tab
+      )?.[1]
+      || 'QUIMFLUX'
     );
+
   }
+
 }
 
 
@@ -573,27 +729,34 @@ function status(
       ? value <= target
       : value >= target;
 
+
   const critical =
     invert
       ? value > target * 1.5
       : value < target * 0.85;
 
+
   return {
 
     label:
+
       critical
         ? 'CRÍTICO'
         : ok
           ? 'OK'
           : 'REVISAR',
 
+
     cls:
+
       critical
         ? 'critical'
         : ok
           ? 'ok'
           : 'warn'
+
   };
+
 }
 
 
@@ -606,12 +769,14 @@ function renderDashboard() {
   const d =
     rows.map(derive);
 
+
   const sum = key =>
     d.reduce(
       (s, r) =>
         s + n(r[key]),
       0
     );
+
 
   const programada =
     sum('programada');
@@ -625,11 +790,13 @@ function renderDashboard() {
   const merma =
     sum('merma');
 
+
   const horas =
     sum('horas_turno');
 
-  const paradas =
+  const paradasDiarias =
     sum('horas_paradas');
+
 
   const personalProgramado =
     sum('personal_programado');
@@ -637,8 +804,10 @@ function renderDashboard() {
   const personalPresente =
     sum('personal_presente');
 
+
   const rechazadas =
     sum('rechazadas');
+
 
   const pedidos =
     sum('pedidos_programados');
@@ -646,29 +815,57 @@ function renderDashboard() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
+
   const cumplimiento =
     programada
       ? producida / programada
       : 0;
+
 
   const yieldRate =
     mp
       ? producida / mp
       : 0;
 
+
   const mermaRate =
     mp
       ? merma / mp
       : 0;
 
+
+  /*
+   * Las horas de parada provenientes
+   * del módulo Mantenimiento se incorporan
+   * al indicador de disponibilidad.
+   *
+   * Si todavía no existen mantenimientos,
+   * se conservan las horas registradas
+   * en Registro Diario.
+   */
+
+  const horasParadaMantenimiento =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.horas_parada),
+      0
+    );
+
+
+  const paradas =
+    horasParadaMantenimiento > 0
+      ? horasParadaMantenimiento
+      : paradasDiarias;
+
+
   const disponibilidad =
     horas
       ? Math.max(
           0,
-          (horas - paradas) /
-          horas
+          (horas - paradas) / horas
         )
       : 0;
+
 
   const asistencia =
     personalProgramado
@@ -676,17 +873,18 @@ function renderDashboard() {
         personalProgramado
       : 0;
 
+
   const rechazo =
     producida
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : 0;
+
 
   const otif =
     pedidos
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : 0;
+
 
   const oee =
     disponibilidad *
@@ -696,25 +894,78 @@ function renderDashboard() {
       1 - rechazo
     );
 
+
   const costo =
     sum('costo_produccion');
 
-  const mantenimiento =
+
+  const mantenimientoDiario =
     sum('costo_mantenimiento');
+
+
+  const mantenimientoSupabase =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.costo),
+      0
+    );
+
+
+  const mantenimiento =
+    mantenimientoSupabase > 0
+      ? mantenimientoSupabase
+      : mantenimientoDiario;
+
 
   const costoUnitario =
     producida
       ? costo / producida
       : 0;
 
+
   const energia =
     producida
-      ? sum('energia') /
-        producida
+      ? sum('energia') / producida
       : 0;
+
 
   const incidentes =
     sum('incidentes');
+
+
+  const mantenimientosProgramados =
+    maintenanceRows.filter(
+      r =>
+        String(r.estado || '')
+          .toLowerCase() ===
+        'programado'
+    ).length;
+
+
+  const mantenimientosAbiertos =
+    maintenanceRows.filter(
+      r => {
+
+        const estado =
+          String(r.estado || '')
+            .toLowerCase();
+
+        return (
+          estado === 'abierto' ||
+          estado === 'en proceso'
+        );
+
+      }
+    ).length;
+
+
+  const mantenimientosCerrados =
+    maintenanceRows.filter(
+      r =>
+        String(r.estado || '')
+          .toLowerCase() ===
+        'cerrado'
+    ).length;
 
 
   const cards = [
@@ -723,6 +974,7 @@ function renderDashboard() {
       'Producción total',
       producida.toLocaleString()
     ],
+
 
     [
       'Cumplimiento',
@@ -733,6 +985,7 @@ function renderDashboard() {
       )
     ],
 
+
     [
       'Yield',
       pct(yieldRate),
@@ -741,6 +994,7 @@ function renderDashboard() {
         metas.yield
       )
     ],
+
 
     [
       'Merma',
@@ -752,6 +1006,7 @@ function renderDashboard() {
       )
     ],
 
+
     [
       'Disponibilidad',
       pct(disponibilidad),
@@ -761,6 +1016,7 @@ function renderDashboard() {
       )
     ],
 
+
     [
       'Asistencia',
       pct(asistencia),
@@ -769,6 +1025,7 @@ function renderDashboard() {
         metas.asistencia
       )
     ],
+
 
     [
       'Rechazo calidad',
@@ -780,11 +1037,16 @@ function renderDashboard() {
       )
     ],
 
+
     [
       'OEE',
       pct(oee),
-      status(oee, 0.80)
+      status(
+        oee,
+        0.80
+      )
     ],
+
 
     [
       'Costo producción',
@@ -792,23 +1054,78 @@ function renderDashboard() {
       costo.toLocaleString()
     ],
 
+
+    [
+      'Costo mantenimiento',
+      'S/ ' +
+      mantenimiento.toLocaleString()
+    ],
+
+
+    [
+      'Horas parada mantenimiento',
+      paradas.toFixed(2) +
+      ' h'
+    ],
+
+
+    [
+      'Mantenimientos registrados',
+      String(
+        maintenanceRows.length
+      )
+    ],
+
+
+    [
+      'Mantenimientos pendientes',
+      String(
+        mantenimientosProgramados +
+        mantenimientosAbiertos
+      ),
+
+      {
+        label:
+          (
+            mantenimientosProgramados +
+            mantenimientosAbiertos
+          )
+            ? 'PENDIENTE'
+            : 'OK',
+
+        cls:
+          (
+            mantenimientosProgramados +
+            mantenimientosAbiertos
+          )
+            ? 'warn'
+            : 'ok'
+      }
+
+    ],
+
+
+    [
+      'Mantenimientos cerrados',
+      String(
+        mantenimientosCerrados
+      )
+    ],
+
+
     [
       'Costo unitario',
       'S/ ' +
       costoUnitario.toFixed(3)
     ],
 
-    [
-      'Mantenimiento',
-      'S/ ' +
-      mantenimiento.toLocaleString()
-    ],
 
     [
       'Energía',
       energia.toFixed(3) +
       ' kWh/unidad'
     ],
+
 
     [
       'Entregas a tiempo',
@@ -819,6 +1136,7 @@ function renderDashboard() {
       )
     ],
 
+
     [
       'Incidentes SSOMA',
       String(incidentes),
@@ -827,12 +1145,8 @@ function renderDashboard() {
         metas.incidentes,
         true
       )
-    ],
-
-    [
-      'Mantenimientos',
-      String(maintenanceRows.length)
     ]
+
   ];
 
 
@@ -852,11 +1166,13 @@ function renderDashboard() {
 
           <p>
             Datos sincronizados con Supabase ·
-            ${rows.length}
-            registros
+            ${rows.length} registros diarios ·
+            ${maintenanceRows.length}
+            mantenimientos
           </p>
 
         </div>
+
 
         <span class="online">
           ● EN LÍNEA
@@ -879,11 +1195,13 @@ function renderDashboard() {
               ${esc(c[1])}
             </strong>
 
+
             ${
               c.length > 2
                 ? `
                   <span
-                    class="badge ${c[2].cls}">
+                    class="badge ${c[2].cls}"
+                  >
                     ${c[2].label}
                   </span>
                 `
@@ -903,6 +1221,7 @@ function renderDashboard() {
           Últimos registros
         </h2>
 
+
         ${
           d.length
 
@@ -917,17 +1236,25 @@ function renderDashboard() {
                     <tr>
 
                       <th>Fecha</th>
+
                       <th>Turno</th>
+
                       <th>Producto</th>
+
                       <th>Programada</th>
+
                       <th>Producida</th>
+
                       <th>Merma</th>
+
                       <th>OEE</th>
+
                       <th>Acción</th>
 
                     </tr>
 
                   </thead>
+
 
                   <tbody>
 
@@ -970,10 +1297,9 @@ function renderDashboard() {
 
                             <button
                               type="button"
-                              data-delete-id="${esc(r.id)}">
-
+                              data-delete-id="${esc(r.id)}"
+                            >
                               Eliminar
-
                             </button>
 
                           </td>
@@ -1028,6 +1354,7 @@ function renderDashboard() {
       };
 
     });
+
 }
 
 
@@ -1046,6 +1373,7 @@ async function deleteRecord(id) {
     return;
   }
 
+
   const row =
     rows.find(
       r =>
@@ -1053,9 +1381,13 @@ async function deleteRecord(id) {
         String(id)
     );
 
+
   const detail =
     row
-      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
+      ? `${row.fecha} · ${row.turno} · ${
+          row.producto ||
+          'Sin producto'
+        }`
       : 'este registro';
 
 
@@ -1067,12 +1399,20 @@ async function deleteRecord(id) {
   ) return;
 
 
-  const { error } =
+  const {
+    error
+  } =
     await supabase
       .from('daily_records')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq(
+        'id',
+        id
+      )
+      .eq(
+        'user_id',
+        user.id
+      );
 
 
   if (error) {
@@ -1089,6 +1429,7 @@ async function deleteRecord(id) {
   await load();
 
   render();
+
 }
 
 
@@ -1098,7 +1439,9 @@ async function deleteRecord(id) {
 
 function renderForm() {
 
-  const r = empty();
+  const r =
+    empty();
+
 
   document.getElementById(
     'content'
@@ -1118,8 +1461,8 @@ function renderForm() {
 
       <form
         id="daily"
-        class="formGrid">
-
+        class="formGrid"
+      >
 
         <section>
 
@@ -1129,7 +1472,10 @@ function renderForm() {
 
           ${fields
             .slice(0, 7)
-            .map(f => control(f, r))
+            .map(
+              f =>
+                control(f, r)
+            )
             .join('')}
 
         </section>
@@ -1143,7 +1489,10 @@ function renderForm() {
 
           ${fields
             .slice(7, 12)
-            .map(f => control(f, r))
+            .map(
+              f =>
+                control(f, r)
+            )
             .join('')}
 
         </section>
@@ -1157,7 +1506,10 @@ function renderForm() {
 
           ${fields
             .slice(12, 15)
-            .map(f => control(f, r))
+            .map(
+              f =>
+                control(f, r)
+            )
             .join('')}
 
         </section>
@@ -1171,7 +1523,10 @@ function renderForm() {
 
           ${fields
             .slice(15)
-            .map(f => control(f, r))
+            .map(
+              f =>
+                control(f, r)
+            )
             .join('')}
 
         </section>
@@ -1179,16 +1534,15 @@ function renderForm() {
 
         <div
           id="saveMsg"
-          class="msg full">
-        </div>
+          class="msg full"
+        ></div>
 
 
         <button
           class="primary full"
-          type="submit">
-
+          type="submit"
+        >
           Guardar registro diario
-
         </button>
 
       </form>
@@ -1206,7 +1560,10 @@ function renderForm() {
 
 
     const payload = {
-      user_id: user.id
+
+      user_id:
+        user.id
+
     };
 
 
@@ -1217,6 +1574,7 @@ function renderForm() {
           document.getElementById(
             'f_' + key
           );
+
 
         payload[key] =
           type === 'number'
@@ -1239,7 +1597,9 @@ function renderForm() {
     );
 
 
-    const { error } =
+    const {
+      error
+    } =
       await supabase
         .from('daily_records')
         .insert(payload);
@@ -1271,6 +1631,7 @@ function renderForm() {
     );
 
   };
+
 }
 
 
@@ -1282,6 +1643,7 @@ function control(f, r) {
     type
   ] = f;
 
+
   let input;
 
 
@@ -1289,34 +1651,25 @@ function control(f, r) {
 
     input = `
 
-      <select
-        id="f_${key}">
+      <select id="f_${key}">
 
-        <option>
-          Mañana
-        </option>
+        <option>Mañana</option>
 
-        <option>
-          Tarde
-        </option>
+        <option>Tarde</option>
 
-        <option>
-          Noche
-        </option>
+        <option>Noche</option>
 
       </select>
 
     `;
 
-  } else if (
-    type === 'textarea'
-  ) {
+  } else if (type === 'textarea') {
 
     input = `
 
       <textarea
-        id="f_${key}">
-      </textarea>
+        id="f_${key}"
+      ></textarea>
 
     `;
 
@@ -1336,6 +1689,7 @@ function control(f, r) {
       >
 
     `;
+
   }
 
 
@@ -1350,6 +1704,7 @@ function control(f, r) {
     </label>
 
   `;
+
 }
 
 
@@ -1361,6 +1716,7 @@ function renderResumen() {
 
   const d =
     rows.map(derive);
+
 
   const sum = key =>
     d.reduce(
@@ -1382,11 +1738,13 @@ function renderResumen() {
   const merma =
     sum('merma');
 
+
   const horas =
     sum('horas_turno');
 
   const paradas =
     sum('horas_paradas');
+
 
   const personalProgramado =
     sum('personal_programado');
@@ -1394,8 +1752,10 @@ function renderResumen() {
   const personalPresente =
     sum('personal_presente');
 
+
   const rechazadas =
     sum('rechazadas');
+
 
   const pedidos =
     sum('pedidos_programados');
@@ -1403,17 +1763,36 @@ function renderResumen() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
+
   const costo =
     sum('costo_produccion');
 
-  const mantenimiento =
+
+  const mantenimientoDiario =
     sum('costo_mantenimiento');
+
+
+  const mantenimientoSupabase =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.costo),
+      0
+    );
+
+
+  const mantenimiento =
+    mantenimientoSupabase > 0
+      ? mantenimientoSupabase
+      : mantenimientoDiario;
+
 
   const energia =
     sum('energia');
 
+
   const reproceso =
     sum('reproceso');
+
 
   const noConformidades =
     sum('no_conformidades');
@@ -1424,24 +1803,42 @@ function renderResumen() {
       ? producida / programada
       : 0;
 
+
   const yieldRate =
     mp
       ? producida / mp
       : 0;
+
 
   const mermaRate =
     mp
       ? merma / mp
       : 0;
 
+
+  const horasParadaMantenimiento =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.horas_parada),
+      0
+    );
+
+
+  const paradasFinal =
+    horasParadaMantenimiento > 0
+      ? horasParadaMantenimiento
+      : paradas;
+
+
   const disponibilidad =
     horas
       ? Math.max(
           0,
-          (horas - paradas) /
-          horas
+          (horas - paradasFinal) /
+            horas
         )
       : 0;
+
 
   const asistencia =
     personalProgramado
@@ -1449,17 +1846,18 @@ function renderResumen() {
         personalProgramado
       : 0;
 
+
   const rechazo =
     producida
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : 0;
+
 
   const otif =
     pedidos
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : 0;
+
 
   const oee =
     disponibilidad *
@@ -1469,10 +1867,12 @@ function renderResumen() {
       1 - rechazo
     );
 
+
   const costoUnitario =
     producida
       ? costo / producida
       : 0;
+
 
   const energiaUnit =
     producida
@@ -1541,7 +1941,10 @@ function renderResumen() {
     [
       'OEE',
       pct(oee),
-      status(oee, 0.80)
+      status(
+        oee,
+        0.80
+      )
     ],
 
     [
@@ -1578,6 +1981,7 @@ function renderResumen() {
           Indicadores principales
         </h2>
 
+
         <div class="cards">
 
           ${kpis.map(k => `
@@ -1593,10 +1997,9 @@ function renderResumen() {
               </strong>
 
               <span
-                class="badge ${k[2].cls}">
-
+                class="badge ${k[2].cls}"
+              >
                 ${k[2].label}
-
               </span>
 
             </div>
@@ -1614,10 +2017,10 @@ function renderResumen() {
           Producción
         </h2>
 
+
         <div class="cards">
 
           <div class="card">
-
             <small>
               Producción programada
             </small>
@@ -1625,12 +2028,10 @@ function renderResumen() {
             <strong>
               ${programada.toLocaleString()}
             </strong>
-
           </div>
 
 
           <div class="card">
-
             <small>
               Producción real
             </small>
@@ -1638,12 +2039,10 @@ function renderResumen() {
             <strong>
               ${producida.toLocaleString()}
             </strong>
-
           </div>
 
 
           <div class="card">
-
             <small>
               Materia prima consumida
             </small>
@@ -1651,12 +2050,10 @@ function renderResumen() {
             <strong>
               ${mp.toLocaleString()}
             </strong>
-
           </div>
 
 
           <div class="card">
-
             <small>
               Merma
             </small>
@@ -1664,12 +2061,10 @@ function renderResumen() {
             <strong>
               ${merma.toLocaleString()}
             </strong>
-
           </div>
 
 
           <div class="card">
-
             <small>
               Horas de turno
             </small>
@@ -1677,20 +2072,17 @@ function renderResumen() {
             <strong>
               ${horas.toFixed(1)}
             </strong>
-
           </div>
 
 
           <div class="card">
-
             <small>
               Horas de parada
             </small>
 
             <strong>
-              ${paradas.toFixed(1)}
+              ${paradasFinal.toFixed(2)}
             </strong>
-
           </div>
 
         </div>
@@ -1703,6 +2095,7 @@ function renderResumen() {
         <h2>
           Costos y eficiencia
         </h2>
+
 
         <div class="cards">
 
@@ -1722,11 +2115,11 @@ function renderResumen() {
           <div class="card">
 
             <small>
-              Costo unitario
+              Costo mantenimiento
             </small>
 
             <strong>
-              S/ ${costoUnitario.toFixed(3)}
+              S/ ${mantenimiento.toLocaleString()}
             </strong>
 
           </div>
@@ -1735,11 +2128,11 @@ function renderResumen() {
           <div class="card">
 
             <small>
-              Mantenimiento
+              Costo unitario
             </small>
 
             <strong>
-              S/ ${mantenimiento.toLocaleString()}
+              S/ ${costoUnitario.toFixed(3)}
             </strong>
 
           </div>
@@ -1779,81 +2172,223 @@ function renderResumen() {
       <section class="panel">
 
         <h2>
-          Calidad, personal y despacho
+          Mantenimiento
         </h2>
+
 
         <div class="cards">
 
           <div class="card">
+
+            <small>
+              Mantenimientos registrados
+            </small>
+
+            <strong>
+              ${maintenanceRows.length}
+            </strong>
+
+          </div>
+
+
+          <div class="card">
+
+            <small>
+              Programados
+            </small>
+
+            <strong>
+              ${
+                maintenanceRows.filter(
+                  r =>
+                    String(r.estado || '')
+                      .toLowerCase() ===
+                    'programado'
+                ).length
+              }
+            </strong>
+
+          </div>
+
+
+          <div class="card">
+
+            <small>
+              Abiertos / En proceso
+            </small>
+
+            <strong>
+              ${
+                maintenanceRows.filter(
+                  r => {
+
+                    const estado =
+                      String(
+                        r.estado || ''
+                      ).toLowerCase();
+
+                    return (
+                      estado === 'abierto' ||
+                      estado === 'en proceso'
+                    );
+
+                  }
+                ).length
+              }
+            </strong>
+
+          </div>
+
+
+          <div class="card">
+
+            <small>
+              Cerrados
+            </small>
+
+            <strong>
+              ${
+                maintenanceRows.filter(
+                  r =>
+                    String(
+                      r.estado || ''
+                    ).toLowerCase() ===
+                    'cerrado'
+                ).length
+              }
+            </strong>
+
+          </div>
+
+
+          <div class="card">
+
+            <small>
+              Horas de parada
+            </small>
+
+            <strong>
+              ${horasParadaMantenimiento.toFixed(2)}
+              h
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Calidad, personal y despacho
+        </h2>
+
+
+        <div class="cards">
+
+          <div class="card">
+
             <small>
               Personal programado
             </small>
+
             <strong>
               ${personalProgramado}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Personal presente
             </small>
+
             <strong>
               ${personalPresente}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Unidades rechazadas
             </small>
+
             <strong>
               ${rechazadas}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Reproceso
             </small>
+
             <strong>
               ${reproceso}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               No conformidades
             </small>
+
             <strong>
               ${noConformidades}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Pedidos programados
             </small>
+
             <strong>
               ${pedidos}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Pedidos a tiempo
             </small>
+
             <strong>
               ${pedidosTiempo}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Incidentes SSOMA
             </small>
+
             <strong>
               ${ssomaRows.length}
             </strong>
+
           </div>
 
         </div>
@@ -1863,6 +2398,1157 @@ function renderResumen() {
     </main>
 
   `;
+
+}
+
+
+/* =========================================================
+   MANTENIMIENTO
+========================================================= */
+
+function renderMaintenance() {
+
+  const total =
+    maintenanceRows.length;
+
+
+  const programados =
+    maintenanceRows.filter(
+      r =>
+        String(r.estado || '')
+          .toLowerCase() ===
+        'programado'
+    ).length;
+
+
+  const pendientes =
+    maintenanceRows.filter(
+      r => {
+
+        const estado =
+          String(
+            r.estado || ''
+          ).toLowerCase();
+
+        return (
+          estado === 'abierto' ||
+          estado === 'en proceso'
+        );
+
+      }
+    ).length;
+
+
+  const cerrados =
+    maintenanceRows.filter(
+      r =>
+        String(r.estado || '')
+          .toLowerCase() ===
+        'cerrado'
+    ).length;
+
+
+  const horasParada =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.horas_parada),
+      0
+    );
+
+
+  const costoTotal =
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.costo),
+      0
+    );
+
+
+  document.getElementById(
+    'content'
+  ).innerHTML = `
+
+    <main>
+
+      <div class="titleRow">
+
+        <div>
+
+          <h1>
+            Gestión de Mantenimiento
+          </h1>
+
+          <p>
+            Registro, seguimiento y control
+            del mantenimiento de equipos
+            de la planta.
+          </p>
+
+        </div>
+
+
+        <span class="online">
+          ● EN LÍNEA
+        </span>
+
+      </div>
+
+
+      <div class="cards">
+
+        <div class="card">
+
+          <small>
+            Mantenimientos registrados
+          </small>
+
+          <strong>
+            ${total}
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Programados
+          </small>
+
+          <strong>
+            ${programados}
+          </strong>
+
+          <span class="badge ok">
+            PROGRAMADO
+          </span>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Abiertos / En proceso
+          </small>
+
+          <strong>
+            ${pendientes}
+          </strong>
+
+          <span class="badge ${
+            pendientes
+              ? 'warn'
+              : 'ok'
+          }">
+            ${
+              pendientes
+                ? 'PENDIENTE'
+                : 'OK'
+            }
+          </span>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Cerrados
+          </small>
+
+          <strong>
+            ${cerrados}
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Horas de parada
+          </small>
+
+          <strong>
+            ${horasParada.toFixed(2)}
+            horas
+          </strong>
+
+        </div>
+
+
+        <div class="card">
+
+          <small>
+            Costo total
+          </small>
+
+          <strong>
+            S/ ${costoTotal.toFixed(2)}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <section class="panel">
+
+        <h2>
+
+          ${
+            editingMaintenanceId
+              ? 'Editar mantenimiento'
+              : 'Registrar mantenimiento'
+          }
+
+        </h2>
+
+
+        <form
+          id="maintenanceForm"
+          class="formGrid"
+        >
+
+          <section>
+
+            <h2>
+              Identificación
+            </h2>
+
+
+            <label>
+
+              Fecha
+
+              <input
+                id="mt_fecha"
+                type="date"
+                value="${today}"
+                required
+              >
+
+            </label>
+
+
+            <label>
+
+              Equipo
+
+              <input
+                id="mt_equipo"
+                type="text"
+                placeholder="Ej. Mezclador principal"
+                required
+              >
+
+            </label>
+
+
+            <label>
+
+              Código de equipo
+
+              <input
+                id="mt_codigo_equipo"
+                type="text"
+                placeholder="Ej. EQ-001"
+              >
+
+            </label>
+
+
+            <label>
+
+              Tipo
+
+              <select
+                id="mt_tipo"
+                required
+              >
+
+                <option>
+                  Preventivo
+                </option>
+
+                <option>
+                  Correctivo
+                </option>
+
+                <option>
+                  Predictivo
+                </option>
+
+                <option>
+                  Inspección
+                </option>
+
+                <option>
+                  Emergencia
+                </option>
+
+                <option>
+                  Otro
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              Causa
+
+              <input
+                id="mt_causa"
+                type="text"
+                placeholder="Ej. Desgaste de rodamiento"
+              >
+
+            </label>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Intervención
+            </h2>
+
+
+            <label>
+
+              Descripción
+
+              <textarea
+                id="mt_descripcion"
+                placeholder="Describe el mantenimiento realizado o requerido."
+                required
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              Horas de parada
+
+              <input
+                id="mt_horas_parada"
+                type="number"
+                step="0.01"
+                min="0"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Costo (S/)
+
+              <input
+                id="mt_costo"
+                type="number"
+                step="0.01"
+                min="0"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Responsable
+
+              <input
+                id="mt_responsable"
+                type="text"
+                placeholder="Técnico responsable"
+              >
+
+            </label>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Programación y estado
+            </h2>
+
+
+            <label>
+
+              Estado
+
+              <select
+                id="mt_estado"
+                required
+              >
+
+                <option>
+                  Programado
+                </option>
+
+                <option>
+                  Abierto
+                </option>
+
+                <option>
+                  En proceso
+                </option>
+
+                <option>
+                  Cerrado
+                </option>
+
+                <option>
+                  Cancelado
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              Fecha programada
+
+              <input
+                id="mt_fecha_programada"
+                type="date"
+              >
+
+            </label>
+
+
+            <label>
+
+              Fecha de cierre
+
+              <input
+                id="mt_fecha_cierre"
+                type="date"
+              >
+
+            </label>
+
+
+            <label>
+
+              Observaciones
+
+              <textarea
+                id="mt_observaciones"
+                placeholder="Información adicional..."
+              ></textarea>
+
+            </label>
+
+          </section>
+
+
+          <div
+            id="maintenanceMsg"
+            class="msg full"
+          ></div>
+
+
+          <div
+            class="full"
+            style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            "
+          >
+
+            <button
+              class="primary"
+              type="submit"
+            >
+
+              ${
+                editingMaintenanceId
+                  ? 'Actualizar mantenimiento'
+                  : 'Guardar mantenimiento'
+              }
+
+            </button>
+
+
+            ${
+              editingMaintenanceId
+                ? `
+
+                  <button
+                    id="cancelMaintenance"
+                    type="button"
+                  >
+                    Cancelar edición
+                  </button>
+
+                `
+                : ''
+            }
+
+          </div>
+
+        </form>
+
+      </section>
+
+
+      <section class="panel">
+
+        <h2>
+          Mantenimientos registrados
+        </h2>
+
+
+        ${
+          maintenanceRows.length
+
+            ? `
+
+              <div class="tableWrap">
+
+                <table>
+
+                  <thead>
+
+                    <tr>
+
+                      <th>Fecha</th>
+
+                      <th>Equipo</th>
+
+                      <th>Tipo</th>
+
+                      <th>Horas parada</th>
+
+                      <th>Causa</th>
+
+                      <th>Costo</th>
+
+                      <th>Responsable</th>
+
+                      <th>Estado</th>
+
+                      <th>Próximo</th>
+
+                      <th>Acciones</th>
+
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody>
+
+                    ${maintenanceRows
+                      .map(r => `
+
+                        <tr>
+
+                          <td>
+                            ${esc(r.fecha)}
+                          </td>
+
+                          <td>
+
+                            <strong>
+                              ${esc(r.equipo)}
+                            </strong>
+
+                            ${
+                              r.codigo_equipo
+                                ? `
+                                  <br>
+                                  <small>
+                                    ${esc(
+                                      r.codigo_equipo
+                                    )}
+                                  </small>
+                                `
+                                : ''
+                            }
+
+                          </td>
+
+                          <td>
+                            ${esc(r.tipo)}
+                          </td>
+
+                          <td>
+                            ${n(
+                              r.horas_parada
+                            ).toFixed(2)}
+                          </td>
+
+                          <td>
+                            ${esc(
+                              r.causa || ''
+                            )}
+                          </td>
+
+                          <td>
+                            S/
+                            ${n(
+                              r.costo
+                            ).toFixed(2)}
+                          </td>
+
+                          <td>
+                            ${esc(
+                              r.responsable || ''
+                            )}
+                          </td>
+
+                          <td>
+
+                            <span
+                              class="badge ${
+                                String(
+                                  r.estado || ''
+                                ).toLowerCase() ===
+                                'cerrado'
+                                  ? 'ok'
+                                  : (
+                                      String(
+                                        r.estado || ''
+                                      ).toLowerCase() ===
+                                      'cancelado'
+                                    )
+                                    ? 'critical'
+                                    : (
+                                        String(
+                                          r.estado || ''
+                                        ).toLowerCase() ===
+                                        'programado'
+                                      )
+                                      ? 'ok'
+                                      : 'warn'
+                              }"
+                            >
+                              ${esc(r.estado)}
+                            </span>
+
+                          </td>
+
+                          <td>
+                            ${esc(
+                              r.fecha_programada ||
+                              ''
+                            )}
+                          </td>
+
+                          <td>
+
+                            <button
+                              type="button"
+                              data-edit-maintenance="${esc(r.id)}"
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              type="button"
+                              data-delete-maintenance="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
+
+                          </td>
+
+                        </tr>
+
+                      `)
+                      .join('')}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            `
+
+            : `
+
+              <div class="empty">
+
+                Todavía no hay mantenimientos
+                registrados.
+
+              </div>
+
+            `
+        }
+
+      </section>
+
+    </main>
+
+  `;
+
+
+  document.getElementById(
+    'maintenanceForm'
+  ).onsubmit =
+    saveMaintenance;
+
+
+  document
+    .querySelectorAll(
+      '[data-edit-maintenance]'
+    )
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        editMaintenance(
+          button.dataset.editMaintenance
+        );
+
+      };
+
+    });
+
+
+  document
+    .querySelectorAll(
+      '[data-delete-maintenance]'
+    )
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        deleteMaintenance(
+          button.dataset.deleteMaintenance
+        );
+
+      };
+
+    });
+
+
+  document.getElementById(
+    'cancelMaintenance'
+  )?.addEventListener(
+    'click',
+    () => {
+
+      editingMaintenanceId =
+        null;
+
+      renderMaintenance();
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   GUARDAR MANTENIMIENTO
+========================================================= */
+
+async function saveMaintenance(e) {
+
+  e.preventDefault();
+
+
+  const payload = {
+
+    user_id:
+      user.id,
+
+    fecha:
+      document.getElementById(
+        'mt_fecha'
+      ).value,
+
+    equipo:
+      document.getElementById(
+        'mt_equipo'
+      ).value.trim(),
+
+    codigo_equipo:
+      document.getElementById(
+        'mt_codigo_equipo'
+      ).value.trim() || null,
+
+    tipo:
+      document.getElementById(
+        'mt_tipo'
+      ).value,
+
+    causa:
+      document.getElementById(
+        'mt_causa'
+      ).value.trim() || null,
+
+    descripcion:
+      document.getElementById(
+        'mt_descripcion'
+      ).value.trim(),
+
+    horas_parada:
+      n(
+        document.getElementById(
+          'mt_horas_parada'
+        ).value
+      ),
+
+    costo:
+      n(
+        document.getElementById(
+          'mt_costo'
+        ).value
+      ),
+
+    responsable:
+      document.getElementById(
+        'mt_responsable'
+      ).value.trim() || null,
+
+    estado:
+      document.getElementById(
+        'mt_estado'
+      ).value,
+
+    fecha_programada:
+      document.getElementById(
+        'mt_fecha_programada'
+      ).value || null,
+
+    fecha_cierre:
+      document.getElementById(
+        'mt_fecha_cierre'
+      ).value || null,
+
+    observaciones:
+      document.getElementById(
+        'mt_observaciones'
+      ).value.trim() || null
+
+  };
+
+
+  if (!payload.fecha) {
+
+    msg(
+      'maintenanceMsg',
+      'Debes ingresar la fecha.'
+    );
+
+    return;
+  }
+
+
+  if (!payload.equipo) {
+
+    msg(
+      'maintenanceMsg',
+      'Debes ingresar el equipo.'
+    );
+
+    return;
+  }
+
+
+  if (!payload.descripcion) {
+
+    msg(
+      'maintenanceMsg',
+      'Debes ingresar la descripción.'
+    );
+
+    return;
+  }
+
+
+  if (payload.horas_parada < 0) {
+
+    msg(
+      'maintenanceMsg',
+      'Las horas de parada no pueden ser negativas.'
+    );
+
+    return;
+  }
+
+
+  if (payload.costo < 0) {
+
+    msg(
+      'maintenanceMsg',
+      'El costo no puede ser negativo.'
+    );
+
+    return;
+  }
+
+
+  msg(
+    'maintenanceMsg',
+    'Guardando mantenimiento…'
+  );
+
+
+  let result;
+
+
+  if (editingMaintenanceId) {
+
+    result =
+      await supabase
+        .from('maintenance')
+        .update(payload)
+        .eq(
+          'id',
+          editingMaintenanceId
+        )
+        .eq(
+          'user_id',
+          user.id
+        );
+
+  } else {
+
+    result =
+      await supabase
+        .from('maintenance')
+        .insert(payload);
+
+  }
+
+
+  if (result.error) {
+
+    msg(
+      'maintenanceMsg',
+      'Error: ' +
+      result.error.message
+    );
+
+    return;
+  }
+
+
+  editingMaintenanceId =
+    null;
+
+
+  await loadMaintenance();
+
+  renderMaintenance();
+
+}
+
+
+/* =========================================================
+   EDITAR MANTENIMIENTO
+========================================================= */
+
+function editMaintenance(id) {
+
+  const row =
+    maintenanceRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+
+  if (!row) {
+
+    alert(
+      'No se encontró el mantenimiento.'
+    );
+
+    return;
+  }
+
+
+  editingMaintenanceId =
+    row.id;
+
+
+  renderMaintenance();
+
+
+  document.getElementById(
+    'mt_fecha'
+  ).value =
+    row.fecha ||
+    today;
+
+
+  document.getElementById(
+    'mt_equipo'
+  ).value =
+    row.equipo ||
+    '';
+
+
+  document.getElementById(
+    'mt_codigo_equipo'
+  ).value =
+    row.codigo_equipo ||
+    '';
+
+
+  document.getElementById(
+    'mt_tipo'
+  ).value =
+    row.tipo ||
+    'Preventivo';
+
+
+  document.getElementById(
+    'mt_causa'
+  ).value =
+    row.causa ||
+    '';
+
+
+  document.getElementById(
+    'mt_descripcion'
+  ).value =
+    row.descripcion ||
+    '';
+
+
+  document.getElementById(
+    'mt_horas_parada'
+  ).value =
+    n(
+      row.horas_parada
+    );
+
+
+  document.getElementById(
+    'mt_costo'
+  ).value =
+    n(
+      row.costo
+    );
+
+
+  document.getElementById(
+    'mt_responsable'
+  ).value =
+    row.responsable ||
+    '';
+
+
+  document.getElementById(
+    'mt_estado'
+  ).value =
+    row.estado ||
+    'Abierto';
+
+
+  document.getElementById(
+    'mt_fecha_programada'
+  ).value =
+    row.fecha_programada ||
+    '';
+
+
+  document.getElementById(
+    'mt_fecha_cierre'
+  ).value =
+    row.fecha_cierre ||
+    '';
+
+
+  document.getElementById(
+    'mt_observaciones'
+  ).value =
+    row.observaciones ||
+    '';
+
+
+  window.scrollTo({
+
+    top: 0,
+
+    behavior: 'smooth'
+
+  });
+
+}
+
+
+/* =========================================================
+   ELIMINAR MANTENIMIENTO
+========================================================= */
+
+async function deleteMaintenance(id) {
+
+  const row =
+    maintenanceRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+
+  if (!row) return;
+
+
+  if (
+    !confirm(
+      `¿Eliminar el mantenimiento de "${row.equipo}"?\n\n` +
+      `Fecha: ${row.fecha}\n` +
+      `Tipo: ${row.tipo}\n\n` +
+      `Esta acción no se puede deshacer.`
+    )
+  ) return;
+
+
+  const {
+    error
+  } =
+    await supabase
+      .from('maintenance')
+      .delete()
+      .eq(
+        'id',
+        id
+      )
+      .eq(
+        'user_id',
+        user.id
+      );
+
+
+  if (error) {
+
+    alert(
+      'No se pudo eliminar:\n' +
+      error.message
+    );
+
+    return;
+  }
+
+
+  await loadMaintenance();
+
+  renderMaintenance();
+
 }
 
 
@@ -1880,9 +3566,11 @@ function renderInventory() {
         n(r.entradas) -
         n(r.salidas);
 
+
       return (
         n(r.stock_minimo) > 0 &&
-        stock <= n(r.stock_minimo)
+        stock <=
+          n(r.stock_minimo)
       );
 
     }).length;
@@ -1929,12 +3617,11 @@ function renderInventory() {
             ${lowStock}
           </strong>
 
-          <span
-            class="badge ${
-              lowStock
-                ? 'critical'
-                : 'ok'
-            }">
+          <span class="badge ${
+            lowStock
+              ? 'critical'
+              : 'ok'
+          }">
 
             ${
               lowStock
@@ -1964,8 +3651,8 @@ function renderInventory() {
 
         <form
           id="inventoryForm"
-          class="formGrid">
-
+          class="formGrid"
+        >
 
           <section>
 
@@ -2019,7 +3706,8 @@ function renderInventory() {
               Categoría
 
               <select
-                id="inv_categoria">
+                id="inv_categoria"
+              >
 
                 <option value="">
                   Seleccionar
@@ -2059,15 +3747,23 @@ function renderInventory() {
               Unidad
 
               <select
-                id="inv_unidad">
+                id="inv_unidad"
+              >
 
                 <option>kg</option>
+
                 <option>t</option>
+
                 <option>g</option>
+
                 <option>litros</option>
+
                 <option>unidades</option>
+
                 <option>cajas</option>
+
                 <option>bolsas</option>
+
                 <option>otros</option>
 
               </select>
@@ -2156,10 +3852,9 @@ function renderInventory() {
                   display:block;
                   font-size:28px;
                   margin-top:8px;
-                ">
-
+                "
+              >
                 0
-
               </strong>
 
             </div>
@@ -2187,15 +3882,16 @@ function renderInventory() {
 
           <div
             id="inventoryMsg"
-            class="msg full">
-          </div>
+            class="msg full"
+          ></div>
 
 
           <div class="full">
 
             <button
               class="primary"
-              type="submit">
+              type="submit"
+            >
 
               ${
                 editingInventoryId
@@ -2211,10 +3907,9 @@ function renderInventory() {
                 ? `
                   <button
                     id="cancelInventory"
-                    type="button">
-
+                    type="button"
+                  >
                     Cancelar
-
                   </button>
                 `
                 : ''
@@ -2248,16 +3943,27 @@ function renderInventory() {
                     <tr>
 
                       <th>Fecha</th>
+
                       <th>Código</th>
+
                       <th>Material</th>
+
                       <th>Categoría</th>
+
                       <th>Unidad</th>
+
                       <th>Inicial</th>
+
                       <th>Entradas</th>
+
                       <th>Salidas</th>
+
                       <th>Stock</th>
+
                       <th>Mínimo</th>
+
                       <th>Estado</th>
+
                       <th>Acciones</th>
 
                     </tr>
@@ -2271,14 +3977,26 @@ function renderInventory() {
                       .map(r => {
 
                         const stock =
-                          n(r.stock_inicial) +
-                          n(r.entradas) -
-                          n(r.salidas);
+                          n(
+                            r.stock_inicial
+                          ) +
+                          n(
+                            r.entradas
+                          ) -
+                          n(
+                            r.salidas
+                          );
+
 
                         const low =
-                          n(r.stock_minimo) > 0 &&
+                          n(
+                            r.stock_minimo
+                          ) > 0 &&
                           stock <=
-                            n(r.stock_minimo);
+                            n(
+                              r.stock_minimo
+                            );
+
 
                         return `
 
@@ -2289,31 +4007,47 @@ function renderInventory() {
                             </td>
 
                             <td>
-                              ${esc(r.codigo || '')}
+                              ${esc(
+                                r.codigo ||
+                                ''
+                              )}
                             </td>
 
                             <td>
-                              ${esc(r.material)}
+                              ${esc(
+                                r.material
+                              )}
                             </td>
 
                             <td>
-                              ${esc(r.categoria || '')}
+                              ${esc(
+                                r.categoria ||
+                                ''
+                              )}
                             </td>
 
                             <td>
-                              ${esc(r.unidad)}
+                              ${esc(
+                                r.unidad
+                              )}
                             </td>
 
                             <td>
-                              ${n(r.stock_inicial)}
+                              ${n(
+                                r.stock_inicial
+                              )}
                             </td>
 
                             <td>
-                              ${n(r.entradas)}
+                              ${n(
+                                r.entradas
+                              )}
                             </td>
 
                             <td>
-                              ${n(r.salidas)}
+                              ${n(
+                                r.salidas
+                              )}
                             </td>
 
                             <td>
@@ -2323,7 +4057,9 @@ function renderInventory() {
                             </td>
 
                             <td>
-                              ${n(r.stock_minimo)}
+                              ${n(
+                                r.stock_minimo
+                              )}
                             </td>
 
                             <td>
@@ -2333,7 +4069,8 @@ function renderInventory() {
                                   low
                                     ? 'critical'
                                     : 'ok'
-                                }">
+                                }"
+                              >
 
                                 ${
                                   low
@@ -2348,17 +4085,15 @@ function renderInventory() {
                             <td>
 
                               <button
-                                data-edit-inventory="${esc(r.id)}">
-
+                                data-edit-inventory="${esc(r.id)}"
+                              >
                                 Editar
-
                               </button>
 
                               <button
-                                data-delete-inventory="${esc(r.id)}">
-
+                                data-delete-inventory="${esc(r.id)}"
+                              >
                                 Eliminar
-
                               </button>
 
                             </td>
@@ -2382,7 +4117,8 @@ function renderInventory() {
 
               <div class="empty">
 
-                Todavía no hay inventario registrado.
+                Todavía no hay inventario
+                registrado.
 
               </div>
 
@@ -2461,12 +4197,14 @@ function renderInventory() {
     'click',
     () => {
 
-      editingInventoryId = null;
+      editingInventoryId =
+        null;
 
       renderInventory();
 
     }
   );
+
 }
 
 
@@ -2479,12 +4217,14 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
+
   const entradas =
     n(
       document.getElementById(
         'inv_entradas'
       )?.value
     );
+
 
   const salidas =
     n(
@@ -2493,10 +4233,12 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
+
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
+
 
   if (output) {
 
@@ -2504,7 +4246,9 @@ function updateInventoryStockPreview() {
       inicial +
       entradas -
       salidas;
+
   }
+
 }
 
 
@@ -2578,6 +4322,7 @@ async function saveInventory(e) {
         'inv_observaciones'
       ).value.trim() ||
       null
+
   };
 
 
@@ -2627,11 +4372,14 @@ async function saveInventory(e) {
   }
 
 
-  editingInventoryId = null;
+  editingInventoryId =
+    null;
+
 
   await loadInventory();
 
   renderInventory();
+
 }
 
 
@@ -2665,61 +4413,88 @@ function editInventory(id) {
   document.getElementById(
     'inv_fecha'
   ).value =
-    row.fecha || today;
+    row.fecha ||
+    today;
+
 
   document.getElementById(
     'inv_codigo'
   ).value =
-    row.codigo || '';
+    row.codigo ||
+    '';
+
 
   document.getElementById(
     'inv_material'
   ).value =
-    row.material || '';
+    row.material ||
+    '';
+
 
   document.getElementById(
     'inv_categoria'
   ).value =
-    row.categoria || '';
+    row.categoria ||
+    '';
+
 
   document.getElementById(
     'inv_unidad'
   ).value =
-    row.unidad || 'kg';
+    row.unidad ||
+    'kg';
+
 
   document.getElementById(
     'inv_stock_inicial'
   ).value =
-    n(row.stock_inicial);
+    n(
+      row.stock_inicial
+    );
+
 
   document.getElementById(
     'inv_entradas'
   ).value =
-    n(row.entradas);
+    n(
+      row.entradas
+    );
+
 
   document.getElementById(
     'inv_salidas'
   ).value =
-    n(row.salidas);
+    n(
+      row.salidas
+    );
+
 
   document.getElementById(
     'inv_stock_minimo'
   ).value =
-    n(row.stock_minimo);
+    n(
+      row.stock_minimo
+    );
+
 
   document.getElementById(
     'inv_observaciones'
   ).value =
-    row.observaciones || '';
+    row.observaciones ||
+    '';
 
 
   updateInventoryStockPreview();
 
 
   window.scrollTo({
+
     top: 0,
+
     behavior: 'smooth'
+
   });
+
 }
 
 
@@ -2743,12 +4518,20 @@ async function deleteInventory(id) {
   ) return;
 
 
-  const { error } =
+  const {
+    error
+  } =
     await supabase
       .from('inventory')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq(
+        'id',
+        id
+      )
+      .eq(
+        'user_id',
+        user.id
+      );
 
 
   if (error) {
@@ -2765,6 +4548,7 @@ async function deleteInventory(id) {
   await loadInventory();
 
   renderInventory();
+
 }
 
 
@@ -2777,14 +4561,17 @@ function renderPersonal() {
   const activos =
     personalRows.filter(
       r =>
-        String(r.estado || '')
-          .toLowerCase() ===
+        String(
+          r.estado || ''
+        ).toLowerCase() ===
         'activo'
     ).length;
+
 
   const inactivos =
     personalRows.length -
     activos;
+
 
   const areas =
     new Set(
@@ -2814,6 +4601,7 @@ function renderPersonal() {
           </p>
 
         </div>
+
 
         <span class="online">
           ● EN LÍNEA
@@ -2897,8 +4685,8 @@ function renderPersonal() {
 
         <form
           id="personalForm"
-          class="formGrid">
-
+          class="formGrid"
+        >
 
           <section>
 
@@ -2967,6 +4755,7 @@ function renderPersonal() {
               <input
                 id="per_cargo"
                 type="text"
+                placeholder="Ej. Operador de planta"
                 required
               >
 
@@ -2980,6 +4769,7 @@ function renderPersonal() {
               <input
                 id="per_area"
                 type="text"
+                placeholder="Ej. Producción"
                 required
               >
 
@@ -3040,8 +4830,9 @@ function renderPersonal() {
             <label>
 
               <textarea
-                id="per_observaciones">
-              </textarea>
+                id="per_observaciones"
+                placeholder="Información adicional..."
+              ></textarea>
 
             </label>
 
@@ -3050,15 +4841,23 @@ function renderPersonal() {
 
           <div
             id="personalMsg"
-            class="msg full">
-          </div>
+            class="msg full"
+          ></div>
 
 
-          <div class="full">
+          <div
+            class="full"
+            style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            "
+          >
 
             <button
               class="primary"
-              type="submit">
+              type="submit"
+            >
 
               ${
                 editingPersonalId
@@ -3072,13 +4871,14 @@ function renderPersonal() {
             ${
               editingPersonalId
                 ? `
+
                   <button
                     id="cancelPersonal"
-                    type="button">
-
+                    type="button"
+                  >
                     Cancelar edición
-
                   </button>
+
                 `
                 : ''
             }
@@ -3111,12 +4911,19 @@ function renderPersonal() {
                     <tr>
 
                       <th>DNI</th>
+
                       <th>Nombre</th>
+
                       <th>Cargo</th>
+
                       <th>Área</th>
+
                       <th>Turno</th>
+
                       <th>Ingreso</th>
+
                       <th>Estado</th>
+
                       <th>Acciones</th>
 
                     </tr>
@@ -3136,9 +4943,11 @@ function renderPersonal() {
                           </td>
 
                           <td>
+
                             <strong>
                               ${esc(r.nombre)}
                             </strong>
+
                           </td>
 
                           <td>
@@ -3154,7 +4963,9 @@ function renderPersonal() {
                           </td>
 
                           <td>
-                            ${esc(r.fecha_ingreso)}
+                            ${esc(
+                              r.fecha_ingreso
+                            )}
                           </td>
 
                           <td>
@@ -3165,10 +4976,9 @@ function renderPersonal() {
                                 'Activo'
                                   ? 'ok'
                                   : 'warn'
-                              }">
-
+                              }"
+                            >
                               ${esc(r.estado)}
-
                             </span>
 
                           </td>
@@ -3177,19 +4987,16 @@ function renderPersonal() {
 
                             <button
                               type="button"
-                              data-edit-personal="${esc(r.id)}">
-
+                              data-edit-personal="${esc(r.id)}"
+                            >
                               Editar
-
                             </button>
-
 
                             <button
                               type="button"
-                              data-delete-personal="${esc(r.id)}">
-
+                              data-delete-personal="${esc(r.id)}"
+                            >
                               Eliminar
-
                             </button>
 
                           </td>
@@ -3274,12 +5081,14 @@ function renderPersonal() {
     'click',
     () => {
 
-      editingPersonalId = null;
+      editingPersonalId =
+        null;
 
       renderPersonal();
 
     }
   );
+
 }
 
 
@@ -3295,49 +5104,66 @@ async function savePersonal(e) {
 
     dni:
       document
-        .getElementById('per_dni')
+        .getElementById(
+          'per_dni'
+        )
         .value
         .trim(),
 
     nombre:
       document
-        .getElementById('per_nombre')
+        .getElementById(
+          'per_nombre'
+        )
         .value
         .trim(),
 
     fecha_ingreso:
       document
-        .getElementById('per_fecha_ingreso')
+        .getElementById(
+          'per_fecha_ingreso'
+        )
         .value,
 
     cargo:
       document
-        .getElementById('per_cargo')
+        .getElementById(
+          'per_cargo'
+        )
         .value
         .trim(),
 
     area:
       document
-        .getElementById('per_area')
+        .getElementById(
+          'per_area'
+        )
         .value
         .trim(),
 
     turno:
       document
-        .getElementById('per_turno')
+        .getElementById(
+          'per_turno'
+        )
         .value,
 
     estado:
       document
-        .getElementById('per_estado')
+        .getElementById(
+          'per_estado'
+        )
         .value,
 
     observaciones:
       document
-        .getElementById('per_observaciones')
+        .getElementById(
+          'per_observaciones'
+        )
         .value
         .trim() ||
       null
+
   };
 
 
@@ -3433,7 +5259,8 @@ async function savePersonal(e) {
   if (result.error) {
 
     if (
-      result.error.code === '23505'
+      result.error.code ===
+      '23505'
     ) {
 
       msg(
@@ -3455,11 +5282,14 @@ async function savePersonal(e) {
   }
 
 
-  editingPersonalId = null;
+  editingPersonalId =
+    null;
+
 
   await loadPersonal();
 
   renderPersonal();
+
 }
 
 
@@ -3493,48 +5323,67 @@ function editPersonal(id) {
   document.getElementById(
     'per_dni'
   ).value =
-    row.dni || '';
+    row.dni ||
+    '';
+
 
   document.getElementById(
     'per_nombre'
   ).value =
-    row.nombre || '';
+    row.nombre ||
+    '';
+
 
   document.getElementById(
     'per_fecha_ingreso'
   ).value =
-    row.fecha_ingreso || today;
+    row.fecha_ingreso ||
+    today;
+
 
   document.getElementById(
     'per_cargo'
   ).value =
-    row.cargo || '';
+    row.cargo ||
+    '';
+
 
   document.getElementById(
     'per_area'
   ).value =
-    row.area || '';
+    row.area ||
+    '';
+
 
   document.getElementById(
     'per_turno'
   ).value =
-    row.turno || 'Mañana';
+    row.turno ||
+    'Mañana';
+
 
   document.getElementById(
     'per_estado'
   ).value =
-    row.estado || 'Activo';
+    row.estado ||
+    'Activo';
+
 
   document.getElementById(
     'per_observaciones'
   ).value =
-    row.observaciones || '';
+    row.observaciones ||
+    '';
 
 
   window.scrollTo({
+
     top: 0,
+
     behavior: 'smooth'
+
   });
+
 }
 
 
@@ -3561,7 +5410,9 @@ async function deletePersonal(id) {
   ) return;
 
 
-  const { error } =
+  const {
+    error
+  } =
     await supabase
       .from('personal')
       .delete()
@@ -3589,1171 +5440,7 @@ async function deletePersonal(id) {
   await loadPersonal();
 
   renderPersonal();
-}
 
-
-/* =========================================================
-   MANTENIMIENTO
-========================================================= */
-
-function renderMaintenance() {
-
-  const total =
-    maintenanceRows.length;
-
-  const programados =
-    maintenanceRows.filter(
-      r =>
-        r.estado ===
-        'Programado'
-    ).length;
-
-  const abiertos =
-    maintenanceRows.filter(
-      r =>
-        r.estado ===
-          'Abierto' ||
-        r.estado ===
-          'En proceso'
-    ).length;
-
-  const cerrados =
-    maintenanceRows.filter(
-      r =>
-        r.estado ===
-        'Cerrado'
-    ).length;
-
-  const horasParada =
-    maintenanceRows.reduce(
-      (s, r) =>
-        s +
-        n(r.horas_parada),
-      0
-    );
-
-  const costoTotal =
-    maintenanceRows.reduce(
-      (s, r) =>
-        s +
-        n(r.costo),
-      0
-    );
-
-
-  document.getElementById(
-    'content'
-  ).innerHTML = `
-
-    <main>
-
-      <div class="titleRow">
-
-        <div>
-
-          <h1>
-            Gestión de Mantenimiento
-          </h1>
-
-          <p>
-            Registro, seguimiento y control
-            del mantenimiento de equipos
-            de la planta.
-          </p>
-
-        </div>
-
-        <span class="online">
-          ● EN LÍNEA
-        </span>
-
-      </div>
-
-
-      <div class="cards">
-
-        <div class="card">
-
-          <small>
-            Mantenimientos registrados
-          </small>
-
-          <strong>
-            ${total}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Programados
-          </small>
-
-          <strong>
-            ${programados}
-          </strong>
-
-          <span class="badge ok">
-            PROGRAMADO
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Abiertos / En proceso
-          </small>
-
-          <strong>
-            ${abiertos}
-          </strong>
-
-          <span class="badge warn">
-            PENDIENTE
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Cerrados
-          </small>
-
-          <strong>
-            ${cerrados}
-          </strong>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Horas de parada
-          </small>
-
-          <strong>
-            ${horasParada.toFixed(2)}
-          </strong>
-
-          <span>
-            horas
-          </span>
-
-        </div>
-
-
-        <div class="card">
-
-          <small>
-            Costo total
-          </small>
-
-          <strong>
-            S/ ${costoTotal.toLocaleString(
-              'es-PE',
-              {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              }
-            )}
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <section class="panel">
-
-        <h2>
-
-          ${
-            editingMaintenanceId
-              ? 'Editar mantenimiento'
-              : 'Registrar mantenimiento'
-          }
-
-        </h2>
-
-
-        <form
-          id="maintenanceForm"
-          class="formGrid">
-
-
-          <section>
-
-            <h2>
-              Identificación
-            </h2>
-
-
-            <label>
-
-              Fecha
-
-              <input
-                id="mnt_fecha"
-                type="date"
-                value="${today}"
-                required
-              >
-
-            </label>
-
-
-            <label>
-
-              Equipo
-
-              <input
-                id="mnt_equipo"
-                type="text"
-                placeholder="Ej. Mezclador principal"
-                required
-              >
-
-            </label>
-
-
-            <label>
-
-              Código de equipo
-
-              <input
-                id="mnt_codigo_equipo"
-                type="text"
-                placeholder="Ej. EQ-001"
-              >
-
-            </label>
-
-
-            <label>
-
-              Tipo
-
-              <select
-                id="mnt_tipo"
-                required>
-
-                <option>
-                  Preventivo
-                </option>
-
-                <option>
-                  Correctivo
-                </option>
-
-                <option>
-                  Predictivo
-                </option>
-
-                <option>
-                  Inspección
-                </option>
-
-                <option>
-                  Emergencia
-                </option>
-
-                <option>
-                  Otro
-                </option>
-
-              </select>
-
-            </label>
-
-
-            <label>
-
-              Causa
-
-              <input
-                id="mnt_causa"
-                type="text"
-                placeholder="Ej. Desgaste de rodamiento"
-              >
-
-            </label>
-
-          </section>
-
-
-          <section>
-
-            <h2>
-              Trabajo realizado
-            </h2>
-
-
-            <label>
-
-              Descripción
-
-              <textarea
-                id="mnt_descripcion"
-                required
-                placeholder="Describe el trabajo realizado o requerido..."
-              ></textarea>
-
-            </label>
-
-
-            <label>
-
-              Horas de parada
-
-              <input
-                id="mnt_horas_parada"
-                type="number"
-                step="0.01"
-                min="0"
-                value="0"
-              >
-
-            </label>
-
-
-            <label>
-
-              Costo (S/)
-
-              <input
-                id="mnt_costo"
-                type="number"
-                step="0.01"
-                min="0"
-                value="0"
-              >
-
-            </label>
-
-
-            <label>
-
-              Responsable
-
-              <input
-                id="mnt_responsable"
-                type="text"
-                placeholder="Responsable del mantenimiento"
-              >
-
-            </label>
-
-          </section>
-
-
-          <section>
-
-            <h2>
-              Seguimiento
-            </h2>
-
-
-            <label>
-
-              Estado
-
-              <select
-                id="mnt_estado"
-                required>
-
-                <option>
-                  Programado
-                </option>
-
-                <option>
-                  Abierto
-                </option>
-
-                <option>
-                  En proceso
-                </option>
-
-                <option>
-                  Cerrado
-                </option>
-
-                <option>
-                  Cancelado
-                </option>
-
-              </select>
-
-            </label>
-
-
-            <label>
-
-              Fecha programada
-
-              <input
-                id="mnt_fecha_programada"
-                type="date"
-              >
-
-            </label>
-
-
-            <label>
-
-              Fecha de cierre
-
-              <input
-                id="mnt_fecha_cierre"
-                type="date"
-              >
-
-            </label>
-
-
-            <label>
-
-              Observaciones
-
-              <textarea
-                id="mnt_observaciones"
-                placeholder="Información adicional..."
-              ></textarea>
-
-            </label>
-
-          </section>
-
-
-          <div
-            id="maintenanceMsg"
-            class="msg full">
-          </div>
-
-
-          <div
-            class="full"
-            style="
-              display:flex;
-              gap:10px;
-              flex-wrap:wrap;
-            ">
-
-            <button
-              class="primary"
-              type="submit">
-
-              ${
-                editingMaintenanceId
-                  ? 'Actualizar mantenimiento'
-                  : 'Guardar mantenimiento'
-              }
-
-            </button>
-
-
-            ${
-              editingMaintenanceId
-                ? `
-                  <button
-                    id="cancelMaintenance"
-                    type="button">
-
-                    Cancelar edición
-
-                  </button>
-                `
-                : ''
-            }
-
-          </div>
-
-        </form>
-
-      </section>
-
-
-      <section class="panel">
-
-        <div class="titleRow">
-
-          <div>
-
-            <h2>
-              Historial de mantenimiento
-            </h2>
-
-            <p>
-              Registros ordenados por fecha.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        ${
-          maintenanceRows.length
-
-            ? `
-
-              <div class="tableWrap">
-
-                <table>
-
-                  <thead>
-
-                    <tr>
-
-                      <th>Fecha</th>
-                      <th>Equipo</th>
-                      <th>Código</th>
-                      <th>Tipo</th>
-                      <th>Causa</th>
-                      <th>Horas parada</th>
-                      <th>Costo</th>
-                      <th>Responsable</th>
-                      <th>Estado</th>
-                      <th>Programada</th>
-                      <th>Cierre</th>
-                      <th>Acciones</th>
-
-                    </tr>
-
-                  </thead>
-
-
-                  <tbody>
-
-                    ${maintenanceRows
-                      .map(r => `
-
-                        <tr>
-
-                          <td>
-                            ${esc(r.fecha)}
-                          </td>
-
-                          <td>
-                            <strong>
-                              ${esc(r.equipo)}
-                            </strong>
-                          </td>
-
-                          <td>
-                            ${esc(
-                              r.codigo_equipo ||
-                              ''
-                            )}
-                          </td>
-
-                          <td>
-                            ${esc(r.tipo)}
-                          </td>
-
-                          <td>
-                            ${esc(
-                              r.causa ||
-                              ''
-                            )}
-                          </td>
-
-                          <td>
-                            ${n(
-                              r.horas_parada
-                            ).toFixed(2)}
-                          </td>
-
-                          <td>
-                            S/
-                            ${n(
-                              r.costo
-                            ).toFixed(2)}
-                          </td>
-
-                          <td>
-                            ${esc(
-                              r.responsable ||
-                              ''
-                            )}
-                          </td>
-
-                          <td>
-
-                            <span
-                              class="badge ${
-                                r.estado ===
-                                  'Cerrado'
-                                  ? 'ok'
-                                  : r.estado ===
-                                      'Cancelado'
-                                    ? 'critical'
-                                    : 'warn'
-                              }">
-
-                              ${esc(r.estado)}
-
-                            </span>
-
-                          </td>
-
-                          <td>
-                            ${esc(
-                              r.fecha_programada ||
-                              ''
-                            )}
-                          </td>
-
-                          <td>
-                            ${esc(
-                              r.fecha_cierre ||
-                              ''
-                            )}
-                          </td>
-
-                          <td>
-
-                            <button
-                              type="button"
-                              data-edit-maintenance="${esc(r.id)}">
-
-                              Editar
-
-                            </button>
-
-
-                            <button
-                              type="button"
-                              data-delete-maintenance="${esc(r.id)}">
-
-                              Eliminar
-
-                            </button>
-
-                          </td>
-
-                        </tr>
-
-                      `)
-                      .join('')}
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-            `
-
-            : `
-
-              <div class="empty">
-
-                Todavía no hay mantenimientos
-                registrados.
-
-                Utiliza el formulario superior
-                para registrar el primero.
-
-              </div>
-
-            `
-        }
-
-      </section>
-
-
-      ${
-        maintenanceRows.length
-          ? `
-
-            <section class="panel">
-
-              <h2>
-                Detalle del mantenimiento seleccionado
-              </h2>
-
-              <p>
-                La descripción y las observaciones
-                completas pueden consultarse
-                editando el registro correspondiente.
-              </p>
-
-            </section>
-
-          `
-          : ''
-      }
-
-    </main>
-
-  `;
-
-
-  document.getElementById(
-    'maintenanceForm'
-  ).onsubmit =
-    saveMaintenance;
-
-
-  document
-    .querySelectorAll(
-      '[data-edit-maintenance]'
-    )
-    .forEach(button => {
-
-      button.onclick = () => {
-
-        editMaintenance(
-          button.dataset.editMaintenance
-        );
-
-      };
-
-    });
-
-
-  document
-    .querySelectorAll(
-      '[data-delete-maintenance]'
-    )
-    .forEach(button => {
-
-      button.onclick = () => {
-
-        deleteMaintenance(
-          button.dataset.deleteMaintenance
-        );
-
-      };
-
-    });
-
-
-  document.getElementById(
-    'cancelMaintenance'
-  )?.addEventListener(
-    'click',
-    () => {
-
-      editingMaintenanceId = null;
-
-      renderMaintenance();
-
-    }
-  );
-}
-
-
-/* =========================================================
-   GUARDAR / ACTUALIZAR MANTENIMIENTO
-========================================================= */
-
-async function saveMaintenance(e) {
-
-  e.preventDefault();
-
-
-  const payload = {
-
-    user_id:
-      user.id,
-
-    fecha:
-      document.getElementById(
-        'mnt_fecha'
-      ).value,
-
-    equipo:
-      document.getElementById(
-        'mnt_equipo'
-      ).value.trim(),
-
-    codigo_equipo:
-      document.getElementById(
-        'mnt_codigo_equipo'
-      ).value.trim() ||
-      null,
-
-    tipo:
-      document.getElementById(
-        'mnt_tipo'
-      ).value,
-
-    causa:
-      document.getElementById(
-        'mnt_causa'
-      ).value.trim() ||
-      null,
-
-    descripcion:
-      document.getElementById(
-        'mnt_descripcion'
-      ).value.trim(),
-
-    horas_parada:
-      n(
-        document.getElementById(
-          'mnt_horas_parada'
-        ).value
-      ),
-
-    costo:
-      n(
-        document.getElementById(
-          'mnt_costo'
-        ).value
-      ),
-
-    responsable:
-      document.getElementById(
-        'mnt_responsable'
-      ).value.trim() ||
-      null,
-
-    estado:
-      document.getElementById(
-        'mnt_estado'
-      ).value,
-
-    fecha_programada:
-      document.getElementById(
-        'mnt_fecha_programada'
-      ).value ||
-      null,
-
-    fecha_cierre:
-      document.getElementById(
-        'mnt_fecha_cierre'
-      ).value ||
-      null,
-
-    observaciones:
-      document.getElementById(
-        'mnt_observaciones'
-      ).value.trim() ||
-      null
-  };
-
-
-  if (!payload.fecha) {
-
-    msg(
-      'maintenanceMsg',
-      'Debes ingresar la fecha.'
-    );
-
-    return;
-  }
-
-
-  if (!payload.equipo) {
-
-    msg(
-      'maintenanceMsg',
-      'Debes ingresar el equipo.'
-    );
-
-    return;
-  }
-
-
-  if (!payload.tipo) {
-
-    msg(
-      'maintenanceMsg',
-      'Debes seleccionar el tipo de mantenimiento.'
-    );
-
-    return;
-  }
-
-
-  if (!payload.descripcion) {
-
-    msg(
-      'maintenanceMsg',
-      'Debes ingresar la descripción.'
-    );
-
-    return;
-  }
-
-
-  if (
-    payload.horas_parada < 0
-  ) {
-
-    msg(
-      'maintenanceMsg',
-      'Las horas de parada no pueden ser negativas.'
-    );
-
-    return;
-  }
-
-
-  if (
-    payload.costo < 0
-  ) {
-
-    msg(
-      'maintenanceMsg',
-      'El costo no puede ser negativo.'
-    );
-
-    return;
-  }
-
-
-  if (
-    payload.estado ===
-      'Cerrado' &&
-    !payload.fecha_cierre
-  ) {
-
-    msg(
-      'maintenanceMsg',
-      'Para cerrar el mantenimiento debes ingresar la fecha de cierre.'
-    );
-
-    return;
-  }
-
-
-  msg(
-    'maintenanceMsg',
-    'Guardando mantenimiento…'
-  );
-
-
-  let result;
-
-
-  if (editingMaintenanceId) {
-
-    result =
-      await supabase
-        .from('maintenance')
-        .update(payload)
-        .eq(
-          'id',
-          editingMaintenanceId
-        )
-        .eq(
-          'user_id',
-          user.id
-        );
-
-  } else {
-
-    result =
-      await supabase
-        .from('maintenance')
-        .insert(payload);
-
-  }
-
-
-  if (result.error) {
-
-    msg(
-      'maintenanceMsg',
-      'Error: ' +
-      result.error.message
-    );
-
-    return;
-  }
-
-
-  editingMaintenanceId = null;
-
-
-  await loadMaintenance();
-
-
-  renderMaintenance();
-}
-
-
-/* =========================================================
-   EDITAR MANTENIMIENTO
-========================================================= */
-
-function editMaintenance(id) {
-
-  const row =
-    maintenanceRows.find(
-      r =>
-        String(r.id) ===
-        String(id)
-    );
-
-
-  if (!row) {
-
-    alert(
-      'No se encontró el mantenimiento.'
-    );
-
-    return;
-  }
-
-
-  editingMaintenanceId =
-    row.id;
-
-
-  renderMaintenance();
-
-
-  document.getElementById(
-    'mnt_fecha'
-  ).value =
-    row.fecha || today;
-
-
-  document.getElementById(
-    'mnt_equipo'
-  ).value =
-    row.equipo || '';
-
-
-  document.getElementById(
-    'mnt_codigo_equipo'
-  ).value =
-    row.codigo_equipo || '';
-
-
-  document.getElementById(
-    'mnt_tipo'
-  ).value =
-    row.tipo || 'Preventivo';
-
-
-  document.getElementById(
-    'mnt_causa'
-  ).value =
-    row.causa || '';
-
-
-  document.getElementById(
-    'mnt_descripcion'
-  ).value =
-    row.descripcion || '';
-
-
-  document.getElementById(
-    'mnt_horas_parada'
-  ).value =
-    n(row.horas_parada);
-
-
-  document.getElementById(
-    'mnt_costo'
-  ).value =
-    n(row.costo);
-
-
-  document.getElementById(
-    'mnt_responsable'
-  ).value =
-    row.responsable || '';
-
-
-  document.getElementById(
-    'mnt_estado'
-  ).value =
-    row.estado || 'Abierto';
-
-
-  document.getElementById(
-    'mnt_fecha_programada'
-  ).value =
-    row.fecha_programada || '';
-
-
-  document.getElementById(
-    'mnt_fecha_cierre'
-  ).value =
-    row.fecha_cierre || '';
-
-
-  document.getElementById(
-    'mnt_observaciones'
-  ).value =
-    row.observaciones || '';
-
-
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
-}
-
-
-/* =========================================================
-   ELIMINAR MANTENIMIENTO
-========================================================= */
-
-async function deleteMaintenance(id) {
-
-  const row =
-    maintenanceRows.find(
-      r =>
-        String(r.id) ===
-        String(id)
-    );
-
-
-  if (!row) return;
-
-
-  if (
-    !confirm(
-      `¿Eliminar el mantenimiento de "${row.equipo}"?\n\n` +
-      `Fecha: ${row.fecha}\n` +
-      `Tipo: ${row.tipo}\n\n` +
-      `Esta acción no se puede deshacer.`
-    )
-  ) return;
-
-
-  const { error } =
-    await supabase
-      .from('maintenance')
-      .delete()
-      .eq(
-        'id',
-        id
-      )
-      .eq(
-        'user_id',
-        user.id
-      );
-
-
-  if (error) {
-
-    alert(
-      'No se pudo eliminar el mantenimiento:\n' +
-      error.message
-    );
-
-    return;
-  }
-
-
-  await loadMaintenance();
-
-  renderMaintenance();
 }
 
 
@@ -4762,15 +5449,6 @@ async function deleteMaintenance(id) {
 ========================================================= */
 
 function renderSsoma() {
-
-  const abiertos =
-    ssomaRows.filter(
-      r =>
-        String(r.estado || '')
-          .toLowerCase() !==
-        'cerrado'
-    ).length;
-
 
   document.getElementById(
     'content'
@@ -4811,7 +5489,17 @@ function renderSsoma() {
           </small>
 
           <strong>
-            ${abiertos}
+
+            ${
+              ssomaRows.filter(
+                r =>
+                  String(
+                    r.estado || ''
+                  ).toLowerCase() !==
+                  'cerrado'
+              ).length
+            }
+
           </strong>
 
         </div>
@@ -4834,8 +5522,8 @@ function renderSsoma() {
 
         <form
           id="ssomaForm"
-          class="formGrid">
-
+          class="formGrid"
+        >
 
           <section>
 
@@ -4864,7 +5552,8 @@ function renderSsoma() {
 
               <select
                 id="ss_tipo"
-                required>
+                required
+              >
 
                 <option value="">
                   Seleccionar
@@ -4926,7 +5615,8 @@ function renderSsoma() {
 
               <select
                 id="ss_gravedad"
-                required>
+                required
+              >
 
                 <option value="">
                   Seleccionar
@@ -4959,7 +5649,8 @@ function renderSsoma() {
 
               <select
                 id="ss_estado"
-                required>
+                required
+              >
 
                 <option>
                   Abierto
@@ -4997,8 +5688,8 @@ function renderSsoma() {
 
               <textarea
                 id="ss_hechos"
-                required>
-              </textarea>
+                required
+              ></textarea>
 
             </label>
 
@@ -5009,8 +5700,8 @@ function renderSsoma() {
 
               <textarea
                 id="ss_acciones"
-                required>
-              </textarea>
+                required
+              ></textarea>
 
             </label>
 
@@ -5020,8 +5711,8 @@ function renderSsoma() {
               Personas involucradas
 
               <textarea
-                id="ss_personas">
-              </textarea>
+                id="ss_personas"
+              ></textarea>
 
             </label>
 
@@ -5038,8 +5729,8 @@ function renderSsoma() {
             <label>
 
               <textarea
-                id="ss_observaciones">
-              </textarea>
+                id="ss_observaciones"
+              ></textarea>
 
             </label>
 
@@ -5048,15 +5739,16 @@ function renderSsoma() {
 
           <div
             id="ssomaMsg"
-            class="msg full">
-          </div>
+            class="msg full"
+          ></div>
 
 
           <div class="full">
 
             <button
               class="primary"
-              type="submit">
+              type="submit"
+            >
 
               ${
                 editingSsomaId
@@ -5070,13 +5762,14 @@ function renderSsoma() {
             ${
               editingSsomaId
                 ? `
+
                   <button
                     id="cancelSsoma"
-                    type="button">
-
+                    type="button"
+                  >
                     Cancelar
-
                   </button>
+
                 `
                 : ''
             }
@@ -5109,11 +5802,17 @@ function renderSsoma() {
                     <tr>
 
                       <th>Fecha</th>
+
                       <th>Tipo</th>
+
                       <th>Lugar</th>
+
                       <th>Gravedad</th>
+
                       <th>Estado</th>
+
                       <th>Hechos</th>
+
                       <th>Acciones</th>
 
                     </tr>
@@ -5133,46 +5832,52 @@ function renderSsoma() {
                           </td>
 
                           <td>
-                            ${esc(r.tipo || '')}
-                          </td>
-
-                          <td>
-                            ${esc(r.lugar || '')}
-                          </td>
-
-                          <td>
                             ${esc(
-                              r.gravedad || ''
+                              r.tipo ||
+                              ''
                             )}
                           </td>
 
                           <td>
                             ${esc(
-                              r.estado || ''
+                              r.lugar ||
+                              ''
                             )}
                           </td>
 
                           <td>
                             ${esc(
-                              r.hechos || ''
+                              r.gravedad ||
+                              ''
+                            )}
+                          </td>
+
+                          <td>
+                            ${esc(
+                              r.estado ||
+                              ''
+                            )}
+                          </td>
+
+                          <td>
+                            ${esc(
+                              r.hechos ||
+                              ''
                             )}
                           </td>
 
                           <td>
 
                             <button
-                              data-edit-ssoma="${esc(r.id)}">
-
+                              data-edit-ssoma="${esc(r.id)}"
+                            >
                               Editar
-
                             </button>
 
-
                             <button
-                              data-delete-ssoma="${esc(r.id)}">
-
+                              data-delete-ssoma="${esc(r.id)}"
+                            >
                               Eliminar
-
                             </button>
 
                           </td>
@@ -5194,7 +5899,8 @@ function renderSsoma() {
 
               <div class="empty">
 
-                Todavía no hay incidentes registrados.
+                Todavía no hay incidentes
+                registrados.
 
               </div>
 
@@ -5254,12 +5960,14 @@ function renderSsoma() {
     'click',
     () => {
 
-      editingSsomaId = null;
+      editingSsomaId =
+        null;
 
       renderSsoma();
 
     }
   );
+
 }
 
 
@@ -5319,6 +6027,7 @@ async function saveSsoma(e) {
         'ss_observaciones'
       ).value.trim() ||
       null
+
   };
 
 
@@ -5368,11 +6077,14 @@ async function saveSsoma(e) {
   }
 
 
-  editingSsomaId = null;
+  editingSsomaId =
+    null;
+
 
   await loadSsoma();
 
   renderSsoma();
+
 }
 
 
@@ -5406,53 +6118,74 @@ function editSsoma(id) {
   document.getElementById(
     'ss_fecha'
   ).value =
-    row.fecha || today;
+    row.fecha ||
+    today;
+
 
   document.getElementById(
     'ss_tipo'
   ).value =
-    row.tipo || '';
+    row.tipo ||
+    '';
+
 
   document.getElementById(
     'ss_hechos'
   ).value =
-    row.hechos || '';
+    row.hechos ||
+    '';
+
 
   document.getElementById(
     'ss_lugar'
   ).value =
-    row.lugar || '';
+    row.lugar ||
+    '';
+
 
   document.getElementById(
     'ss_acciones'
   ).value =
-    row.acciones_tomadas || '';
+    row.acciones_tomadas ||
+    '';
+
 
   document.getElementById(
     'ss_personas'
   ).value =
-    row.personas_involucradas || '';
+    row.personas_involucradas ||
+    '';
+
 
   document.getElementById(
     'ss_gravedad'
   ).value =
-    row.gravedad || '';
+    row.gravedad ||
+    '';
+
 
   document.getElementById(
     'ss_estado'
   ).value =
-    row.estado || 'Abierto';
+    row.estado ||
+    'Abierto';
+
 
   document.getElementById(
     'ss_observaciones'
   ).value =
-    row.observaciones || '';
+    row.observaciones ||
+    '';
 
 
   window.scrollTo({
+
     top: 0,
+
     behavior: 'smooth'
+
   });
+
 }
 
 
@@ -5476,7 +6209,9 @@ async function deleteSsoma(id) {
   ) return;
 
 
-  const { error } =
+  const {
+    error
+  } =
     await supabase
       .from('ssoma_incidents')
       .delete()
@@ -5504,16 +6239,26 @@ async function deleteSsoma(id) {
   await loadSsoma();
 
   renderSsoma();
+
 }
 
 
 /* =========================================================
-   CARGA DE DATOS
+   CARGA GENERAL
 ========================================================= */
 
 async function load() {
 
-  if (!user) return;
+  /*
+   * IMPORTANTE:
+   * load() solamente carga datos.
+   *
+   * No llama render().
+   *
+   * Esto evita el bucle:
+   *
+   * load -> render -> load -> render...
+   */
 
 
   const r =
@@ -5535,7 +6280,8 @@ async function load() {
   if (!r.error) {
 
     rows =
-      r.data || [];
+      r.data ||
+      [];
 
   } else {
 
@@ -5553,10 +6299,6 @@ async function load() {
     await supabase
       .from('app_settings')
       .select('*')
-      .eq(
-        'user_id',
-        user.id
-      )
       .limit(1)
       .maybeSingle();
 
@@ -5567,11 +6309,13 @@ async function load() {
 
       ...metas,
 
+
       cumplimiento:
         n(
           s.data.meta_cumplimiento
         ) ||
         metas.cumplimiento,
+
 
       merma:
         n(
@@ -5579,11 +6323,13 @@ async function load() {
         ) ||
         metas.merma,
 
+
       yield:
         n(
           s.data.meta_yield
         ) ||
         metas.yield,
+
 
       disponibilidad:
         n(
@@ -5591,11 +6337,13 @@ async function load() {
         ) ||
         metas.disponibilidad,
 
+
       asistencia:
         n(
           s.data.meta_asistencia
         ) ||
         metas.asistencia,
+
 
       rechazo:
         n(
@@ -5603,11 +6351,13 @@ async function load() {
         ) ||
         metas.rechazo,
 
+
       otif:
         n(
           s.data.meta_entregas
         ) ||
         metas.otif,
+
 
       incidentes:
         n(
@@ -5626,6 +6376,7 @@ async function load() {
   await loadPersonal();
 
   await loadMaintenance();
+
 }
 
 
@@ -5634,9 +6385,6 @@ async function load() {
 ========================================================= */
 
 async function loadInventory() {
-
-  if (!user) return;
-
 
   const result =
     await supabase
@@ -5674,7 +6422,9 @@ async function loadInventory() {
 
 
   inventoryRows =
-    result.data || [];
+    result.data ||
+    [];
+
 }
 
 
@@ -5683,9 +6433,6 @@ async function loadInventory() {
 ========================================================= */
 
 async function loadSsoma() {
-
-  if (!user) return;
-
 
   const result =
     await supabase
@@ -5723,7 +6470,9 @@ async function loadSsoma() {
 
 
   ssomaRows =
-    result.data || [];
+    result.data ||
+    [];
+
 }
 
 
@@ -5732,9 +6481,6 @@ async function loadSsoma() {
 ========================================================= */
 
 async function loadPersonal() {
-
-  if (!user) return;
-
 
   const result =
     await supabase
@@ -5772,7 +6518,9 @@ async function loadPersonal() {
 
 
   personalRows =
-    result.data || [];
+    result.data ||
+    [];
+
 }
 
 
@@ -5781,9 +6529,6 @@ async function loadPersonal() {
 ========================================================= */
 
 async function loadMaintenance() {
-
-  if (!user) return;
-
 
   const result =
     await supabase
@@ -5821,7 +6566,9 @@ async function loadMaintenance() {
 
 
   maintenanceRows =
-    result.data || [];
+    result.data ||
+    [];
+
 }
 
 
@@ -5845,8 +6592,10 @@ function renderPlaceholder(title) {
       <section class="panel">
 
         <p>
+
           Este módulo está preparado para
           enlazarse con su tabla correspondiente.
+
         </p>
 
 
@@ -5859,6 +6608,7 @@ function renderPlaceholder(title) {
     </main>
 
   `;
+
 }
 
 
@@ -5894,6 +6644,7 @@ supabase.auth
       error
     );
 
+
     renderAuth();
 
   });
@@ -5915,15 +6666,14 @@ supabase.auth
       if (!user) {
 
         rows = [];
-        inventoryRows = [];
-        ssomaRows = [];
-        personalRows = [];
-        maintenanceRows = [];
 
-        editingInventoryId = null;
-        editingSsomaId = null;
-        editingPersonalId = null;
-        editingMaintenanceId = null;
+        inventoryRows = [];
+
+        ssomaRows = [];
+
+        personalRows = [];
+
+        maintenanceRows = [];
 
       }
 
