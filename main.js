@@ -14,6 +14,11 @@ const supabase = createClient(
 
 const app = document.getElementById('app');
 
+
+/* =========================================================
+   CAMPOS REGISTRO DIARIO
+========================================================= */
+
 const fields = [
   ['fecha', 'Fecha', 'date'],
   ['turno', 'Turno', 'select'],
@@ -41,22 +46,46 @@ const fields = [
   ['observaciones', 'Observaciones', 'textarea']
 ];
 
+
 const today =
   new Date().toISOString().slice(0, 10);
 
+
+/* =========================================================
+   ESTADO DE LA APLICACIÓN
+========================================================= */
+
 let user = null;
+
 let rows = [];
+
+let inventoryRows = [];
+
 let tab = 'dashboard';
 
+
+/* =========================================================
+   METAS
+========================================================= */
+
 let metas = {
+
   cumplimiento: 0.95,
+
   merma: 0.02,
+
   yield: 0.95,
+
   disponibilidad: 0.90,
+
   asistencia: 0.95,
+
   rechazo: 0.03,
+
   otif: 0.95,
+
   incidentes: 0
+
 };
 
 
@@ -65,6 +94,7 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
+
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -75,90 +105,154 @@ function esc(v = '') {
       "'": '&#039;'
     }[c])
   );
+
 }
+
 
 function n(v) {
+
   const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
+
+  return Number.isFinite(x)
+    ? x
+    : 0;
+
 }
 
+
 function pct(v) {
-  return (n(v) * 100).toFixed(1) + '%';
+
+  return (
+    n(v) * 100
+  ).toFixed(1) + '%';
+
 }
 
 
 /* =========================================================
-   CÁLCULO DE KPI
+   KPI PRODUCCIÓN
 ========================================================= */
 
 function derive(r) {
 
   const p = n(r.programada);
+
   const q = n(r.producida);
+
   const mp = n(r.mp);
 
   const h = n(r.horas_turno);
+
   const stop = n(r.horas_paradas);
 
-  const pp = n(r.personal_programado);
-  const pa = n(r.personal_presente);
+  const pp =
+    n(r.personal_programado);
 
-  const rej = n(r.rechazadas);
+  const pa =
+    n(r.personal_presente);
 
-  const pedidos = n(r.pedidos_programados);
-  const at = n(r.pedidos_tiempo);
+  const rej =
+    n(r.rechazadas);
+
+  const pedidos =
+    n(r.pedidos_programados);
+
+  const at =
+    n(r.pedidos_tiempo);
+
 
   const merma =
-    mp ? n(r.merma) / mp : 0;
+    mp
+      ? n(r.merma) / mp
+      : 0;
+
 
   const yieldRate =
-    mp ? q / mp : 0;
+    mp
+      ? q / mp
+      : 0;
+
 
   const disponibilidad =
     h
-      ? Math.max(0, (h - stop) / h)
+      ? Math.max(
+          0,
+          (h - stop) / h
+        )
       : 0;
 
+
   const asistencia =
-    pp ? pa / pp : 0;
+    pp
+      ? pa / pp
+      : 0;
+
 
   const rechazo =
-    q ? rej / q : 0;
+    q
+      ? rej / q
+      : 0;
+
 
   const cumplimiento =
-    p ? q / p : 0;
+    p
+      ? q / p
+      : 0;
+
 
   const otif =
-    pedidos ? at / pedidos : 0;
+    pedidos
+      ? at / pedidos
+      : 0;
+
 
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(0, 1 - rechazo);
+    Math.max(
+      0,
+      1 - rechazo
+    );
+
 
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
       : 0;
 
+
   const energiaUnit =
     q
       ? n(r.energia) / q
       : 0;
 
+
   return {
+
     ...r,
+
     cumplimiento,
+
     merma,
+
     yieldRate,
+
     disponibilidad,
+
     asistencia,
+
     rechazo,
+
     oee,
+
     otif,
+
     costoUnitario,
+
     energiaUnit
+
   };
+
 }
 
 
@@ -169,36 +263,51 @@ function derive(r) {
 function empty() {
 
   return {
+
     fecha: today,
+
     turno: 'Mañana',
+
     producto: '',
+
     programada: 0,
+
     producida: 0,
+
     mp: 0,
+
     merma: 0,
 
     horas_turno: 8,
+
     horas_paradas: 0,
 
     personal_programado: 0,
+
     personal_presente: 0,
 
     rechazadas: 0,
 
     costo_produccion: 0,
+
     energia: 0,
+
     costo_mantenimiento: 0,
 
     incidentes: 0,
 
     pedidos_programados: 0,
+
     pedidos_tiempo: 0,
 
     reproceso: 0,
+
     no_conformidades: 0,
 
     observaciones: ''
+
   };
+
 }
 
 
@@ -209,6 +318,7 @@ function empty() {
 function renderAuth() {
 
   app.innerHTML = `
+
     <div class="auth">
 
       <div class="authCard">
@@ -225,9 +335,11 @@ function renderAuth() {
           Inicia sesión para acceder al dashboard.
         </p>
 
+
         <form id="authForm">
 
           <label>
+
             Correo
 
             <input
@@ -236,9 +348,12 @@ function renderAuth() {
               required
               autocomplete="email"
             >
+
           </label>
 
+
           <label>
+
             Contraseña
 
             <input
@@ -248,24 +363,32 @@ function renderAuth() {
               required
               autocomplete="current-password"
             >
+
           </label>
+
 
           <div
             id="authMsg"
             class="msg">
           </div>
 
+
           <button
             class="primary"
             type="submit">
+
             Entrar
+
           </button>
+
 
           <button
             class="link"
             id="signup"
             type="button">
+
             Crear una cuenta
+
           </button>
 
         </form>
@@ -273,13 +396,21 @@ function renderAuth() {
       </div>
 
     </div>
+
   `;
 
+
   const emailInput =
-    document.getElementById('email');
+    document.getElementById(
+      'email'
+    );
+
 
   const passwordInput =
-    document.getElementById('password');
+    document.getElementById(
+      'password'
+    );
+
 
   document
     .getElementById('authForm')
@@ -287,20 +418,32 @@ function renderAuth() {
 
       e.preventDefault();
 
+
       const msg =
-        document.getElementById('authMsg');
+        document.getElementById(
+          'authMsg'
+        );
+
 
       msg.textContent =
         'Procesando…';
+
 
       const {
         data,
         error
       } =
-        await supabase.auth.signInWithPassword({
-          email: emailInput.value.trim(),
-          password: passwordInput.value
-        });
+        await supabase.auth
+          .signInWithPassword({
+
+            email:
+              emailInput.value.trim(),
+
+            password:
+              passwordInput.value
+
+          });
+
 
       if (error) {
 
@@ -308,13 +451,18 @@ function renderAuth() {
           error.message;
 
         return;
+
       }
 
-      user = data.user;
+
+      user =
+        data.user;
+
 
       await load();
 
       render();
+
     };
 
 
@@ -322,14 +470,20 @@ function renderAuth() {
     .getElementById('signup')
     .onclick = async () => {
 
+
       const msg =
-        document.getElementById('authMsg');
+        document.getElementById(
+          'authMsg'
+        );
+
 
       const email =
         emailInput.value.trim();
 
+
       const password =
         passwordInput.value;
+
 
       if (!email || !password) {
 
@@ -337,19 +491,27 @@ function renderAuth() {
           'Ingresa correo y contraseña.';
 
         return;
+
       }
+
 
       msg.textContent =
         'Creando cuenta…';
+
 
       const {
         data,
         error
       } =
-        await supabase.auth.signUp({
-          email,
-          password
-        });
+        await supabase.auth
+          .signUp({
+
+            email,
+
+            password
+
+          });
+
 
       if (error) {
 
@@ -357,13 +519,19 @@ function renderAuth() {
           error.message;
 
         return;
+
       }
+
 
       msg.textContent =
         data.session
+
           ? 'Cuenta creada correctamente.'
+
           : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
+
     };
+
 }
 
 
@@ -378,34 +546,52 @@ function render() {
     renderAuth();
 
     return;
+
   }
 
+
   const nav = [
+
     ['dashboard', 'Dashboard'],
+
     ['registro', 'Registro Diario'],
+
     ['resumen', 'Resumen Ejecutivo'],
+
     ['costos', 'Costos'],
+
     ['mantenimiento', 'Mantenimiento'],
+
     ['inventario', 'Inventario'],
+
     ['personal', 'Personal'],
+
     ['ssoma', 'SSOMA']
+
   ];
+
 
   app.innerHTML = `
 
     <header>
 
       <div>
+
         <b>QUIMFLUX</b>
+
         <span>
           · Administrador de Planta V4
         </span>
+
       </div>
+
 
       <button
         id="logout"
         class="logout">
+
         Salir
+
       </button>
 
     </header>
@@ -417,8 +603,14 @@ function render() {
 
         <button
           data-tab="${x[0]}"
-          class="${tab === x[0] ? 'active' : ''}">
+          class="${
+            tab === x[0]
+              ? 'active'
+              : ''
+          }">
+
           ${x[1]}
+
         </button>
 
       `).join('')}
@@ -427,51 +619,79 @@ function render() {
 
 
     <div id="content"></div>
+
   `;
 
 
   document
-    .querySelectorAll('nav button')
+    .querySelectorAll(
+      'nav button'
+    )
     .forEach(button => {
 
-      button.onclick = () => {
+      button.onclick =
+        () => {
 
-        tab =
-          button.dataset.tab;
+          tab =
+            button.dataset.tab;
 
-        render();
-      };
+          render();
+
+        };
+
     });
 
 
   document
     .getElementById('logout')
-    .onclick = async () => {
+    .onclick =
+      async () => {
 
-      await supabase.auth.signOut();
+        await supabase.auth
+          .signOut();
 
-      user = null;
-      rows = [];
+        user = null;
 
-      render();
-    };
+        rows = [];
+
+        inventoryRows = [];
+
+        render();
+
+      };
 
 
   if (tab === 'dashboard') {
 
     renderDashboard();
 
-  } else if (tab === 'registro') {
+  }
+
+  else if (tab === 'registro') {
 
     renderForm();
 
-  } else {
+  }
+
+  else if (tab === 'inventario') {
+
+    renderInventory();
+
+  }
+
+  else {
 
     renderPlaceholder(
-      nav.find(x => x[0] === tab)?.[1]
+
+      nav.find(
+        x => x[0] === tab
+      )?.[1]
       || 'QUIMFLUX'
+
     );
+
   }
+
 }
 
 
@@ -487,7 +707,8 @@ function renderDashboard() {
 
   const sum = key =>
     d.reduce(
-      (s, r) => s + n(r[key]),
+      (s, r) =>
+        s + n(r[key]),
       0
     );
 
@@ -495,32 +716,42 @@ function renderDashboard() {
   const programada =
     sum('programada');
 
+
   const producida =
     sum('producida');
+
 
   const mp =
     sum('mp');
 
+
   const merma =
     sum('merma');
+
 
   const horas =
     sum('horas_turno');
 
+
   const paradas =
     sum('horas_paradas');
+
 
   const personalProgramado =
     sum('personal_programado');
 
+
   const personalPresente =
     sum('personal_presente');
+
 
   const rechazadas =
     sum('rechazadas');
 
+
   const pedidos =
     sum('pedidos_programados');
+
 
   const pedidosTiempo =
     sum('pedidos_tiempo');
@@ -531,15 +762,18 @@ function renderDashboard() {
       ? producida / programada
       : 0;
 
+
   const yieldRate =
     mp
       ? producida / mp
       : 0;
 
+
   const mermaRate =
     mp
       ? merma / mp
       : 0;
+
 
   const disponibilidad =
     horas
@@ -549,16 +783,19 @@ function renderDashboard() {
         )
       : 0;
 
+
   const asistencia =
     personalProgramado
       ? personalPresente /
         personalProgramado
       : 0;
 
+
   const rechazo =
     producida
       ? rechazadas / producida
       : 0;
+
 
   const otif =
     pedidos
@@ -569,24 +806,31 @@ function renderDashboard() {
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(0, 1 - rechazo);
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
 
   const costo =
     sum('costo_produccion');
 
+
   const mantenimiento =
     sum('costo_mantenimiento');
+
 
   const costoUnitario =
     producida
       ? costo / producida
       : 0;
 
+
   const energia =
     producida
       ? sum('energia') / producida
       : 0;
+
 
   const incidentes =
     sum('incidentes');
@@ -603,6 +847,7 @@ function renderDashboard() {
         ? value <= target
         : value >= target;
 
+
     const critical =
       invert
         ? value > target * 1.5
@@ -618,13 +863,16 @@ function renderDashboard() {
             ? 'OK'
             : 'REVISAR',
 
+
       cls:
         critical
           ? 'critical'
           : ok
             ? 'ok'
             : 'warn'
+
     };
+
   }
 
 
@@ -742,6 +990,7 @@ function renderDashboard() {
         true
       )
     ]
+
   ];
 
 
@@ -766,6 +1015,7 @@ function renderDashboard() {
 
         </div>
 
+
         <span class="online">
           ● EN LÍNEA
         </span>
@@ -783,19 +1033,28 @@ function renderDashboard() {
               ${c[0]}
             </small>
 
+
             <strong>
               ${c[1]}
             </strong>
 
+
             ${
               c.length > 2
+
                 ? `
+
                   <span
                     class="badge ${c[2].cls}">
+
                     ${c[2].label}
+
                   </span>
+
                 `
+
                 : ''
+
             }
 
           </div>
@@ -870,21 +1129,15 @@ function renderDashboard() {
                             </td>
 
                             <td>
-                              ${esc(
-                                r.producto
-                              )}
+                              ${esc(r.producto)}
                             </td>
 
                             <td>
-                              ${n(
-                                r.programada
-                              )}
+                              ${n(r.programada)}
                             </td>
 
                             <td>
-                              ${n(
-                                r.producida
-                              )}
+                              ${n(r.producida)}
                             </td>
 
                             <td>
@@ -894,6 +1147,7 @@ function renderDashboard() {
                             <td>
                               ${pct(r.oee)}
                             </td>
+
 
                             <td>
 
@@ -909,7 +1163,9 @@ function renderDashboard() {
                                   font-weight:600;
                                   cursor:pointer;
                                 ">
+
                                 Eliminar
+
                               </button>
 
                             </td>
@@ -946,27 +1202,32 @@ function renderDashboard() {
       </section>
 
     </main>
+
   `;
 
 
   document
-    .querySelectorAll('[data-delete-id]')
+    .querySelectorAll(
+      '[data-delete-id]'
+    )
     .forEach(button => {
 
-      button.onclick = () => {
+      button.onclick =
+        () => {
 
-        deleteRecord(
-          button.dataset.deleteId
-        );
+          deleteRecord(
+            button.dataset.deleteId
+          );
 
-      };
+        };
 
     });
+
 }
 
 
 /* =========================================================
-   ELIMINAR REGISTRO
+   ELIMINAR REGISTRO DIARIO
 ========================================================= */
 
 async function deleteRecord(id) {
@@ -978,6 +1239,7 @@ async function deleteRecord(id) {
     );
 
     return;
+
   }
 
 
@@ -991,20 +1253,28 @@ async function deleteRecord(id) {
 
   const detail =
     row
-      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
+
+      ? `${row.fecha} · ${row.turno} · ${
+          row.producto ||
+          'Sin producto'
+        }`
+
       : 'este registro';
 
 
   const confirmed =
     confirm(
+
       `¿Eliminar ${detail}?\n\n` +
       `Esta acción no se puede deshacer.`
+
     );
 
 
   if (!confirmed) {
 
     return;
+
   }
 
 
@@ -1012,10 +1282,17 @@ async function deleteRecord(id) {
     error
   } =
     await supabase
+
       .from('daily_records')
+
       .delete()
+
       .eq('id', id)
-      .eq('user_id', user.id);
+
+      .eq(
+        'user_id',
+        user.id
+      );
 
 
   if (error) {
@@ -1026,22 +1303,25 @@ async function deleteRecord(id) {
     );
 
     return;
+
   }
 
 
   await load();
 
   render();
+
 }
 
 
 /* =========================================================
-   FORMULARIO REGISTRO DIARIO
+   REGISTRO DIARIO
 ========================================================= */
 
 function renderForm() {
 
-  const r = empty();
+  const r =
+    empty();
 
 
   document.getElementById(
@@ -1053,6 +1333,7 @@ function renderForm() {
       <h1>
         Registro Diario
       </h1>
+
 
       <p>
         Ingresa los datos del turno.
@@ -1072,8 +1353,10 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(0, 7)
-            .map(f => control(f, r))
+            .slice(0,7)
+            .map(
+              f => control(f,r)
+            )
             .join('')}
 
         </section>
@@ -1086,8 +1369,10 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(7, 12)
-            .map(f => control(f, r))
+            .slice(7,12)
+            .map(
+              f => control(f,r)
+            )
             .join('')}
 
         </section>
@@ -1100,8 +1385,10 @@ function renderForm() {
           </h2>
 
           ${fields
-            .slice(12, 15)
-            .map(f => control(f, r))
+            .slice(12,15)
+            .map(
+              f => control(f,r)
+            )
             .join('')}
 
         </section>
@@ -1115,7 +1402,9 @@ function renderForm() {
 
           ${fields
             .slice(15)
-            .map(f => control(f, r))
+            .map(
+              f => control(f,r)
+            )
             .join('')}
 
         </section>
@@ -1139,89 +1428,103 @@ function renderForm() {
       </form>
 
     </main>
+
   `;
 
 
-  document.getElementById(
-    'daily'
-  ).onsubmit = async e => {
+  document
+    .getElementById('daily')
+    .onsubmit =
+      async e => {
 
-    e.preventDefault();
-
-
-    const msg =
-      document.getElementById(
-        'saveMsg'
-      );
+        e.preventDefault();
 
 
-    const payload = {
-      user_id: user.id
-    };
-
-
-    fields.forEach(
-      ([key, , type]) => {
-
-        const el =
+        const msg =
           document.getElementById(
-            'f_' + key
+            'saveMsg'
           );
 
 
-        payload[key] =
-          type === 'number'
-            ? (
-                el.value === ''
-                  ? null
-                  : n(el.value)
-              )
-            : el.value;
-      }
-    );
+        const payload = {
+
+          user_id:
+            user.id
+
+        };
 
 
-    msg.textContent =
-      'Guardando…';
+        fields.forEach(
+          ([key,,type]) => {
+
+            const el =
+              document.getElementById(
+                'f_' + key
+              );
 
 
-    const {
-      error
-    } =
-      await supabase
-        .from('daily_records')
-        .insert(payload);
+            payload[key] =
+
+              type === 'number'
+
+                ? (
+                    el.value === ''
+                      ? null
+                      : n(el.value)
+                  )
+
+                : el.value;
+
+          }
+        );
 
 
-    if (error) {
-
-      msg.textContent =
-        error.message;
-
-      return;
-    }
+        msg.textContent =
+          'Guardando…';
 
 
-    msg.textContent =
-      'Registro guardado correctamente.';
+        const {
+          error
+        } =
+          await supabase
+
+            .from('daily_records')
+
+            .insert(payload);
 
 
-    await load();
+        if (error) {
+
+          msg.textContent =
+            error.message;
+
+          return;
+
+        }
 
 
-    setTimeout(
-      () => render(),
-      400
-    );
-  };
+        msg.textContent =
+          'Registro guardado correctamente.';
+
+
+        await load();
+
+
+        setTimeout(
+          () => render(),
+          400
+        );
+
+      };
+
 }
 
 
 /* =========================================================
-   CONTROLES DEL FORMULARIO
+   CONTROL FORMULARIO
 ========================================================= */
 
-function control(f, r) {
+function control(f,r) {
 
   const [
     key,
@@ -1237,17 +1540,22 @@ function control(f, r) {
 
     input = `
 
-      <select id="f_${key}">
+      <select
+        id="f_${key}">
 
         <option>Mañana</option>
+
         <option>Tarde</option>
+
         <option>Noche</option>
 
       </select>
 
     `;
 
-  } else if (type === 'textarea') {
+  }
+
+  else if (type === 'textarea') {
 
     input = `
 
@@ -1257,7 +1565,9 @@ function control(f, r) {
 
     `;
 
-  } else {
+  }
+
+  else {
 
     input = `
 
@@ -1265,12 +1575,15 @@ function control(f, r) {
         id="f_${key}"
         type="${type}"
         value="${esc(r[key])}"
-        ${type === 'number'
-          ? 'step="any"'
-          : ''}
+        ${
+          type === 'number'
+            ? 'step="any"'
+            : ''
+        }
       >
 
     `;
+
   }
 
 
@@ -1285,6 +1598,822 @@ function control(f, r) {
     </label>
 
   `;
+
+}
+
+
+/* =========================================================
+   INVENTARIO
+========================================================= */
+
+function renderInventory() {
+
+  document.getElementById(
+    'content'
+  ).innerHTML = `
+
+    <main>
+
+      <div class="titleRow">
+
+        <div>
+
+          <h1>
+            Control de Inventario
+          </h1>
+
+          <p>
+            Registra y controla las existencias de materiales y productos.
+          </p>
+
+        </div>
+
+        <span class="online">
+          ● EN LÍNEA
+        </span>
+
+      </div>
+
+
+      <section class="panel">
+
+        <h2>
+          Registrar inventario
+        </h2>
+
+
+        <form
+          id="inventoryForm"
+          class="formGrid">
+
+
+          <section>
+
+            <h2>
+              Identificación
+            </h2>
+
+
+            <label>
+
+              Fecha
+
+              <input
+                id="inv_fecha"
+                type="date"
+                value="${today}"
+                required
+              >
+
+            </label>
+
+
+            <label>
+
+              Código
+
+              <input
+                id="inv_codigo"
+                type="text"
+                placeholder="Ej. MP-001"
+              >
+
+            </label>
+
+
+            <label>
+
+              Producto / Material
+
+              <input
+                id="inv_producto"
+                type="text"
+                placeholder="Nombre del material"
+                required
+              >
+
+            </label>
+
+
+            <label>
+
+              Categoría
+
+              <select
+                id="inv_categoria">
+
+                <option value="">
+                  Seleccionar
+                </option>
+
+                <option>
+                  Materia prima
+                </option>
+
+                <option>
+                  Producto terminado
+                </option>
+
+                <option>
+                  Insumo
+                </option>
+
+                <option>
+                  Envase
+                </option>
+
+                <option>
+                  Repuesto
+                </option>
+
+                <option>
+                  EPP
+                </option>
+
+                <option>
+                  Otro
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              Unidad
+
+              <select
+                id="inv_unidad">
+
+                <option>kg</option>
+
+                <option>L</option>
+
+                <option>unidades</option>
+
+                <option>cajas</option>
+
+                <option>sacos</option>
+
+                <option>galones</option>
+
+                <option>metros</option>
+
+                <option>otro</option>
+
+              </select>
+
+            </label>
+
+          </section>
+
+
+          <section>
+
+            <h2>
+              Existencias
+            </h2>
+
+
+            <label>
+
+              Stock inicial
+
+              <input
+                id="inv_stock_inicial"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Entradas
+
+              <input
+                id="inv_entradas"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Salidas / Consumo
+
+              <input
+                id="inv_salidas"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Stock mínimo
+
+              <input
+                id="inv_stock_minimo"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+              >
+
+            </label>
+
+
+            <label>
+
+              Observaciones
+
+              <textarea
+                id="inv_observaciones"
+                placeholder="Observaciones del inventario">
+              </textarea>
+
+            </label>
+
+          </section>
+
+
+          <div
+            id="inventoryMsg"
+            class="msg full">
+          </div>
+
+
+          <button
+            class="primary full"
+            type="submit">
+
+            Guardar inventario
+
+          </button>
+
+
+        </form>
+
+      </section>
+
+
+      <section class="panel">
+
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              Existencias registradas
+            </h2>
+
+            <p>
+              Stock actual = Stock inicial + Entradas − Salidas
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div id="inventoryTable"></div>
+
+      </section>
+
+
+    </main>
+
+  `;
+
+
+  document
+    .getElementById(
+      'inventoryForm'
+    )
+    .onsubmit =
+      saveInventory;
+
+
+  renderInventoryTable();
+
+}
+
+
+/* =========================================================
+   GUARDAR INVENTARIO
+========================================================= */
+
+async function saveInventory(e) {
+
+  e.preventDefault();
+
+
+  const msg =
+    document.getElementById(
+      'inventoryMsg'
+    );
+
+
+  const payload = {
+
+    user_id:
+      user.id,
+
+    fecha:
+      document.getElementById(
+        'inv_fecha'
+      ).value,
+
+    codigo:
+      document.getElementById(
+        'inv_codigo'
+      ).value.trim(),
+
+    producto:
+      document.getElementById(
+        'inv_producto'
+      ).value.trim(),
+
+    categoria:
+      document.getElementById(
+        'inv_categoria'
+      ).value,
+
+    unidad:
+      document.getElementById(
+        'inv_unidad'
+      ).value,
+
+    stock_inicial:
+      n(
+        document.getElementById(
+          'inv_stock_inicial'
+        ).value
+      ),
+
+    entradas:
+      n(
+        document.getElementById(
+          'inv_entradas'
+        ).value
+      ),
+
+    salidas:
+      n(
+        document.getElementById(
+          'inv_salidas'
+        ).value
+      ),
+
+    stock_minimo:
+      n(
+        document.getElementById(
+          'inv_stock_minimo'
+        ).value
+      ),
+
+    observaciones:
+      document.getElementById(
+        'inv_observaciones'
+      ).value.trim()
+
+  };
+
+
+  if (!payload.producto) {
+
+    msg.textContent =
+      'Debes ingresar el producto o material.';
+
+    return;
+
+  }
+
+
+  if (
+    payload.stock_inicial < 0 ||
+    payload.entradas < 0 ||
+    payload.salidas < 0 ||
+    payload.stock_minimo < 0
+  ) {
+
+    msg.textContent =
+      'Los valores de inventario no pueden ser negativos.';
+
+    return;
+
+  }
+
+
+  msg.textContent =
+    'Guardando inventario…';
+
+
+  const {
+    error
+  } =
+    await supabase
+      .from('inventory')
+      .insert(payload);
+
+
+  if (error) {
+
+    msg.textContent =
+      'No se pudo guardar: ' +
+      error.message;
+
+    return;
+
+  }
+
+
+  msg.textContent =
+    'Inventario guardado correctamente.';
+
+
+  await loadInventory();
+
+
+  renderInventoryTable();
+
+
+  document
+    .getElementById(
+      'inventoryForm'
+    )
+    .reset();
+
+
+  document.getElementById(
+    'inv_fecha'
+  ).value = today;
+
+
+  document.getElementById(
+    'inv_stock_inicial'
+  ).value = 0;
+
+
+  document.getElementById(
+    'inv_entradas'
+  ).value = 0;
+
+
+  document.getElementById(
+    'inv_salidas'
+  ).value = 0;
+
+
+  document.getElementById(
+    'inv_stock_minimo'
+  ).value = 0;
+
+}
+
+
+/* =========================================================
+   TABLA INVENTARIO
+========================================================= */
+
+function renderInventoryTable() {
+
+  const container =
+    document.getElementById(
+      'inventoryTable'
+    );
+
+
+  if (!container) {
+
+    return;
+
+  }
+
+
+  if (!inventoryRows.length) {
+
+    container.innerHTML = `
+
+      <div class="empty">
+
+        Todavía no hay registros de inventario.
+
+        Usa el formulario de arriba
+        para registrar el primero.
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  container.innerHTML = `
+
+    <div class="tableWrap">
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>Fecha</th>
+
+            <th>Código</th>
+
+            <th>Producto</th>
+
+            <th>Categoría</th>
+
+            <th>Unidad</th>
+
+            <th>Inicial</th>
+
+            <th>Entradas</th>
+
+            <th>Salidas</th>
+
+            <th>Stock actual</th>
+
+            <th>Mínimo</th>
+
+            <th>Estado</th>
+
+            <th>Acción</th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            inventoryRows
+              .map(item => {
+
+                const stockActual =
+
+                  n(
+                    item.stock_inicial
+                  ) +
+
+                  n(
+                    item.entradas
+                  ) -
+
+                  n(
+                    item.salidas
+                  );
+
+
+                let estado;
+
+                let clase;
+
+
+                if (stockActual <= 0) {
+
+                  estado =
+                    'AGOTADO';
+
+                  clase =
+                    'critical';
+
+                }
+
+                else if (
+                  stockActual <=
+                  n(item.stock_minimo)
+                ) {
+
+                  estado =
+                    'STOCK BAJO';
+
+                  clase =
+                    'warn';
+
+                }
+
+                else {
+
+                  estado =
+                    'OK';
+
+                  clase =
+                    'ok';
+
+                }
+
+
+                return `
+
+                  <tr>
+
+                    <td>
+                      ${esc(item.fecha)}
+                    </td>
+
+                    <td>
+                      ${esc(item.codigo || '')}
+                    </td>
+
+                    <td>
+                      ${esc(item.producto)}
+                    </td>
+
+                    <td>
+                      ${esc(item.categoria || '')}
+                    </td>
+
+                    <td>
+                      ${esc(item.unidad)}
+                    </td>
+
+                    <td>
+                      ${n(item.stock_inicial)}
+                    </td>
+
+                    <td>
+                      ${n(item.entradas)}
+                    </td>
+
+                    <td>
+                      ${n(item.salidas)}
+                    </td>
+
+                    <td>
+                      <strong>
+                        ${stockActual}
+                      </strong>
+                    </td>
+
+                    <td>
+                      ${n(item.stock_minimo)}
+                    </td>
+
+                    <td>
+
+                      <span
+                        class="badge ${clase}">
+
+                        ${estado}
+
+                      </span>
+
+                    </td>
+
+                    <td>
+
+                      <button
+                        type="button"
+                        data-inventory-delete="${esc(item.id)}"
+                        style="
+                          background:#7f1d1d;
+                          color:#fff;
+                          border:0;
+                          border-radius:8px;
+                          padding:7px 10px;
+                          font-weight:600;
+                          cursor:pointer;
+                        ">
+
+                        Eliminar
+
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                `;
+
+              })
+              .join('')
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+
+  document
+    .querySelectorAll(
+      '[data-inventory-delete]'
+    )
+    .forEach(button => {
+
+      button.onclick =
+        () => {
+
+          deleteInventory(
+            button.dataset
+              .inventoryDelete
+          );
+
+        };
+
+    });
+
+}
+
+
+/* =========================================================
+   ELIMINAR INVENTARIO
+========================================================= */
+
+async function deleteInventory(id) {
+
+  const item =
+    inventoryRows.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+
+  if (!item) {
+
+    alert(
+      'No se encontró el registro.'
+    );
+
+    return;
+
+  }
+
+
+  const confirmed =
+    confirm(
+
+      `¿Eliminar el inventario de "${item.producto}"?\n\n` +
+      `Esta acción no se puede deshacer.`
+
+    );
+
+
+  if (!confirmed) {
+
+    return;
+
+  }
+
+
+  const {
+    error
+  } =
+    await supabase
+
+      .from('inventory')
+
+      .delete()
+
+      .eq('id', id)
+
+      .eq(
+        'user_id',
+        user.id
+      );
+
+
+  if (error) {
+
+    alert(
+      'No se pudo eliminar:\n' +
+      error.message
+    );
+
+    return;
+
+  }
+
+
+  await loadInventory();
+
+
+  renderInventoryTable();
+
 }
 
 
@@ -1315,7 +2444,9 @@ function renderPlaceholder(title) {
 
 
         <span class="badge ok">
+
           Módulo preparado
+
         </span>
 
       </section>
@@ -1323,19 +2454,32 @@ function renderPlaceholder(title) {
     </main>
 
   `;
+
 }
 
 
 /* =========================================================
-   CARGAR DATOS
+   CARGAR REGISTROS DIARIOS
 ========================================================= */
 
 async function load() {
 
+  if (!user) {
+
+    rows = [];
+
+    return;
+
+  }
+
+
   const r =
     await supabase
+
       .from('daily_records')
+
       .select('*')
+
       .order(
         'fecha',
         {
@@ -1349,10 +2493,12 @@ async function load() {
     rows =
       r.data || [];
 
-  } else {
+  }
+
+  else {
 
     console.error(
-      'Error cargando registros:',
+      'Error cargando daily_records:',
       r.error
     );
 
@@ -1361,15 +2507,20 @@ async function load() {
 
   const s =
     await supabase
+
       .from('app_settings')
+
       .select('*')
+
       .limit(1)
+
       .maybeSingle();
 
 
   if (s.data) {
 
     metas = {
+
       ...metas,
 
       cumplimiento:
@@ -1418,13 +2569,69 @@ async function load() {
         n(
           s.data.meta_incidentes
         )
+
     };
+
   }
+
+
+  await loadInventory();
+
 }
 
 
 /* =========================================================
-   INICIO DE LA APLICACIÓN
+   CARGAR INVENTARIO
+========================================================= */
+
+async function loadInventory() {
+
+  if (!user) {
+
+    inventoryRows = [];
+
+    return;
+
+  }
+
+
+  const result =
+    await supabase
+
+      .from('inventory')
+
+      .select('*')
+
+      .order(
+        'fecha',
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      'Error cargando inventory:',
+      result.error
+    );
+
+    inventoryRows = [];
+
+    return;
+
+  }
+
+
+  inventoryRows =
+    result.data || [];
+
+}
+
+
+/* =========================================================
+   INICIO
 ========================================================= */
 
 supabase.auth
@@ -1461,6 +2668,16 @@ supabase.auth
       user =
         session?.user ||
         null;
+
+
+      if (!user) {
+
+        rows = [];
+
+        inventoryRows = [];
+
+      }
+
 
       render();
 
