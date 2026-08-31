@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
 
+/* =========================================================
+   SUPABASE
+========================================================= */
+
 const SUPABASE_URL =
   'https://cgkdztwtodmdteohvuoh.supabase.co';
 
@@ -13,6 +17,19 @@ const supabase = createClient(
 );
 
 const app = document.getElementById('app');
+
+
+/* =========================================================
+   ARRANQUE
+========================================================= */
+
+function hideBoot() {
+  const boot = document.getElementById('boot');
+
+  if (boot) {
+    boot.style.display = 'none';
+  }
+}
 
 
 /* =========================================================
@@ -219,6 +236,8 @@ function empty() {
 
 function renderAuth() {
 
+  hideBoot();
+
   app.innerHTML = `
     <div class="auth">
 
@@ -283,11 +302,13 @@ function renderAuth() {
     </div>
   `;
 
+
   const emailInput =
     document.getElementById('email');
 
   const passwordInput =
     document.getElementById('password');
+
 
   document
     .getElementById('authForm')
@@ -311,11 +332,15 @@ function renderAuth() {
         });
 
       if (error) {
-        msg.textContent = error.message;
+
+        msg.textContent =
+          error.message;
+
         return;
       }
 
-      user = data.user;
+      user =
+        data.user;
 
       await load();
 
@@ -380,17 +405,11 @@ function render() {
 
   /*
    * IMPORTANTE:
-   * El index.html contiene una pantalla de arranque
-   * llamada #boot. Una vez que main.js está funcionando,
-   * la eliminamos para que no quede encima del login.
+   * Ocultamos la pantalla de arranque antes
+   * de mostrar cualquier pantalla de la aplicación.
    */
+  hideBoot();
 
-  const boot =
-    document.getElementById('boot');
-
-  if (boot) {
-    boot.remove();
-  }
 
   if (!user) {
 
@@ -398,6 +417,7 @@ function render() {
 
     return;
   }
+
 
   const nav = [
     ['dashboard', 'Dashboard'],
@@ -410,6 +430,7 @@ function render() {
     ['ssoma', 'SSOMA']
   ];
 
+
   app.innerHTML = `
 
     <header>
@@ -417,7 +438,7 @@ function render() {
       <div>
         <b>QUIMFLUX</b>
         <span>
-          ·Administrador de Planta V5
+          · Administrador de Planta V5
         </span>
       </div>
 
@@ -428,6 +449,7 @@ function render() {
       </button>
 
     </header>
+
 
     <nav>
 
@@ -443,7 +465,9 @@ function render() {
 
     </nav>
 
+
     <div id="content"></div>
+
   `;
 
 
@@ -521,13 +545,24 @@ function renderDashboard() {
       0
     );
 
-  const programada = sum('programada');
-  const producida = sum('producida');
-  const mp = sum('mp');
-  const merma = sum('merma');
 
-  const horas = sum('horas_turno');
-  const paradas = sum('horas_paradas');
+  const programada =
+    sum('programada');
+
+  const producida =
+    sum('producida');
+
+  const mp =
+    sum('mp');
+
+  const merma =
+    sum('merma');
+
+  const horas =
+    sum('horas_turno');
+
+  const paradas =
+    sum('horas_paradas');
 
   const personalProgramado =
     sum('personal_programado');
@@ -543,6 +578,7 @@ function renderDashboard() {
 
   const pedidosTiempo =
     sum('pedidos_tiempo');
+
 
   const cumplimiento =
     programada
@@ -586,7 +622,11 @@ function renderDashboard() {
   const oee =
     disponibilidad *
     cumplimiento *
-    Math.max(0, 1 - rechazo);
+    Math.max(
+      0,
+      1 - rechazo
+    );
+
 
   const costo =
     sum('costo_produccion');
@@ -709,7 +749,10 @@ function renderDashboard() {
     [
       'OEE',
       pct(oee),
-      status(oee, 0.80)
+      status(
+        oee,
+        0.80
+      )
     ],
 
     [
@@ -903,16 +946,7 @@ function renderDashboard() {
 
                               <button
                                 type="button"
-                                data-delete-id="${esc(r.id)}"
-                                style="
-                                  background:#7f1d1d;
-                                  color:#fff;
-                                  border:0;
-                                  border-radius:8px;
-                                  padding:7px 10px;
-                                  font-weight:600;
-                                  cursor:pointer;
-                                ">
+                                data-delete-id="${esc(r.id)}">
                                 Eliminar
                               </button>
 
@@ -984,6 +1018,7 @@ function renderResumen() {
       0
     );
 
+
   const programada =
     sum('programada');
 
@@ -1031,6 +1066,7 @@ function renderResumen() {
 
   const noConformidades =
     sum('no_conformidades');
+
 
   const cumplimiento =
     programada
@@ -1110,6 +1146,7 @@ function renderResumen() {
         : value < target * 0.85;
 
     return {
+
       label:
         critical
           ? 'CRÍTICO'
@@ -1188,7 +1225,10 @@ function renderResumen() {
     [
       'OEE',
       pct(oee),
-      status(oee, 0.80)
+      status(
+        oee,
+        0.80
+      )
     ],
 
     [
@@ -1495,6 +1535,7 @@ async function deleteRecord(id) {
     return;
   }
 
+
   const row =
     rows.find(
       r =>
@@ -1502,10 +1543,12 @@ async function deleteRecord(id) {
         String(id)
     );
 
+
   const detail =
     row
       ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
       : 'este registro';
+
 
   const confirmed =
     confirm(
@@ -1513,7 +1556,9 @@ async function deleteRecord(id) {
       `Esta acción no se puede deshacer.`
     );
 
+
   if (!confirmed) return;
+
 
   const { error } =
     await supabase
@@ -1521,6 +1566,7 @@ async function deleteRecord(id) {
       .delete()
       .eq('id', id)
       .eq('user_id', user.id);
+
 
   if (error) {
 
@@ -1531,6 +1577,7 @@ async function deleteRecord(id) {
 
     return;
   }
+
 
   await load();
 
@@ -1544,7 +1591,9 @@ async function deleteRecord(id) {
 
 function renderForm() {
 
-  const r = empty();
+  const r =
+    empty();
+
 
   document.getElementById(
     'content'
@@ -1561,9 +1610,11 @@ function renderForm() {
         Los KPI se calculan automáticamente.
       </p>
 
+
       <form
         id="daily"
         class="formGrid">
+
 
         <section>
 
@@ -1647,14 +1698,17 @@ function renderForm() {
 
     e.preventDefault();
 
+
     const msg =
       document.getElementById(
         'saveMsg'
       );
 
+
     const payload = {
       user_id: user.id
     };
+
 
     fields.forEach(
       ([key, , type]) => {
@@ -1675,13 +1729,16 @@ function renderForm() {
       }
     );
 
+
     msg.textContent =
       'Guardando…';
+
 
     const { error } =
       await supabase
         .from('daily_records')
         .insert(payload);
+
 
     if (error) {
 
@@ -1691,10 +1748,13 @@ function renderForm() {
       return;
     }
 
+
     msg.textContent =
       'Registro guardado correctamente.';
 
+
     await load();
+
 
     setTimeout(
       () => render(),
@@ -1716,7 +1776,9 @@ function control(f, r) {
     type
   ] = f;
 
+
   let input;
+
 
   if (type === 'select') {
 
@@ -1758,6 +1820,7 @@ function control(f, r) {
     `;
   }
 
+
   return `
 
     <label>
@@ -1781,13 +1844,15 @@ function renderInventory() {
   const totalItems =
     inventoryRows.length;
 
+
   const lowStock =
     inventoryRows.filter(
-      r => n(r.stock_minimo) > 0 &&
-           n(r.stock_inicial) +
-           n(r.entradas) -
-           n(r.salidas) <=
-           n(r.stock_minimo)
+      r =>
+        n(r.stock_minimo) > 0 &&
+        n(r.stock_inicial) +
+        n(r.entradas) -
+        n(r.salidas) <=
+        n(r.stock_minimo)
     ).length;
 
 
@@ -1866,9 +1931,11 @@ function renderInventory() {
       <section class="panel">
 
         <h2>
-          ${editingInventoryId
-            ? 'Editar inventario'
-            : 'Registrar inventario'}
+          ${
+            editingInventoryId
+              ? 'Editar inventario'
+              : 'Registrar inventario'
+          }
         </h2>
 
 
@@ -2284,36 +2351,15 @@ function renderInventory() {
 
                                 <button
                                   type="button"
-                                  data-edit-inventory="${esc(r.id)}"
-                                  style="
-                                    background:#1d4ed8;
-                                    color:#fff;
-                                    border:0;
-                                    border-radius:8px;
-                                    padding:7px 10px;
-                                    font-weight:600;
-                                    margin-right:5px;
-                                  ">
-
+                                  data-edit-inventory="${esc(r.id)}">
                                   Editar
-
                                 </button>
 
 
                                 <button
                                   type="button"
-                                  data-delete-inventory="${esc(r.id)}"
-                                  style="
-                                    background:#7f1d1d;
-                                    color:#fff;
-                                    border:0;
-                                    border-radius:8px;
-                                    padding:7px 10px;
-                                    font-weight:600;
-                                  ">
-
+                                  data-delete-inventory="${esc(r.id)}">
                                   Eliminar
-
                                 </button>
 
                               </td>
@@ -2417,6 +2463,7 @@ function renderInventory() {
       'cancelInventory'
     );
 
+
   if (cancel) {
 
     cancel.onclick = () => {
@@ -2457,15 +2504,18 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
+
   const stock =
     inicial +
     entradas -
     salidas;
 
+
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
+
 
   if (output) {
 
@@ -2483,10 +2533,12 @@ async function saveInventory(e) {
 
   e.preventDefault();
 
+
   const msg =
     document.getElementById(
       'inventoryMsg'
     );
+
 
   const payload = {
 
@@ -2618,6 +2670,7 @@ async function saveInventory(e) {
 
   editingInventoryId = null;
 
+
   msg.textContent =
     'Inventario guardado correctamente.';
 
@@ -2720,6 +2773,7 @@ function editInventory(id) {
 
 
   updateInventoryStockPreview();
+
 
   window.scrollTo({
     top: 0,
@@ -3226,36 +3280,15 @@ function renderSsoma() {
 
                               <button
                                 type="button"
-                                data-edit-ssoma="${esc(r.id)}"
-                                style="
-                                  background:#1d4ed8;
-                                  color:#fff;
-                                  border:0;
-                                  border-radius:8px;
-                                  padding:7px 10px;
-                                  font-weight:600;
-                                  margin-right:5px;
-                                ">
-
+                                data-edit-ssoma="${esc(r.id)}">
                                 Editar
-
                               </button>
 
 
                               <button
                                 type="button"
-                                data-delete-ssoma="${esc(r.id)}"
-                                style="
-                                  background:#7f1d1d;
-                                  color:#fff;
-                                  border:0;
-                                  border-radius:8px;
-                                  padding:7px 10px;
-                                  font-weight:600;
-                                ">
-
+                                data-delete-ssoma="${esc(r.id)}">
                                 Eliminar
-
                               </button>
 
                             </td>
@@ -3339,6 +3372,7 @@ function renderSsoma() {
       'cancelSsoma'
     );
 
+
   if (cancel) {
 
     cancel.onclick = () => {
@@ -3359,6 +3393,7 @@ function renderSsoma() {
 async function saveSsoma(e) {
 
   e.preventDefault();
+
 
   const msg =
     document.getElementById(
@@ -3513,6 +3548,7 @@ async function saveSsoma(e) {
 
 
   editingSsomaId = null;
+
 
   msg.textContent =
     'Incidente guardado correctamente.';
@@ -3737,7 +3773,10 @@ async function loadInventory() {
     await supabase
       .from('inventory')
       .select('*')
-      .eq('user_id', user.id)
+      .eq(
+        'user_id',
+        user.id
+      )
       .order(
         'fecha',
         {
@@ -3839,6 +3878,8 @@ async function load() {
       'Error cargando registros:',
       r.error
     );
+
+    rows = [];
   }
 
 
@@ -3915,37 +3956,89 @@ async function load() {
    INICIO
 ========================================================= */
 
-supabase.auth
-  .getSession()
-  .then(
-    async ({ data }) => {
+async function init() {
 
-      user =
-        data.session?.user ||
-        null;
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase.auth.getSession();
 
 
-      if (user) {
+    if (error) {
 
-        await load();
+      console.error(
+        'Error obteniendo sesión:',
+        error
+      );
 
-      }
-
+      user = null;
 
       render();
 
+      return;
     }
-  )
-  .catch(error => {
 
-    console.error(
-      'Error inicializando sesión:',
-      error
-    );
+
+    user =
+      data.session?.user ||
+      null;
+
+
+    if (user) {
+
+      await load();
+
+    }
+
 
     render();
 
-  });
+  } catch (error) {
+
+    console.error(
+      'Error inicializando QUIMFLUX:',
+      error
+    );
+
+    hideBoot();
+
+    app.innerHTML = `
+
+      <div class="auth">
+
+        <h1>
+          QUIMFLUX V5
+        </h1>
+
+        <div class="alert danger">
+
+          Error al iniciar la aplicación.
+
+          <br><br>
+
+          ${esc(
+            error?.message ||
+            String(error)
+          )}
+
+        </div>
+
+        <button
+          class="primary"
+          onclick="location.reload()">
+
+          Recargar
+
+        </button>
+
+      </div>
+
+    `;
+  }
+}
 
 
 /* =========================================================
@@ -3960,6 +4053,7 @@ supabase.auth
         session?.user ||
         null;
 
+
       if (!user) {
 
         rows = [];
@@ -3968,7 +4062,14 @@ supabase.auth
 
       }
 
-      render();
 
+      render();
     }
   );
+
+
+/* =========================================================
+   ARRANCAR
+========================================================= */
+
+init();
