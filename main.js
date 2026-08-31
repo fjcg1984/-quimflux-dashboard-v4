@@ -20,7 +20,8 @@ const supabase = createClient(
    APLICACIÓN
 ========================================================= */
 
-const app = document.getElementById('app');
+const app =
+  document.getElementById('app');
 
 const today =
   new Date().toISOString().slice(0, 10);
@@ -49,6 +50,7 @@ let editingMaintenanceId = null;
 ========================================================= */
 
 let metas = {
+
   cumplimiento: 0.95,
   merma: 0.02,
   yield: 0.95,
@@ -57,6 +59,7 @@ let metas = {
   rechazo: 0.03,
   otif: 0.95,
   incidentes: 0
+
 };
 
 /* =========================================================
@@ -64,6 +67,7 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
+
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -74,34 +78,49 @@ function esc(v = '') {
       "'": '&#039;'
     }[c])
   );
+
 }
 
 function n(v) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
+
+  const x =
+    Number(v);
+
+  return Number.isFinite(x)
+    ? x
+    : 0;
+
 }
 
 function pct(v) {
+
   if (
     v === null ||
     v === undefined ||
     !Number.isFinite(Number(v))
   ) {
+
     return '—';
+
   }
 
   return (
     Number(v) * 100
   ).toFixed(1) + '%';
+
 }
 
 function msg(id, text) {
+
   const el =
     document.getElementById(id);
 
   if (el) {
+
     el.textContent = text;
+
   }
+
 }
 
 /* =========================================================
@@ -134,77 +153,137 @@ const fields = [
 
 ];
 
+/* =========================================================
+   DERIVAR KPI
+   SIN DATOS NO ES IGUAL A 0%
+========================================================= */
+
 function derive(r) {
 
-  const p = n(r.programada);
-  const q = n(r.producida);
-  const mp = n(r.mp);
-  const h = n(r.horas_turno);
-  const stop = n(r.horas_paradas);
-  const pp = n(r.personal_programado);
-  const pa = n(r.personal_presente);
-  const rej = n(r.rechazadas);
-  const pedidos = n(r.pedidos_programados);
-  const at = n(r.pedidos_tiempo);
+  const p =
+    n(r.programada);
 
-  const merma =
-    mp > 0
-      ? n(r.merma) / mp
-      : null;
+  const q =
+    n(r.producida);
 
-  const yieldRate =
-    mp > 0
-      ? q / mp
-      : null;
+  const mp =
+    n(r.mp);
 
-  const disponibilidad =
-    h > 0
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
-      : null;
+  const h =
+    n(r.horas_turno);
 
-  const asistencia =
-    pp > 0
-      ? pa / pp
-      : null;
+  const stop =
+    n(r.horas_paradas);
 
-  const rechazo =
-    q > 0
-      ? rej / q
-      : null;
+  const pp =
+    n(r.personal_programado);
+
+  const pa =
+    n(r.personal_presente);
+
+  const rej =
+    n(r.rechazadas);
+
+  const pedidos =
+    n(r.pedidos_programados);
+
+  const at =
+    n(r.pedidos_tiempo);
+
+
+  /* CUMPLIMIENTO */
 
   const cumplimiento =
     p > 0
       ? q / p
       : null;
 
+
+  /* YIELD */
+
+  const yieldRate =
+    mp > 0
+      ? q / mp
+      : null;
+
+
+  /* MERMA */
+
+  const merma =
+    mp > 0
+      ? n(r.merma) / mp
+      : null;
+
+
+  /* DISPONIBILIDAD */
+
+  const disponibilidad =
+    h > 0
+
+      ? Math.max(
+          0,
+          (h - stop) / h
+        )
+
+      : null;
+
+
+  /* ASISTENCIA */
+
+  const asistencia =
+    pp > 0
+      ? pa / pp
+      : null;
+
+
+  /* RECHAZO */
+
+  const rechazo =
+    q > 0
+      ? rej / q
+      : null;
+
+
+  /* OTIF */
+
   const otif =
     pedidos > 0
       ? at / pedidos
       : null;
 
+
+  /* OEE */
+
   const oee =
     disponibilidad !== null &&
     cumplimiento !== null &&
     rechazo !== null
-      ? disponibilidadeSegura(
-          disponibilidad,
-          cumplimiento,
-          rechazo
+
+      ? disponibilidad *
+        cumplimiento *
+        Math.max(
+          0,
+          1 - rechazo
         )
+
       : null;
+
+
+  /* COSTO UNITARIO */
 
   const costoUnitario =
     q > 0
       ? n(r.costo_produccion) / q
       : null;
 
+
+  /* ENERGÍA POR UNIDAD */
+
   const energiaUnit =
     q > 0
       ? n(r.energia) / q
       : null;
+
 
   return {
 
@@ -222,6 +301,7 @@ function derive(r) {
     energiaUnit
 
   };
+
 }
 
 function empty() {
@@ -259,13 +339,6 @@ function empty() {
 ========================================================= */
 
 function renderAuth() {
-
-  if (!app) {
-    console.error(
-      'QUIMFLUX: no existe #app en index.html'
-    );
-    return;
-  }
 
   app.innerHTML = `
 
@@ -454,16 +527,6 @@ function renderAuth() {
 
 function render() {
 
-  if (!app) {
-
-    console.error(
-      'QUIMFLUX: #app no existe.'
-    );
-
-    return;
-
-  }
-
   if (!user) {
 
     renderAuth();
@@ -560,106 +623,50 @@ function render() {
 
   };
 
-  try {
+  if (tab === 'dashboard') {
 
-    if (tab === 'dashboard') {
+    renderDashboard();
 
-      renderDashboard();
+  } else if (tab === 'registro') {
 
-    } else if (tab === 'registro') {
+    renderForm();
 
-      renderForm();
+  } else if (tab === 'resumen') {
 
-    } else if (tab === 'resumen') {
+    renderResumen();
 
-      renderResumen();
+  } else if (tab === 'inventario') {
 
-    } else if (tab === 'inventario') {
+    renderInventory();
 
-      renderInventory();
+  } else if (tab === 'personal') {
 
-    } else if (tab === 'personal') {
+    renderPersonal();
 
-      renderPersonal();
+  } else if (tab === 'ssoma') {
 
-    } else if (tab === 'ssoma') {
+    renderSsoma();
 
-      renderSsoma();
+  } else if (tab === 'mantenimiento') {
 
-    } else if (tab === 'mantenimiento') {
+    renderMaintenance();
 
-      renderMaintenance();
+  } else {
 
-    } else {
-
-      renderPlaceholder(
-        nav.find(
-          x =>
-            x[0] === tab
-        )?.[1]
-        || 'QUIMFLUX'
-      );
-
-    }
-
-  } catch (error) {
-
-    console.error(
-      'Error renderizando QUIMFLUX:',
-      error
+    renderPlaceholder(
+      nav.find(
+        x =>
+          x[0] === tab
+      )?.[1]
+      || 'QUIMFLUX'
     );
-
-    const content =
-      document.getElementById(
-        'content'
-      );
-
-    if (content) {
-
-      content.innerHTML = `
-
-        <main>
-
-          <section class="panel">
-
-            <h1>
-              Error al cargar el módulo
-            </h1>
-
-            <p>
-              Se produjo un error al renderizar QUIMFLUX.
-            </p>
-
-            <pre
-              style="
-                white-space:pre-wrap;
-              "
-            >${esc(
-              error?.message ||
-              error
-            )}</pre>
-
-            <button
-              type="button"
-              onclick="location.reload()"
-            >
-              Recargar
-            </button>
-
-          </section>
-
-        </main>
-
-      `;
-
-    }
 
   }
 
 }
 
 /* =========================================================
-   STATUS
+   STATUS / SEMÁFORO KPI
 ========================================================= */
 
 function status(
@@ -668,106 +675,169 @@ function status(
   invert = false
 ) {
 
+  /*
+     SIN DATOS
+
+     null, undefined o valores no numéricos
+     NO significan 0%.
+  */
+
   if (
     value === null ||
     value === undefined ||
-    !Number.isFinite(
-      Number(value)
-    ) ||
-    !Number.isFinite(
-      Number(target)
-    )
+    !Number.isFinite(Number(value))
   ) {
 
     return {
 
-      label:
-        'SIN DATOS',
+      label: 'SIN DATOS',
 
-      cls:
-        'ok'
+      cls: 'nodata'
 
     };
 
   }
 
+
   const v =
     Number(value);
 
-  const t =
+  const meta =
     Number(target);
 
-  const ok =
-    invert
-      ? v <= t
-      : v >= t;
 
-  const critical =
-    invert
-      ? v > t * 1.5
-      : v < t * 0.85;
+  if (
+    !Number.isFinite(meta)
+  ) {
+
+    return {
+
+      label: 'SIN DATOS',
+
+      cls: 'nodata'
+
+    };
+
+  }
+
+
+  /*
+     MAYOR ES MEJOR
+  */
+
+  if (!invert) {
+
+    if (
+      v >= meta
+    ) {
+
+      return {
+
+        label: 'OK',
+
+        cls: 'ok'
+
+      };
+
+    }
+
+
+    if (
+      v < meta * 0.85
+    ) {
+
+      return {
+
+        label: 'CRÍTICO',
+
+        cls: 'critical'
+
+      };
+
+    }
+
+
+    return {
+
+      label: 'REVISAR',
+
+      cls: 'warn'
+
+    };
+
+  }
+
+
+  /*
+     MENOR ES MEJOR
+  */
+
+  if (
+    v <= meta
+  ) {
+
+    return {
+
+      label: 'OK',
+
+      cls: 'ok'
+
+    };
+
+  }
+
+
+  if (
+    v > meta * 1.5
+  ) {
+
+    return {
+
+      label: 'CRÍTICO',
+
+      cls: 'critical'
+
+    };
+
+  }
+
 
   return {
 
-    label:
-      critical
-        ? 'CRÍTICO'
-        : ok
-          ? 'OK'
-          : 'REVISAR',
+    label: 'REVISAR',
 
-    cls:
-      critical
-        ? 'critical'
-        : ok
-          ? 'ok'
-          : 'warn'
+    cls: 'warn'
 
   };
 
 }
 
 /* =========================================================
-   CÁLCULO OEE SEGURO
+   ALERTAS QUIMFLUX
 ========================================================= */
 
-function disponibilidadeSegura(
-  disponibilidad,
-  cumplimiento,
-  rechazo
-) {
+function getAlerts() {
+
+  const alerts = [];
+
+
+  /*
+     SI NO EXISTEN REGISTROS
+  */
 
   if (
-    disponibilidad === null ||
-    cumplimiento === null ||
-    rechazo === null
+    !Array.isArray(rows) ||
+    rows.length === 0
   ) {
 
-    return null;
+    return alerts;
 
   }
 
-  return (
-
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    )
-
-  );
-
-}
-
-/* =========================================================
-   OBTENER KPI CONSOLIDADOS
-========================================================= */
-
-function getOperationalKPIs() {
 
   const d =
     rows.map(derive);
+
 
   const sum = key =>
     d.reduce(
@@ -775,6 +845,7 @@ function getOperationalKPIs() {
         s + n(r[key]),
       0
     );
+
 
   const programada =
     sum('programada');
@@ -809,537 +880,417 @@ function getOperationalKPIs() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
+
+  /*
+     DATOS OPERATIVOS
+  */
+
+  const existeDatoOperativo =
+
+       programada > 0
+    || producida > 0
+    || mp > 0
+    || merma > 0
+    || horas > 0
+    || paradasDiarias > 0
+    || personalProgramado > 0
+    || personalPresente > 0
+    || rechazadas > 0
+    || pedidos > 0
+    || pedidosTiempo > 0;
+
+
+  if (!existeDatoOperativo) {
+
+    return alerts;
+
+  }
+
+
+  /*
+     KPI
+  */
+
   const cumplimiento =
     programada > 0
       ? producida / programada
       : null;
+
 
   const yieldRate =
     mp > 0
       ? producida / mp
       : null;
 
+
   const mermaRate =
     mp > 0
       ? merma / mp
       : null;
 
+
   const horasParadaMantenimiento =
-    Array.isArray(
-      maintenanceRows
-    )
+    Array.isArray(maintenanceRows)
+
       ? maintenanceRows.reduce(
           (total, r) =>
             total +
             n(r.horas_parada),
           0
         )
+
       : 0;
+
 
   const paradas =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradasDiarias;
 
+
   const disponibilidad =
     horas > 0
+
       ? Math.max(
           0,
           (horas - paradas) /
             horas
         )
+
       : null;
+
 
   const asistencia =
     personalProgramado > 0
+
       ? personalPresente /
         personalProgramado
+
       : null;
+
 
   const rechazo =
     producida > 0
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : null;
+
 
   const otif =
     pedidos > 0
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : null;
+
 
   const oee =
     disponibilidad !== null &&
     cumplimiento !== null &&
     rechazo !== null
-      ? disponibilidadeSegura(
-          disponibilidad,
-          cumplimiento,
-          rechazo
+
+      ? disponibilidad *
+        cumplimiento *
+        Math.max(
+          0,
+          1 - rechazo
         )
+
       : null;
 
-  return {
-
-    programada,
-    producida,
-    mp,
-    merma,
-    horas,
-    paradasDiarias,
-    paradas,
-    personalProgramado,
-    personalPresente,
-    rechazadas,
-    pedidos,
-    pedidosTiempo,
-    cumplimiento,
-    yieldRate,
-    mermaRate,
-    disponibilidad,
-    asistencia,
-    rechazo,
-    otif,
-    oee
-
-  };
-
-}
-
-/* =========================================================
-   ALERTAS
-   CORRECCIÓN PRINCIPAL:
-   FILAS VACÍAS NO SON 0%
-========================================================= */
-
-function getAlerts() {
-
-  const alerts = [];
 
   /*
-     Si no existen registros diarios,
-     no crear alertas de KPI.
+     KPI
   */
 
-  const k =
-    getOperationalKPIs();
+  const kpis = [
 
-  const existeDatoOperativo =
-       k.programada > 0
-    || k.producida > 0
-    || k.mp > 0
-    || k.merma > 0
-    || k.horas > 0
-    || k.paradasDiarias > 0
-    || k.personalProgramado > 0
-    || k.personalPresente > 0
-    || k.rechazadas > 0
-    || k.pedidos > 0
-    || k.pedidosTiempo > 0;
+    {
+      nombre: 'Cumplimiento',
+      valor: cumplimiento,
+      meta: metas.cumplimiento,
+      invert: false
+    },
 
-  /*
-     KPI SOLO se evalúan si realmente
-     existe información operacional.
-  */
+    {
+      nombre: 'Yield',
+      valor: yieldRate,
+      meta: metas.yield,
+      invert: false
+    },
 
-  if (existeDatoOperativo) {
+    {
+      nombre: 'Disponibilidad',
+      valor: disponibilidad,
+      meta: metas.disponibilidad,
+      invert: false
+    },
 
-    const kpis = [
+    {
+      nombre: 'Asistencia',
+      valor: asistencia,
+      meta: metas.asistencia,
+      invert: false
+    },
 
-      {
-        nombre:
-          'Cumplimiento',
+    {
+      nombre: 'OTIF',
+      valor: otif,
+      meta: metas.otif,
+      invert: false
+    },
 
-        valor:
-          k.cumplimiento,
+    {
+      nombre: 'OEE',
+      valor: oee,
+      meta: 0.80,
+      invert: false
+    },
 
-        meta:
-          metas.cumplimiento
-      },
+    {
+      nombre: 'Merma',
+      valor: mermaRate,
+      meta: metas.merma,
+      invert: true
+    },
 
-      {
-        nombre:
-          'Yield',
+    {
+      nombre: 'Rechazo',
+      valor: rechazo,
+      meta: metas.rechazo,
+      invert: true
+    }
 
-        valor:
-          k.yieldRate,
+  ];
 
-        meta:
-          metas.yield
-      },
 
-      {
-        nombre:
-          'Disponibilidad',
-
-        valor:
-          k.disponibilidad,
-
-        meta:
-          metas.disponibilidad
-      },
-
-      {
-        nombre:
-          'Asistencia',
-
-        valor:
-          k.asistencia,
-
-        meta:
-          metas.asistencia
-      },
-
-      {
-        nombre:
-          'OTIF',
-
-        valor:
-          k.otif,
-
-        meta:
-          metas.otif
-      },
-
-      {
-        nombre:
-          'OEE',
-
-        valor:
-          k.oee,
-
-        meta:
-          0.80
-      }
-
-    ];
-
-    kpis.forEach(
-      kpi => {
-
-        if (
-          kpi.valor === null ||
-          !Number.isFinite(
-            Number(kpi.valor)
-          )
-        ) {
-
-          return;
-
-        }
-
-        const s =
-          status(
-            kpi.valor,
-            kpi.meta
-          );
-
-        if (
-          s.label ===
-          'CRÍTICO'
-        ) {
-
-          alerts.push({
-
-            nivel:
-              'critical',
-
-            titulo:
-              `${kpi.nombre} en nivel crítico`,
-
-            detalle:
-              `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
-
-          });
-
-        } else if (
-          s.label ===
-          'REVISAR'
-        ) {
-
-          alerts.push({
-
-            nivel:
-              'warn',
-
-            titulo:
-              `${kpi.nombre} requiere revisión`,
-
-            detalle:
-              `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
-
-          });
-
-        }
-
-      }
-    );
-
-    /*
-       MERMA
-    */
+  kpis.forEach(kpi => {
 
     if (
-      k.mermaRate !== null
+      kpi.valor === null ||
+      kpi.valor === undefined ||
+      !Number.isFinite(
+        Number(kpi.valor)
+      )
     ) {
 
-      if (
-        k.mermaRate >
-        metas.merma * 1.5
-      ) {
-
-        alerts.push({
-
-          nivel:
-            'critical',
-
-          titulo:
-            'Merma en nivel crítico',
-
-          detalle:
-            `${pct(k.mermaRate)} · Meta máxima ${pct(metas.merma)}`
-
-        });
-
-      } else if (
-        k.mermaRate >
-        metas.merma
-      ) {
-
-        alerts.push({
-
-          nivel:
-            'warn',
-
-          titulo:
-            'Merma por encima de la meta',
-
-          detalle:
-            `${pct(k.mermaRate)} · Meta máxima ${pct(metas.merma)}`
-
-        });
-
-      }
+      return;
 
     }
 
-    /*
-       RECHAZO
-    */
+
+    const s =
+      status(
+        kpi.valor,
+        kpi.meta,
+        kpi.invert
+      );
+
 
     if (
-      k.rechazo !== null
+      s.label === 'CRÍTICO'
     ) {
 
-      if (
-        k.rechazo >
-        metas.rechazo * 1.5
-      ) {
+      alerts.push({
 
-        alerts.push({
+        nivel: 'critical',
 
-          nivel:
-            'critical',
+        titulo:
+          `${kpi.nombre} en nivel crítico`,
 
-          titulo:
-            'Rechazo de calidad crítico',
+        detalle:
+          `${pct(kpi.valor)} · Meta ${
+            kpi.invert
+              ? 'máxima '
+              : ''
+          }${pct(kpi.meta)}`
 
-          detalle:
-            `${pct(k.rechazo)} · Meta máxima ${pct(metas.rechazo)}`
+      });
 
-        });
+    } else if (
+      s.label === 'REVISAR'
+    ) {
 
-      } else if (
-        k.rechazo >
-        metas.rechazo
-      ) {
+      alerts.push({
 
-        alerts.push({
+        nivel: 'warn',
 
-          nivel:
-            'warn',
+        titulo:
+          `${kpi.nombre} requiere revisión`,
 
-          titulo:
-            'Rechazo de calidad elevado',
+        detalle:
+          `${pct(kpi.valor)} · Meta ${
+            kpi.invert
+              ? 'máxima '
+              : ''
+          }${pct(kpi.meta)}`
 
-          detalle:
-            `${pct(k.rechazo)} · Meta máxima ${pct(metas.rechazo)}`
-
-        });
-
-      }
+      });
 
     }
 
-  }
+  });
 
-  /*
+
+  /* =======================================================
      INVENTARIO
-  */
+  ======================================================= */
 
-  inventoryRows.forEach(
-    r => {
+  inventoryRows.forEach(r => {
 
-      const stock =
-        n(r.stock_inicial) +
-        n(r.entradas) -
-        n(r.salidas);
+    const stock =
+      n(r.stock_inicial) +
+      n(r.entradas) -
+      n(r.salidas);
 
-      const minimo =
-        n(r.stock_minimo);
+    const minimo =
+      n(r.stock_minimo);
 
-      if (
-        minimo > 0 &&
-        stock <= minimo
-      ) {
 
-        alerts.push({
+    if (
+      minimo > 0 &&
+      stock <= minimo
+    ) {
 
-          nivel:
-            'critical',
+      alerts.push({
 
-          titulo:
-            `Stock bajo: ${r.material}`,
+        nivel: 'critical',
 
-          detalle:
-            `Stock actual ${stock} ${
-              r.unidad || ''
-            } · Mínimo ${minimo} ${
-              r.unidad || ''
-            }`
+        titulo:
+          `Stock bajo: ${r.material}`,
 
-        });
+        detalle:
+          `Stock actual ${stock} ${
+            r.unidad || ''
+          } · Mínimo ${minimo} ${
+            r.unidad || ''
+          }`
 
-      }
+      });
 
     }
-  );
 
-  /*
+  });
+
+
+  /* =======================================================
      MANTENIMIENTO
-  */
+  ======================================================= */
 
-  maintenanceRows.forEach(
-    r => {
+  maintenanceRows.forEach(r => {
 
-      const estado =
-        String(
-          r.estado || ''
-        ).toLowerCase();
+    const estado =
+      String(
+        r.estado || ''
+      ).toLowerCase();
 
-      if (
-        estado === 'abierto' ||
-        estado === 'en proceso'
-      ) {
 
-        alerts.push({
+    if (
+      estado === 'abierto' ||
+      estado === 'en proceso'
+    ) {
 
-          nivel:
-            'warn',
+      alerts.push({
 
-          titulo:
-            `Mantenimiento pendiente: ${r.equipo}`,
+        nivel: 'warn',
 
-          detalle:
-            `${r.estado} · ${
-              r.fecha ||
-              'Sin fecha'
-            }`
+        titulo:
+          `Mantenimiento pendiente: ${r.equipo}`,
 
-        });
+        detalle:
+          `${r.estado} · ${
+            r.fecha ||
+            'Sin fecha'
+          }`
 
-      }
-
-      if (
-        estado === 'programado' &&
-        r.fecha_programada &&
-        r.fecha_programada <
-          today
-      ) {
-
-        alerts.push({
-
-          nivel:
-            'critical',
-
-          titulo:
-            `Mantenimiento vencido: ${r.equipo}`,
-
-          detalle:
-            `Programado para ${r.fecha_programada}`
-
-        });
-
-      }
+      });
 
     }
-  );
 
-  /*
+
+    if (
+      estado === 'programado' &&
+      r.fecha_programada &&
+      r.fecha_programada < today
+    ) {
+
+      alerts.push({
+
+        nivel: 'critical',
+
+        titulo:
+          `Mantenimiento vencido: ${r.equipo}`,
+
+        detalle:
+          `Programado para ${
+            r.fecha_programada
+          }`
+
+      });
+
+    }
+
+  });
+
+
+  /* =======================================================
      SSOMA
-  */
+  ======================================================= */
 
-  ssomaRows.forEach(
-    r => {
+  ssomaRows.forEach(r => {
 
-      const estado =
+    const estado =
+      String(
+        r.estado || ''
+      ).toLowerCase();
+
+
+    if (
+      estado !== 'cerrado'
+    ) {
+
+      const gravedad =
         String(
-          r.estado || ''
+          r.gravedad || ''
         ).toLowerCase();
 
-      if (
-        estado !== 'cerrado'
-      ) {
 
-        const gravedad =
-          String(
-            r.gravedad || ''
-          ).toLowerCase();
+      const nivel =
+        (
+          gravedad === 'grave' ||
+          gravedad === 'crítica'
+        )
+          ? 'critical'
+          : 'warn';
 
-        const nivel =
-          (
-            gravedad ===
-              'grave' ||
-            gravedad ===
-              'crítica'
-          )
-            ? 'critical'
-            : 'warn';
 
-        alerts.push({
+      alerts.push({
 
-          nivel,
+        nivel,
 
-          titulo:
-            'Incidente SSOMA abierto',
+        titulo:
+          'Incidente SSOMA abierto',
 
-          detalle:
-            `${r.tipo || 'Incidente'} · ${
-              r.gravedad ||
-              'Sin gravedad'
-            } · ${
-              r.fecha ||
-              ''
-            }`
+        detalle:
+          `${r.tipo || 'Incidente'} · ${
+            r.gravedad ||
+            'Sin gravedad'
+          } · ${
+            r.fecha ||
+            ''
+          }`
 
-        });
-
-      }
+      });
 
     }
-  );
 
-  /*
-     INCIDENTES DEL REGISTRO DIARIO
-  */
+  });
+
+
+  /* =======================================================
+     INCIDENTES REGISTRO DIARIO
+  ======================================================= */
 
   const incidentes =
-    rows.reduce(
-      (total, r) =>
-        total +
-        n(r.incidentes),
-      0
-    );
+    sum('incidentes');
+
 
   if (
     incidentes >
@@ -1357,15 +1308,18 @@ function getAlerts() {
         'Incidentes SSOMA registrados',
 
       detalle:
-        `${incidentes} incidente(s) · Meta ${metas.incidentes}`
+        `${incidentes} incidente(s) · Meta ${
+          metas.incidentes
+        }`
 
     });
 
   }
 
-  /*
+
+  /* =======================================================
      ORDEN
-  */
+  ======================================================= */
 
   alerts.sort(
     (a, b) => {
@@ -1378,6 +1332,7 @@ function getAlerts() {
 
       };
 
+
       return (
         prioridad[a.nivel] -
         prioridad[b.nivel]
@@ -1385,6 +1340,7 @@ function getAlerts() {
 
     }
   );
+
 
   return alerts;
 
@@ -1396,31 +1352,34 @@ function getAlerts() {
 
 function renderAlerts() {
 
-  const alerts =
-    getAlerts();
+  const tieneDatos =
+    Array.isArray(rows) &&
+    rows.some(r => {
+
+      return (
+
+           n(r.programada) > 0
+        || n(r.producida) > 0
+        || n(r.mp) > 0
+        || n(r.merma) > 0
+        || n(r.horas_turno) > 0
+        || n(r.horas_paradas) > 0
+        || n(r.personal_programado) > 0
+        || n(r.personal_presente) > 0
+        || n(r.rechazadas) > 0
+        || n(r.pedidos_programados) > 0
+        || n(r.pedidos_tiempo) > 0
+
+      );
+
+    });
+
 
   /*
-     SIN DATOS:
-     NO MOSTRAR 0% COMO SI FUERA UN KPI REAL.
+     SIN DATOS
   */
 
-  const k =
-    getOperationalKPIs();
-
-  const existeDatoOperativo =
-       k.programada > 0
-    || k.producida > 0
-    || k.mp > 0
-    || k.merma > 0
-    || k.horas > 0
-    || k.paradasDiarias > 0
-    || k.personalProgramado > 0
-    || k.personalPresente > 0
-    || k.rechazadas > 0
-    || k.pedidos > 0
-    || k.pedidosTiempo > 0;
-
-  if (!existeDatoOperativo) {
+  if (!tieneDatos) {
 
     return `
 
@@ -1448,6 +1407,7 @@ function renderAlerts() {
 
         </div>
 
+
         <div
           style="
             padding:25px;
@@ -1457,24 +1417,27 @@ function renderAlerts() {
 
           <div
             style="
-              font-size:42px;
-              margin-bottom:10px;
+              font-size:48px;
+              margin-bottom:12px;
             "
           >
             ℹ️
           </div>
 
+
           <h2>
             SIN DATOS OPERATIVOS
           </h2>
 
+
           <p>
-            Ingresa un registro diario
-            con datos reales para comenzar
-            a evaluar los KPI.
+            Ingresa un registro diario con
+            datos reales para comenzar a
+            evaluar los KPI.
           </p>
 
-          <span class="badge ok">
+
+          <span class="badge nodata">
             SIN DATOS
           </span>
 
@@ -1485,6 +1448,29 @@ function renderAlerts() {
     `;
 
   }
+
+
+  const alerts =
+    getAlerts();
+
+
+  const critical =
+    alerts.filter(
+      a =>
+        a.nivel === 'critical'
+    ).length;
+
+
+  const warnings =
+    alerts.filter(
+      a =>
+        a.nivel === 'warn'
+    ).length;
+
+
+  /*
+     SIN ALERTAS
+  */
 
   if (!alerts.length) {
 
@@ -1501,8 +1487,9 @@ function renderAlerts() {
             </h2>
 
             <p>
-              No se detectan desviaciones
-              que requieran atención.
+              Los indicadores disponibles
+              no presentan desviaciones
+              críticas.
             </p>
 
           </div>
@@ -1519,19 +1506,10 @@ function renderAlerts() {
 
   }
 
-  const critical =
-    alerts.filter(
-      a =>
-        a.nivel ===
-        'critical'
-    ).length;
 
-  const warnings =
-    alerts.filter(
-      a =>
-        a.nivel ===
-        'warn'
-    ).length;
+  /*
+     ALERTAS
+  */
 
   return `
 
@@ -1552,6 +1530,7 @@ function renderAlerts() {
 
         </div>
 
+
         <div
           style="
             display:flex;
@@ -1562,45 +1541,43 @@ function renderAlerts() {
 
           ${
             critical
+
               ? `
 
-                <span class="badge critical">
-
+                <span
+                  class="badge critical"
+                >
                   ${critical}
-                  CRÍTICA${
-                    critical > 1
-                      ? 'S'
-                      : ''
-                  }
-
+                  CRÍTICA${critical > 1 ? 'S' : ''}
                 </span>
 
               `
+
               : ''
           }
 
+
           ${
             warnings
+
               ? `
 
-                <span class="badge warn">
-
+                <span
+                  class="badge warn"
+                >
                   ${warnings}
-                  REVISIÓN${
-                    warnings > 1
-                      ? 'ES'
-                      : ''
-                  }
-
+                  REVISIÓN${warnings > 1 ? 'ES' : ''}
                 </span>
 
               `
+
               : ''
           }
 
         </div>
 
       </div>
+
 
       <div
         style="
@@ -1610,129 +1587,56 @@ function renderAlerts() {
         "
       >
 
-        ${alerts.map(
-          a => `
+        ${alerts.map(a => `
 
-            <div
-              style="
-                display:flex;
-                gap:12px;
-                align-items:flex-start;
-                padding:12px;
-                border:1px solid #ddd;
-                border-radius:10px;
-              "
+          <div
+            style="
+              display:flex;
+              gap:12px;
+              align-items:flex-start;
+              padding:12px;
+              border:1px solid #ddd;
+              border-radius:10px;
+            "
+          >
+
+            <span
+              class="badge ${a.nivel}"
             >
 
-              <span
-                class="badge ${a.nivel}"
-              >
+              ${
+                a.nivel === 'critical'
+                  ? 'CRÍTICO'
+                  : 'REVISAR'
+              }
 
-                ${
-                  a.nivel ===
-                  'critical'
-                    ? 'CRÍTICO'
-                    : 'REVISAR'
-                }
+            </span>
 
-              </span>
+
+            <div>
+
+              <strong>
+                ${esc(a.titulo)}
+              </strong>
+
 
               <div>
 
-                <strong>
-                  ${esc(a.titulo)}
-                </strong>
-
-                <div>
-
-                  <small>
-                    ${esc(a.detalle)}
-                  </small>
-
-                </div>
+                <small>
+                  ${esc(a.detalle)}
+                </small>
 
               </div>
 
             </div>
 
-          `
-        ).join('')}
+          </div>
+
+        `).join('')}
 
       </div>
 
     </section>
-
-  `;
-
-}
-
-/* =========================================================
-   TARJETA KPI
-========================================================= */
-
-function alertCard(
-  nombre,
-  valor,
-  meta,
-  invert = false
-) {
-
-  if (
-    valor === null ||
-    valor === undefined ||
-    !Number.isFinite(
-      Number(valor)
-    )
-  ) {
-
-    return `
-
-      <div class="card">
-
-        <small>
-          ${esc(nombre)}
-        </small>
-
-        <strong>
-          —
-        </strong>
-
-        <span class="badge ok">
-          SIN DATOS
-        </span>
-
-      </div>
-
-    `;
-
-  }
-
-  const s =
-    status(
-      valor,
-      meta,
-      invert
-    );
-
-  return `
-
-    <div class="card">
-
-      <small>
-        ${esc(nombre)}
-      </small>
-
-      <strong>
-        ${pct(valor)}
-      </strong>
-
-      <span
-        class="badge ${s.cls}"
-      >
-        ${s.label}
-      </span>
-
-    </div>
 
   `;
 
@@ -1747,12 +1651,14 @@ function renderDashboard() {
   const d =
     rows.map(derive);
 
+
   const sum = key =>
     d.reduce(
       (s, r) =>
         s + n(r[key]),
       0
     );
+
 
   const programada =
     sum('programada');
@@ -1787,23 +1693,28 @@ function renderDashboard() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
+
+  /* KPI */
+
   const cumplimiento =
     programada > 0
-      ? producida /
-        programada
+      ? producida / programada
       : null;
+
 
   const yieldRate =
     mp > 0
-      ? producida /
-        mp
+      ? producida / mp
       : null;
+
 
   const mermaRate =
     mp > 0
-      ? merma /
-        mp
+      ? merma / mp
       : null;
+
+
+  /* MANTENIMIENTO */
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
@@ -1813,54 +1724,70 @@ function renderDashboard() {
       0
     );
 
+
   const paradas =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradasDiarias;
 
+
   const disponibilidad =
     horas > 0
+
       ? Math.max(
           0,
           (horas - paradas) /
             horas
         )
+
       : null;
+
 
   const asistencia =
     personalProgramado > 0
+
       ? personalPresente /
         personalProgramado
+
       : null;
+
 
   const rechazo =
     producida > 0
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : null;
+
 
   const otif =
     pedidos > 0
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : null;
+
 
   const oee =
     disponibilidad !== null &&
     cumplimiento !== null &&
     rechazo !== null
-      ? disponibilidadeSegura(
-          disponibilidad,
-          cumplimiento,
-          rechazo
+
+      ? disponibilidad *
+        cumplimiento *
+        Math.max(
+          0,
+          1 - rechazo
         )
+
       : null;
+
+
+  /* COSTOS */
 
   const costo =
     sum('costo_produccion');
 
+
   const mantenimientoDiario =
     sum('costo_mantenimiento');
+
 
   const mantenimientoSupabase =
     maintenanceRows.reduce(
@@ -1870,37 +1797,45 @@ function renderDashboard() {
       0
     );
 
+
   const mantenimiento =
     mantenimientoSupabase > 0
       ? mantenimientoSupabase
       : mantenimientoDiario;
 
+
   const costoUnitario =
     producida > 0
-      ? costo /
-        producida
+      ? costo / producida
       : null;
+
 
   const energiaTotal =
     sum('energia');
 
+
   const energia =
     producida > 0
-      ? energiaTotal /
-        producida
+      ? energiaTotal / producida
       : null;
+
 
   const incidentes =
     sum('incidentes');
+
+
+  /* MANTENIMIENTOS */
 
   const mantenimientosProgramados =
     maintenanceRows.filter(
       r =>
         String(
           r.estado || ''
-        ).toLowerCase() ===
+        )
+          .toLowerCase() ===
         'programado'
     ).length;
+
 
   const mantenimientosAbiertos =
     maintenanceRows.filter(
@@ -1909,7 +1844,9 @@ function renderDashboard() {
         const estado =
           String(
             r.estado || ''
-          ).toLowerCase();
+          )
+            .toLowerCase();
+
 
         return (
           estado === 'abierto' ||
@@ -1919,182 +1856,304 @@ function renderDashboard() {
       }
     ).length;
 
+
   const mantenimientosCerrados =
     maintenanceRows.filter(
       r =>
         String(
           r.estado || ''
-        ).toLowerCase() ===
+        )
+          .toLowerCase() ===
         'cerrado'
     ).length;
 
+
+  /* =======================================================
+     TARJETAS
+  ======================================================= */
+
   const cards = [
 
-    [
-      'Producción total',
-      producida.toLocaleString()
-    ],
+    {
+      nombre:
+        'Producción total',
 
-    [
-      'Cumplimiento',
-      pct(cumplimiento),
-      status(
+      valor:
+        producida > 0
+          ? producida.toLocaleString()
+          : '—'
+
+    },
+
+
+    {
+      nombre:
+        'Cumplimiento',
+
+      valor:
         cumplimiento,
-        metas.cumplimiento
-      )
-    ],
 
-    [
-      'Yield',
-      pct(yieldRate),
-      status(
+      meta:
+        metas.cumplimiento,
+
+      invert:
+        false
+
+    },
+
+
+    {
+      nombre:
+        'Yield',
+
+      valor:
         yieldRate,
-        metas.yield
-      )
-    ],
 
-    [
-      'Merma',
-      pct(mermaRate),
-      status(
+      meta:
+        metas.yield,
+
+      invert:
+        false
+
+    },
+
+
+    {
+      nombre:
+        'Merma',
+
+      valor:
         mermaRate,
+
+      meta:
         metas.merma,
-        true
-      )
-    ],
 
-    [
-      'Disponibilidad',
-      pct(disponibilidad),
-      status(
+      invert:
+        true
+
+    },
+
+
+    {
+      nombre:
+        'Disponibilidad',
+
+      valor:
         disponibilidad,
-        metas.disponibilidad
-      )
-    ],
 
-    [
-      'Asistencia',
-      pct(asistencia),
-      status(
+      meta:
+        metas.disponibilidad,
+
+      invert:
+        false
+
+    },
+
+
+    {
+      nombre:
+        'Asistencia',
+
+      valor:
         asistencia,
-        metas.asistencia
-      )
-    ],
 
-    [
-      'Rechazo calidad',
-      pct(rechazo),
-      status(
+      meta:
+        metas.asistencia,
+
+      invert:
+        false
+
+    },
+
+
+    {
+      nombre:
+        'Rechazo calidad',
+
+      valor:
         rechazo,
+
+      meta:
         metas.rechazo,
-        true
-      )
-    ],
 
-    [
-      'OEE',
-      pct(oee),
-      status(
+      invert:
+        true
+
+    },
+
+
+    {
+      nombre:
+        'OEE',
+
+      valor:
         oee,
-        0.80
-      )
-    ],
 
-    [
-      'Costo producción',
-      'S/ ' +
-      costo.toLocaleString()
-    ],
+      meta:
+        0.80,
 
-    [
-      'Costo mantenimiento',
-      'S/ ' +
-      mantenimiento.toLocaleString()
-    ],
+      invert:
+        false
 
-    [
-      'Horas parada mantenimiento',
-      paradas.toFixed(2) +
-      ' h'
-    ],
+    },
 
-    [
-      'Mantenimientos registrados',
-      String(
-        maintenanceRows.length
-      )
-    ],
 
-    [
-      'Mantenimientos pendientes',
-      String(
-        mantenimientosProgramados +
-        mantenimientosAbiertos
-      ),
+    {
+      nombre:
+        'Costo producción',
 
-      {
-        label:
-          (
-            mantenimientosProgramados +
-            mantenimientosAbiertos
-          )
-            ? 'PENDIENTE'
-            : 'OK',
+      texto:
+        'S/ ' +
+        costo.toLocaleString()
 
-        cls:
-          (
-            mantenimientosProgramados +
-            mantenimientosAbiertos
-          )
-            ? 'warn'
-            : 'ok'
-      }
+    },
 
-    ],
 
-    [
-      'Mantenimientos cerrados',
-      String(
-        mantenimientosCerrados
-      )
-    ],
+    {
+      nombre:
+        'Costo mantenimiento',
 
-    [
-      'Costo unitario',
-      costoUnitario === null
-        ? '—'
-        : 'S/ ' +
-          costoUnitario.toFixed(3)
-    ],
+      texto:
+        'S/ ' +
+        mantenimiento.toLocaleString()
 
-    [
-      'Energía',
-      energia === null
-        ? '—'
-        : energia.toFixed(3) +
-          ' kWh/unidad'
-    ],
+    },
 
-    [
-      'Entregas a tiempo',
-      pct(otif),
-      status(
+
+    {
+      nombre:
+        'Horas parada mantenimiento',
+
+      texto:
+        paradas.toFixed(2) +
+        ' h'
+
+    },
+
+
+    {
+      nombre:
+        'Mantenimientos registrados',
+
+      texto:
+        String(
+          maintenanceRows.length
+        )
+
+    },
+
+
+    {
+      nombre:
+        'Mantenimientos pendientes',
+
+      texto:
+        String(
+          mantenimientosProgramados +
+          mantenimientosAbiertos
+        ),
+
+      estado:
+
+        (
+          mantenimientosProgramados +
+          mantenimientosAbiertos
+        )
+
+          ? {
+
+              label:
+                'PENDIENTE',
+
+              cls:
+                'warn'
+
+            }
+
+          : {
+
+              label:
+                'OK',
+
+              cls:
+                'ok'
+
+            }
+
+    },
+
+
+    {
+      nombre:
+        'Mantenimientos cerrados',
+
+      texto:
+        String(
+          mantenimientosCerrados
+        )
+
+    },
+
+
+    {
+      nombre:
+        'Costo unitario',
+
+      texto:
+        costoUnitario !== null
+          ? 'S/ ' +
+            costoUnitario.toFixed(3)
+          : '—'
+
+    },
+
+
+    {
+      nombre:
+        'Energía',
+
+      texto:
+        energia !== null
+          ? energia.toFixed(3) +
+            ' kWh/unidad'
+          : '—'
+
+    },
+
+
+    {
+      nombre:
+        'Entregas a tiempo',
+
+      valor:
         otif,
-        metas.otif
-      )
-    ],
 
-    [
-      'Incidentes SSOMA',
-      String(incidentes),
-      status(
+      meta:
+        metas.otif,
+
+      invert:
+        false
+
+    },
+
+
+    {
+      nombre:
+        'Incidentes SSOMA',
+
+      valor:
         incidentes,
+
+      meta:
         metas.incidentes,
+
+      invert:
         true
-      )
-    ]
+
+    }
 
   ];
+
 
   document.getElementById(
     'content'
@@ -2126,31 +2185,88 @@ function renderDashboard() {
 
       </div>
 
+
       ${renderAlerts()}
+
 
       <div class="cards">
 
-        ${cards.map(
-          c => `
+        ${cards.map(c => {
+
+          /*
+             KPI CON SEMÁFORO
+          */
+
+          if (
+            c.valor !== undefined &&
+            c.meta !== undefined
+          ) {
+
+            const s =
+              status(
+                c.valor,
+                c.meta,
+                c.invert || false
+              );
+
+
+            return `
+
+              <div class="card">
+
+                <small>
+                  ${esc(c.nombre)}
+                </small>
+
+                <strong>
+                  ${
+                    s.label === 'SIN DATOS'
+                      ? '—'
+                      : pct(c.valor)
+                  }
+                </strong>
+
+                <span
+                  class="badge ${s.cls}"
+                >
+                  ${s.label}
+                </span>
+
+              </div>
+
+            `;
+
+          }
+
+
+          /*
+             TARJETA NORMAL
+          */
+
+          return `
 
             <div class="card">
 
               <small>
-                ${esc(c[0])}
+                ${esc(c.nombre)}
               </small>
 
               <strong>
-                ${esc(c[1])}
+                ${esc(
+                  c.texto ??
+                  c.valor ??
+                  '—'
+                )}
               </strong>
 
               ${
-                c.length > 2
+                c.estado
                   ? `
 
                     <span
-                      class="badge ${c[2].cls}"
+                      class="badge ${c.estado.cls}"
                     >
-                      ${c[2].label}
+                      ${c.estado.label}
                     </span>
 
                   `
@@ -2159,10 +2275,12 @@ function renderDashboard() {
 
             </div>
 
-          `
-        ).join('')}
+          `;
+
+        }).join('')}
 
       </div>
+
 
       <section class="panel">
 
@@ -2201,58 +2319,52 @@ function renderDashboard() {
                     ${d
                       .slice(-20)
                       .reverse()
-                      .map(
-                        r => `
+                      .map(r => `
 
-                          <tr>
+                        <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                          <td>
+                            ${esc(r.fecha)}
+                          </td>
 
-                            <td>
-                              ${esc(r.turno)}
-                            </td>
+                          <td>
+                            ${esc(r.turno)}
+                          </td>
 
-                            <td>
-                              ${esc(r.producto)}
-                            </td>
+                          <td>
+                            ${esc(r.producto)}
+                          </td>
 
-                            <td>
-                              ${n(
-                                r.programada
-                              )}
-                            </td>
+                          <td>
+                            ${n(r.programada)}
+                          </td>
 
-                            <td>
-                              ${n(
-                                r.producida
-                              )}
-                            </td>
+                          <td>
+                            ${n(r.producida)}
+                          </td>
 
-                            <td>
-                              ${n(r.merma)}
-                            </td>
+                          <td>
+                            ${n(r.merma)}
+                          </td>
 
-                            <td>
-                              ${pct(r.oee)}
-                            </td>
+                          <td>
+                            ${pct(r.oee)}
+                          </td>
 
-                            <td>
+                          <td>
 
-                              <button
-                                type="button"
-                                data-delete-id="${esc(r.id)}"
-                              >
-                                Eliminar
-                              </button>
+                            <button
+                              type="button"
+                              data-delete-id="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
 
-                            </td>
+                          </td>
 
-                          </tr>
+                        </tr>
 
-                        `
-                      )
+                      `)
                       .join('')}
 
                   </tbody>
@@ -2283,6 +2395,7 @@ function renderDashboard() {
     </main>
 
   `;
+
 
   document
     .querySelectorAll(
@@ -2318,6 +2431,7 @@ async function deleteRecord(id) {
 
   }
 
+
   const row =
     rows.find(
       r =>
@@ -2325,15 +2439,15 @@ async function deleteRecord(id) {
         String(id)
     );
 
+
   const detail =
     row
-      ? `${row.fecha} · ${
-          row.turno
-        } · ${
+      ? `${row.fecha} · ${row.turno} · ${
           row.producto ||
           'Sin producto'
         }`
       : 'este registro';
+
 
   if (
     !confirm(
@@ -2341,6 +2455,7 @@ async function deleteRecord(id) {
       `Esta acción no se puede deshacer.`
     )
   ) return;
+
 
   const {
     error
@@ -2357,6 +2472,7 @@ async function deleteRecord(id) {
         user.id
       );
 
+
   if (error) {
 
     alert(
@@ -2367,6 +2483,7 @@ async function deleteRecord(id) {
     return;
 
   }
+
 
   await load();
 
@@ -2383,6 +2500,7 @@ function renderForm() {
   const r =
     empty();
 
+
   document.getElementById(
     'content'
   ).innerHTML = `
@@ -2397,6 +2515,7 @@ function renderForm() {
         Ingresa los datos del turno.
         Los KPI se calculan automáticamente.
       </p>
+
 
       <form
         id="daily"
@@ -2413,14 +2532,12 @@ function renderForm() {
             .slice(0, 7)
             .map(
               f =>
-                control(
-                  f,
-                  r
-                )
+                control(f, r)
             )
             .join('')}
 
         </section>
+
 
         <section>
 
@@ -2432,14 +2549,12 @@ function renderForm() {
             .slice(7, 12)
             .map(
               f =>
-                control(
-                  f,
-                  r
-                )
+                control(f, r)
             )
             .join('')}
 
         </section>
+
 
         <section>
 
@@ -2451,14 +2566,12 @@ function renderForm() {
             .slice(12, 15)
             .map(
               f =>
-                control(
-                  f,
-                  r
-                )
+                control(f, r)
             )
             .join('')}
 
         </section>
+
 
         <section>
 
@@ -2470,19 +2583,18 @@ function renderForm() {
             .slice(15)
             .map(
               f =>
-                control(
-                  f,
-                  r
-                )
+                control(f, r)
             )
             .join('')}
 
         </section>
 
+
         <div
           id="saveMsg"
           class="msg full"
         ></div>
+
 
         <button
           class="primary full"
@@ -2497,11 +2609,13 @@ function renderForm() {
 
   `;
 
+
   document.getElementById(
     'daily'
   ).onsubmit = async e => {
 
     e.preventDefault();
+
 
     const payload = {
 
@@ -2510,6 +2624,7 @@ function renderForm() {
 
     };
 
+
     fields.forEach(
       ([key, , type]) => {
 
@@ -2517,6 +2632,7 @@ function renderForm() {
           document.getElementById(
             'f_' + key
           );
+
 
         payload[key] =
           type === 'number'
@@ -2532,19 +2648,20 @@ function renderForm() {
       }
     );
 
+
     msg(
       'saveMsg',
       'Guardando…'
     );
+
 
     const {
       error
     } =
       await supabase
         .from('daily_records')
-        .insert(
-          payload
-        );
+        .insert(payload);
+
 
     if (error) {
 
@@ -2557,12 +2674,15 @@ function renderForm() {
 
     }
 
+
     msg(
       'saveMsg',
       'Registro guardado correctamente.'
     );
 
+
     await load();
+
 
     setTimeout(
       () => render(),
@@ -2573,10 +2693,8 @@ function renderForm() {
 
 }
 
-function control(
-  f,
-  r
-) {
+
+function control(f, r) {
 
   const [
     key,
@@ -2584,39 +2702,25 @@ function control(
     type
   ] = f;
 
+
   let input;
 
-  if (
-    type ===
-    'select'
-  ) {
+
+  if (type === 'select') {
 
     input = `
 
-      <select
-        id="f_${key}"
-      >
+      <select id="f_${key}">
 
-        <option>
-          Mañana
-        </option>
-
-        <option>
-          Tarde
-        </option>
-
-        <option>
-          Noche
-        </option>
+        <option>Mañana</option>
+        <option>Tarde</option>
+        <option>Noche</option>
 
       </select>
 
     `;
 
-  } else if (
-    type ===
-    'textarea'
-  ) {
+  } else if (type === 'textarea') {
 
     input = `
 
@@ -2633,12 +2737,9 @@ function control(
       <input
         id="f_${key}"
         type="${type}"
-        value="${esc(
-          r[key]
-        )}"
+        value="${esc(r[key])}"
         ${
-          type ===
-          'number'
+          type === 'number'
             ? 'step="any"'
             : ''
         }
@@ -2647,6 +2748,7 @@ function control(
     `;
 
   }
+
 
   return `
 
@@ -2671,12 +2773,14 @@ function renderResumen() {
   const d =
     rows.map(derive);
 
+
   const sum = key =>
     d.reduce(
       (s, r) =>
         s + n(r[key]),
       0
     );
+
 
   const programada =
     sum('programada');
@@ -2717,6 +2821,7 @@ function renderResumen() {
   const mantenimientoDiario =
     sum('costo_mantenimiento');
 
+
   const mantenimientoSupabase =
     maintenanceRows.reduce(
       (total, r) =>
@@ -2725,10 +2830,12 @@ function renderResumen() {
       0
     );
 
+
   const mantenimiento =
     mantenimientoSupabase > 0
       ? mantenimientoSupabase
       : mantenimientoDiario;
+
 
   const energia =
     sum('energia');
@@ -2739,23 +2846,24 @@ function renderResumen() {
   const noConformidades =
     sum('no_conformidades');
 
+
   const cumplimiento =
     programada > 0
-      ? producida /
-        programada
+      ? producida / programada
       : null;
+
 
   const yieldRate =
     mp > 0
-      ? producida /
-        mp
+      ? producida / mp
       : null;
+
 
   const mermaRate =
     mp > 0
-      ? merma /
-        mp
+      ? merma / mp
       : null;
+
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
@@ -2765,138 +2873,133 @@ function renderResumen() {
       0
     );
 
+
   const paradasFinal =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradas;
 
+
   const disponibilidad =
     horas > 0
+
       ? Math.max(
           0,
           (horas - paradasFinal) /
             horas
         )
+
       : null;
+
 
   const asistencia =
     personalProgramado > 0
+
       ? personalPresente /
         personalProgramado
+
       : null;
+
 
   const rechazo =
     producida > 0
-      ? rechazadas /
-        producida
+      ? rechazadas / producida
       : null;
+
 
   const otif =
     pedidos > 0
-      ? pedidosTiempo /
-        pedidos
+      ? pedidosTiempo / pedidos
       : null;
+
 
   const oee =
     disponibilidad !== null &&
     cumplimiento !== null &&
     rechazo !== null
-      ? disponibilidadeSegura(
-          disponibilidad,
-          cumplimiento,
-          rechazo
+
+      ? disponibilidad *
+        cumplimiento *
+        Math.max(
+          0,
+          1 - rechazo
         )
+
       : null;
+
 
   const costoUnitario =
     producida > 0
-      ? costo /
-        producida
+      ? costo / producida
       : null;
+
 
   const energiaUnit =
     producida > 0
-      ? energia /
-        producida
+      ? energia / producida
       : null;
+
 
   const kpis = [
 
     [
       'Cumplimiento',
-      pct(cumplimiento),
-      status(
-        cumplimiento,
-        metas.cumplimiento
-      )
+      cumplimiento,
+      metas.cumplimiento,
+      false
     ],
 
     [
       'Yield',
-      pct(yieldRate),
-      status(
-        yieldRate,
-        metas.yield
-      )
+      yieldRate,
+      metas.yield,
+      false
     ],
 
     [
       'Merma',
-      pct(mermaRate),
-      status(
-        mermaRate,
-        metas.merma,
-        true
-      )
+      mermaRate,
+      metas.merma,
+      true
     ],
 
     [
       'Disponibilidad',
-      pct(disponibilidad),
-      status(
-        disponibilidad,
-        metas.disponibilidad
-      )
+      disponibilidad,
+      metas.disponibilidad,
+      false
     ],
 
     [
       'Asistencia',
-      pct(asistencia),
-      status(
-        asistencia,
-        metas.asistencia
-      )
+      asistencia,
+      metas.asistencia,
+      false
     ],
 
     [
       'Rechazo',
-      pct(rechazo),
-      status(
-        rechazo,
-        metas.rechazo,
-        true
-      )
+      rechazo,
+      metas.rechazo,
+      true
     ],
 
     [
       'OEE',
-      pct(oee),
-      status(
-        oee,
-        0.80
-      )
+      oee,
+      0.80,
+      false
     ],
 
     [
       'OTIF',
-      pct(otif),
-      status(
-        otif,
-        metas.otif
-      )
+      otif,
+      metas.otif,
+      false
     ]
 
   ];
+
 
   document.getElementById(
     'content'
@@ -2913,41 +3016,58 @@ function renderResumen() {
         de la planta.
       </p>
 
+
       <section class="panel">
 
         <h2>
           Indicadores principales
         </h2>
 
+
         <div class="cards">
 
-          ${kpis.map(
-            k => `
+          ${kpis.map(k => {
+
+            const s =
+              status(
+                k[1],
+                k[2],
+                k[3]
+              );
+
+
+            return `
 
               <div class="card">
 
                 <small>
-                  ${k[0]}
+                  ${esc(k[0])}
                 </small>
 
                 <strong>
-                  ${k[1]}
+                  ${
+                    s.label === 'SIN DATOS'
+                      ? '—'
+                      : pct(k[1])
+                  }
                 </strong>
 
                 <span
-                  class="badge ${k[2].cls}"
+                  class="badge ${s.cls}"
                 >
-                  ${k[2].label}
+                  ${s.label}
                 </span>
 
               </div>
 
-            `
-          ).join('')}
+            `;
+
+          }).join('')}
 
         </div>
 
       </section>
+
 
       <section class="panel">
 
@@ -2955,71 +3075,97 @@ function renderResumen() {
           Producción
         </h2>
 
+
         <div class="cards">
 
           <div class="card">
+
             <small>
               Producción programada
             </small>
+
             <strong>
               ${programada.toLocaleString()}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Producción real
             </small>
+
             <strong>
               ${producida.toLocaleString()}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Materia prima consumida
             </small>
+
             <strong>
               ${mp.toLocaleString()}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Merma
             </small>
+
             <strong>
               ${merma.toLocaleString()}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Horas de turno
             </small>
+
             <strong>
               ${horas.toFixed(1)}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Horas de parada
             </small>
+
             <strong>
               ${paradasFinal.toFixed(2)}
             </strong>
+
           </div>
 
         </div>
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Costos y eficiencia
         </h2>
+
 
         <div class="cards">
 
@@ -3030,11 +3176,11 @@ function renderResumen() {
             </small>
 
             <strong>
-              S/
-              ${costo.toLocaleString()}
+              S/ ${costo.toLocaleString()}
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3043,11 +3189,11 @@ function renderResumen() {
             </small>
 
             <strong>
-              S/
-              ${mantenimiento.toLocaleString()}
+              S/ ${mantenimiento.toLocaleString()}
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3057,14 +3203,15 @@ function renderResumen() {
 
             <strong>
               ${
-                costoUnitario === null
-                  ? '—'
-                  : 'S/ ' +
+                costoUnitario !== null
+                  ? 'S/ ' +
                     costoUnitario.toFixed(3)
+                  : '—'
               }
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3073,11 +3220,11 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${energia.toLocaleString()}
-              kWh
+              ${energia.toLocaleString()} kWh
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3087,10 +3234,10 @@ function renderResumen() {
 
             <strong>
               ${
-                energiaUnit === null
-                  ? '—'
-                  : energiaUnit.toFixed(3) +
+                energiaUnit !== null
+                  ? energiaUnit.toFixed(3) +
                     ' kWh/unidad'
+                  : '—'
               }
             </strong>
 
@@ -3100,11 +3247,13 @@ function renderResumen() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Mantenimiento
         </h2>
+
 
         <div class="cards">
 
@@ -3120,6 +3269,7 @@ function renderResumen() {
 
           </div>
 
+
           <div class="card">
 
             <small>
@@ -3127,18 +3277,22 @@ function renderResumen() {
             </small>
 
             <strong>
+
               ${
                 maintenanceRows.filter(
                   r =>
                     String(
                       r.estado || ''
-                    ).toLowerCase() ===
+                    )
+                      .toLowerCase() ===
                     'programado'
                 ).length
               }
+
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3147,6 +3301,7 @@ function renderResumen() {
             </small>
 
             <strong>
+
               ${
                 maintenanceRows.filter(
                   r => {
@@ -3154,21 +3309,22 @@ function renderResumen() {
                     const estado =
                       String(
                         r.estado || ''
-                      ).toLowerCase();
+                      )
+                        .toLowerCase();
 
                     return (
-                      estado ===
-                        'abierto' ||
-                      estado ===
-                        'en proceso'
+                      estado === 'abierto' ||
+                      estado === 'en proceso'
                     );
 
                   }
                 ).length
               }
+
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3177,18 +3333,22 @@ function renderResumen() {
             </small>
 
             <strong>
+
               ${
                 maintenanceRows.filter(
                   r =>
                     String(
                       r.estado || ''
-                    ).toLowerCase() ===
+                    )
+                      .toLowerCase() ===
                     'cerrado'
                 ).length
               }
+
             </strong>
 
           </div>
+
 
           <div class="card">
 
@@ -3197,11 +3357,7 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${
-                horasParadaMantenimiento.toFixed(
-                  2
-                )
-              }
+              ${horasParadaMantenimiento.toFixed(2)}
               h
             </strong>
 
@@ -3211,84 +3367,117 @@ function renderResumen() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Calidad, personal y despacho
         </h2>
 
+
         <div class="cards">
 
           <div class="card">
+
             <small>
               Personal programado
             </small>
+
             <strong>
               ${personalProgramado}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Personal presente
             </small>
+
             <strong>
               ${personalPresente}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Unidades rechazadas
             </small>
+
             <strong>
               ${rechazadas}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Reproceso
             </small>
+
             <strong>
               ${reproceso}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               No conformidades
             </small>
+
             <strong>
               ${noConformidades}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Pedidos programados
             </small>
+
             <strong>
               ${pedidos}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Pedidos a tiempo
             </small>
+
             <strong>
               ${pedidosTiempo}
             </strong>
+
           </div>
 
+
           <div class="card">
+
             <small>
               Incidentes SSOMA
             </small>
+
             <strong>
               ${ssomaRows.length}
             </strong>
+
           </div>
 
         </div>
@@ -3310,14 +3499,15 @@ function renderMaintenance() {
   const total =
     maintenanceRows.length;
 
+
   const programados =
     maintenanceRows.filter(
       r =>
-        String(
-          r.estado || ''
-        ).toLowerCase() ===
+        String(r.estado || '')
+          .toLowerCase() ===
         'programado'
     ).length;
+
 
   const pendientes =
     maintenanceRows.filter(
@@ -3329,23 +3519,22 @@ function renderMaintenance() {
           ).toLowerCase();
 
         return (
-          estado ===
-            'abierto' ||
-          estado ===
-            'en proceso'
+          estado === 'abierto' ||
+          estado === 'en proceso'
         );
 
       }
     ).length;
 
+
   const cerrados =
     maintenanceRows.filter(
       r =>
-        String(
-          r.estado || ''
-        ).toLowerCase() ===
+        String(r.estado || '')
+          .toLowerCase() ===
         'cerrado'
     ).length;
+
 
   const horasParada =
     maintenanceRows.reduce(
@@ -3355,6 +3544,7 @@ function renderMaintenance() {
       0
     );
 
+
   const costoTotal =
     maintenanceRows.reduce(
       (total, r) =>
@@ -3362,6 +3552,7 @@ function renderMaintenance() {
         n(r.costo),
       0
     );
+
 
   document.getElementById(
     'content'
@@ -3391,88 +3582,120 @@ function renderMaintenance() {
 
       </div>
 
+
       <div class="cards">
 
         <div class="card">
+
           <small>
             Mantenimientos registrados
           </small>
+
           <strong>
             ${total}
           </strong>
+
         </div>
 
+
         <div class="card">
+
           <small>
             Programados
           </small>
+
           <strong>
             ${programados}
           </strong>
+
           <span class="badge ok">
             PROGRAMADO
           </span>
+
         </div>
 
+
         <div class="card">
+
           <small>
             Abiertos / En proceso
           </small>
+
           <strong>
             ${pendientes}
           </strong>
+
           <span class="badge ${
             pendientes
               ? 'warn'
               : 'ok'
           }">
+
             ${
               pendientes
                 ? 'PENDIENTE'
                 : 'OK'
             }
+
           </span>
+
         </div>
 
+
         <div class="card">
+
           <small>
             Cerrados
           </small>
+
           <strong>
             ${cerrados}
           </strong>
+
         </div>
 
+
         <div class="card">
+
           <small>
             Horas de parada
           </small>
+
           <strong>
             ${horasParada.toFixed(2)}
             horas
           </strong>
+
         </div>
 
+
         <div class="card">
+
           <small>
             Costo total
           </small>
+
           <strong>
             S/ ${costoTotal.toFixed(2)}
           </strong>
+
         </div>
 
       </div>
 
+
       <section class="panel">
 
         <h2>
+
           ${
             editingMaintenanceId
               ? 'Editar mantenimiento'
               : 'Registrar mantenimiento'
           }
+
         </h2>
+
 
         <form
           id="maintenanceForm"
@@ -3485,7 +3708,9 @@ function renderMaintenance() {
               Identificación
             </h2>
 
+
             <label>
+
               Fecha
 
               <input
@@ -3494,9 +3719,12 @@ function renderMaintenance() {
                 value="${today}"
                 required
               >
+
             </label>
 
+
             <label>
+
               Equipo
 
               <input
@@ -3505,9 +3733,12 @@ function renderMaintenance() {
                 placeholder="Ej. Mezclador principal"
                 required
               >
+
             </label>
 
+
             <label>
+
               Código de equipo
 
               <input
@@ -3515,9 +3746,12 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Ej. EQ-001"
               >
+
             </label>
 
+
             <label>
+
               Tipo
 
               <select
@@ -3553,7 +3787,9 @@ function renderMaintenance() {
 
             </label>
 
+
             <label>
+
               Causa
 
               <input
@@ -3561,9 +3797,11 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Ej. Desgaste de rodamiento"
               >
+
             </label>
 
           </section>
+
 
           <section>
 
@@ -3571,7 +3809,9 @@ function renderMaintenance() {
               Intervención
             </h2>
 
+
             <label>
+
               Descripción
 
               <textarea
@@ -3579,9 +3819,12 @@ function renderMaintenance() {
                 placeholder="Describe el mantenimiento realizado o requerido."
                 required
               ></textarea>
+
             </label>
 
+
             <label>
+
               Horas de parada
 
               <input
@@ -3591,9 +3834,12 @@ function renderMaintenance() {
                 min="0"
                 value="0"
               >
+
             </label>
 
+
             <label>
+
               Costo (S/)
 
               <input
@@ -3603,9 +3849,12 @@ function renderMaintenance() {
                 min="0"
                 value="0"
               >
+
             </label>
 
+
             <label>
+
               Responsable
 
               <input
@@ -3613,9 +3862,11 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Técnico responsable"
               >
+
             </label>
 
           </section>
+
 
           <section>
 
@@ -3623,7 +3874,9 @@ function renderMaintenance() {
               Programación y estado
             </h2>
 
+
             <label>
+
               Estado
 
               <select
@@ -3655,25 +3908,33 @@ function renderMaintenance() {
 
             </label>
 
+
             <label>
+
               Fecha programada
 
               <input
                 id="mt_fecha_programada"
                 type="date"
               >
+
             </label>
 
+
             <label>
+
               Fecha de cierre
 
               <input
                 id="mt_fecha_cierre"
                 type="date"
               >
+
             </label>
 
+
             <label>
+
               Observaciones
 
               <textarea
@@ -3685,10 +3946,12 @@ function renderMaintenance() {
 
           </section>
 
+
           <div
             id="maintenanceMsg"
             class="msg full"
           ></div>
+
 
           <div
             class="full"
@@ -3712,6 +3975,7 @@ function renderMaintenance() {
 
             </button>
 
+
             ${
               editingMaintenanceId
                 ? `
@@ -3733,11 +3997,13 @@ function renderMaintenance() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Mantenimientos registrados
         </h2>
+
 
         ${
           maintenanceRows.length
@@ -3767,140 +4033,137 @@ function renderMaintenance() {
 
                   </thead>
 
+
                   <tbody>
 
                     ${maintenanceRows
-                      .map(
-                        r => `
+                      .map(r => `
 
-                          <tr>
+                        <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                          <td>
+                            ${esc(r.fecha)}
+                          </td>
 
-                            <td>
 
-                              <strong>
-                                ${esc(
-                                  r.equipo
-                                )}
-                              </strong>
+                          <td>
 
-                              ${
-                                r.codigo_equipo
-                                  ? `
+                            <strong>
+                              ${esc(r.equipo)}
+                            </strong>
 
-                                    <br>
+                            ${
+                              r.codigo_equipo
+                                ? `
+                                  <br>
+                                  <small>
+                                    ${esc(
+                                      r.codigo_equipo
+                                    )}
+                                  </small>
+                                `
+                                : ''
+                            }
 
-                                    <small>
-                                      ${esc(
-                                        r.codigo_equipo
-                                      )}
-                                    </small>
+                          </td>
 
-                                  `
-                                  : ''
-                              }
 
-                            </td>
+                          <td>
+                            ${esc(r.tipo)}
+                          </td>
 
-                            <td>
-                              ${esc(r.tipo)}
-                            </td>
 
-                            <td>
-                              ${n(
-                                r.horas_parada
-                              ).toFixed(2)}
-                            </td>
+                          <td>
+                            ${n(
+                              r.horas_parada
+                            ).toFixed(2)}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.causa ||
-                                ''
-                              )}
-                            </td>
 
-                            <td>
-                              S/
-                              ${n(
-                                r.costo
-                              ).toFixed(2)}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.causa || ''
+                            )}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.responsable ||
-                                ''
-                              )}
-                            </td>
 
-                            <td>
+                          <td>
+                            S/
+                            ${n(
+                              r.costo
+                            ).toFixed(2)}
+                          </td>
 
-                              <span
-                                class="badge ${
-                                  String(
-                                    r.estado ||
-                                    ''
-                                  ).toLowerCase() ===
-                                  'cerrado'
-                                    ? 'ok'
+
+                          <td>
+                            ${esc(
+                              r.responsable || ''
+                            )}
+                          </td>
+
+
+                          <td>
+
+                            <span
+                              class="badge ${
+                                String(
+                                  r.estado || ''
+                                ).toLowerCase() ===
+                                'cerrado'
+                                  ? 'ok'
+                                  : (
+                                      String(
+                                        r.estado || ''
+                                      ).toLowerCase() ===
+                                      'cancelado'
+                                    )
+                                    ? 'critical'
                                     : (
                                         String(
-                                          r.estado ||
-                                          ''
+                                          r.estado || ''
                                         ).toLowerCase() ===
-                                        'cancelado'
+                                        'programado'
                                       )
-                                      ? 'critical'
-                                      : (
-                                          String(
-                                            r.estado ||
-                                            ''
-                                          ).toLowerCase() ===
-                                          'programado'
-                                        )
-                                        ? 'ok'
-                                        : 'warn'
-                                }"
-                              >
-                                ${esc(
-                                  r.estado
-                                )}
-                              </span>
+                                      ? 'ok'
+                                      : 'warn'
+                              }"
+                            >
+                              ${esc(r.estado)}
+                            </span>
 
-                            </td>
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.fecha_programada ||
-                                ''
-                              )}
-                            </td>
 
-                            <td>
+                          <td>
+                            ${esc(
+                              r.fecha_programada ||
+                              ''
+                            )}
+                          </td>
 
-                              <button
-                                type="button"
-                                data-edit-maintenance="${esc(r.id)}"
-                              >
-                                Editar
-                              </button>
 
-                              <button
-                                type="button"
-                                data-delete-maintenance="${esc(r.id)}"
-                              >
-                                Eliminar
-                              </button>
+                          <td>
 
-                            </td>
+                            <button
+                              type="button"
+                              data-edit-maintenance="${esc(r.id)}"
+                            >
+                              Editar
+                            </button>
 
-                          </tr>
 
-                        `
-                      )
+                            <button
+                              type="button"
+                              data-delete-maintenance="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
+
+                          </td>
+
+                        </tr>
+
+                      `)
                       .join('')}
 
                   </tbody>
@@ -3929,48 +4192,46 @@ function renderMaintenance() {
 
   `;
 
+
   document.getElementById(
     'maintenanceForm'
   ).onsubmit =
     saveMaintenance;
 
+
   document
     .querySelectorAll(
       '[data-edit-maintenance]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          editMaintenance(
-            button.dataset
-              .editMaintenance
-          );
+        editMaintenance(
+          button.dataset.editMaintenance
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document
     .querySelectorAll(
       '[data-delete-maintenance]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          deleteMaintenance(
-            button.dataset
-              .deleteMaintenance
-          );
+        deleteMaintenance(
+          button.dataset.deleteMaintenance
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document.getElementById(
     'cancelMaintenance'
@@ -3995,6 +4256,7 @@ function renderMaintenance() {
 async function saveMaintenance(e) {
 
   e.preventDefault();
+
 
   const payload = {
 
@@ -4078,6 +4340,7 @@ async function saveMaintenance(e) {
 
   };
 
+
   if (!payload.fecha) {
 
     msg(
@@ -4088,6 +4351,7 @@ async function saveMaintenance(e) {
     return;
 
   }
+
 
   if (!payload.equipo) {
 
@@ -4100,6 +4364,7 @@ async function saveMaintenance(e) {
 
   }
 
+
   if (!payload.descripcion) {
 
     msg(
@@ -4111,9 +4376,9 @@ async function saveMaintenance(e) {
 
   }
 
+
   if (
-    payload.horas_parada <
-    0
+    payload.horas_parada < 0
   ) {
 
     msg(
@@ -4125,9 +4390,9 @@ async function saveMaintenance(e) {
 
   }
 
+
   if (
-    payload.costo <
-    0
+    payload.costo < 0
   ) {
 
     msg(
@@ -4139,16 +4404,17 @@ async function saveMaintenance(e) {
 
   }
 
+
   msg(
     'maintenanceMsg',
     'Guardando mantenimiento…'
   );
 
+
   let result;
 
-  if (
-    editingMaintenanceId
-  ) {
+
+  if (editingMaintenanceId) {
 
     result =
       await supabase
@@ -4168,11 +4434,10 @@ async function saveMaintenance(e) {
     result =
       await supabase
         .from('maintenance')
-        .insert(
-          payload
-        );
+        .insert(payload);
 
   }
+
 
   if (result.error) {
 
@@ -4186,8 +4451,10 @@ async function saveMaintenance(e) {
 
   }
 
+
   editingMaintenanceId =
     null;
+
 
   await loadMaintenance();
 
@@ -4208,6 +4475,7 @@ function editMaintenance(id) {
         String(id)
     );
 
+
   if (!row) {
 
     alert(
@@ -4218,10 +4486,13 @@ function editMaintenance(id) {
 
   }
 
+
   editingMaintenanceId =
     row.id;
 
+
   renderMaintenance();
+
 
   document.getElementById(
     'mt_fecha'
@@ -4229,11 +4500,13 @@ function editMaintenance(id) {
     row.fecha ||
     today;
 
+
   document.getElementById(
     'mt_equipo'
   ).value =
     row.equipo ||
     '';
+
 
   document.getElementById(
     'mt_codigo_equipo'
@@ -4241,11 +4514,13 @@ function editMaintenance(id) {
     row.codigo_equipo ||
     '';
 
+
   document.getElementById(
     'mt_tipo'
   ).value =
     row.tipo ||
     'Preventivo';
+
 
   document.getElementById(
     'mt_causa'
@@ -4253,11 +4528,13 @@ function editMaintenance(id) {
     row.causa ||
     '';
 
+
   document.getElementById(
     'mt_descripcion'
   ).value =
     row.descripcion ||
     '';
+
 
   document.getElementById(
     'mt_horas_parada'
@@ -4266,6 +4543,7 @@ function editMaintenance(id) {
       row.horas_parada
     );
 
+
   document.getElementById(
     'mt_costo'
   ).value =
@@ -4273,11 +4551,13 @@ function editMaintenance(id) {
       row.costo
     );
 
+
   document.getElementById(
     'mt_responsable'
   ).value =
     row.responsable ||
     '';
+
 
   document.getElementById(
     'mt_estado'
@@ -4285,11 +4565,13 @@ function editMaintenance(id) {
     row.estado ||
     'Abierto';
 
+
   document.getElementById(
     'mt_fecha_programada'
   ).value =
     row.fecha_programada ||
     '';
+
 
   document.getElementById(
     'mt_fecha_cierre'
@@ -4297,11 +4579,13 @@ function editMaintenance(id) {
     row.fecha_cierre ||
     '';
 
+
   document.getElementById(
     'mt_observaciones'
   ).value =
     row.observaciones ||
     '';
+
 
   window.scrollTo({
 
@@ -4326,7 +4610,9 @@ async function deleteMaintenance(id) {
         String(id)
     );
 
+
   if (!row) return;
+
 
   if (
     !confirm(
@@ -4336,6 +4622,7 @@ async function deleteMaintenance(id) {
       `Esta acción no se puede deshacer.`
     )
   ) return;
+
 
   const {
     error
@@ -4352,6 +4639,7 @@ async function deleteMaintenance(id) {
         user.id
       );
 
+
   if (error) {
 
     alert(
@@ -4362,6 +4650,7 @@ async function deleteMaintenance(id) {
     return;
 
   }
+
 
   await loadMaintenance();
 
@@ -4376,23 +4665,22 @@ async function deleteMaintenance(id) {
 function renderInventory() {
 
   const lowStock =
-    inventoryRows.filter(
-      r => {
+    inventoryRows.filter(r => {
 
-        const stock =
-          n(r.stock_inicial) +
-          n(r.entradas) -
-          n(r.salidas);
+      const stock =
+        n(r.stock_inicial) +
+        n(r.entradas) -
+        n(r.salidas);
 
-        return (
-          n(r.stock_minimo) >
-            0 &&
-          stock <=
-            n(r.stock_minimo)
-        );
 
-      }
-    ).length;
+      return (
+        n(r.stock_minimo) > 0 &&
+        stock <=
+          n(r.stock_minimo)
+      );
+
+    }).length;
+
 
   document.getElementById(
     'content'
@@ -4409,6 +4697,7 @@ function renderInventory() {
         de materiales y productos.
       </p>
 
+
       <div class="cards">
 
         <div class="card">
@@ -4422,6 +4711,7 @@ function renderInventory() {
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -4451,6 +4741,7 @@ function renderInventory() {
 
       </div>
 
+
       <section class="panel">
 
         <h2>
@@ -4463,6 +4754,7 @@ function renderInventory() {
 
         </h2>
 
+
         <form
           id="inventoryForm"
           class="formGrid"
@@ -4473,6 +4765,7 @@ function renderInventory() {
             <h2>
               Identificación
             </h2>
+
 
             <label>
 
@@ -4487,6 +4780,7 @@ function renderInventory() {
 
             </label>
 
+
             <label>
 
               Código
@@ -4499,6 +4793,7 @@ function renderInventory() {
 
             </label>
 
+
             <label>
 
               Material / Producto
@@ -4510,6 +4805,7 @@ function renderInventory() {
               >
 
             </label>
+
 
             <label>
 
@@ -4551,6 +4847,7 @@ function renderInventory() {
 
             </label>
 
+
             <label>
 
               Unidad
@@ -4574,11 +4871,13 @@ function renderInventory() {
 
           </section>
 
+
           <section>
 
             <h2>
               Movimiento
             </h2>
+
 
             <label>
 
@@ -4594,6 +4893,7 @@ function renderInventory() {
 
             </label>
 
+
             <label>
 
               Entradas
@@ -4607,6 +4907,7 @@ function renderInventory() {
               >
 
             </label>
+
 
             <label>
 
@@ -4622,6 +4923,7 @@ function renderInventory() {
 
             </label>
 
+
             <label>
 
               Stock mínimo
@@ -4635,6 +4937,7 @@ function renderInventory() {
               >
 
             </label>
+
 
             <div class="panel">
 
@@ -4657,11 +4960,13 @@ function renderInventory() {
 
           </section>
 
+
           <section>
 
             <h2>
               Observaciones
             </h2>
+
 
             <label>
 
@@ -4674,10 +4979,12 @@ function renderInventory() {
 
           </section>
 
+
           <div
             id="inventoryMsg"
             class="msg full"
           ></div>
+
 
           <div class="full">
 
@@ -4694,17 +5001,16 @@ function renderInventory() {
 
             </button>
 
+
             ${
               editingInventoryId
                 ? `
-
                   <button
                     id="cancelInventory"
                     type="button"
                   >
                     Cancelar
                   </button>
-
                 `
                 : ''
             }
@@ -4715,11 +5021,13 @@ function renderInventory() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Inventario registrado
         </h2>
+
 
         ${
           inventoryRows.length
@@ -4751,143 +5059,141 @@ function renderInventory() {
 
                   </thead>
 
+
                   <tbody>
 
                     ${inventoryRows
-                      .map(
-                        r => {
+                      .map(r => {
 
-                          const stock =
-                            n(
-                              r.stock_inicial
-                            ) +
-                            n(
-                              r.entradas
-                            ) -
-                            n(
-                              r.salidas
-                            );
+                        const stock =
+                          n(
+                            r.stock_inicial
+                          ) +
+                          n(
+                            r.entradas
+                          ) -
+                          n(
+                            r.salidas
+                          );
 
-                          const low =
+
+                        const low =
+                          n(
+                            r.stock_minimo
+                          ) > 0 &&
+                          stock <=
                             n(
                               r.stock_minimo
-                            ) >
-                              0 &&
-                            stock <=
-                              n(
+                            );
+
+
+                        return `
+
+                          <tr>
+
+                            <td>
+                              ${esc(r.fecha)}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                r.codigo ||
+                                ''
+                              )}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                r.material
+                              )}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                r.categoria ||
+                                ''
+                              )}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                r.unidad
+                              )}
+                            </td>
+
+                            <td>
+                              ${n(
+                                r.stock_inicial
+                              )}
+                            </td>
+
+                            <td>
+                              ${n(
+                                r.entradas
+                              )}
+                            </td>
+
+                            <td>
+                              ${n(
+                                r.salidas
+                              )}
+                            </td>
+
+                            <td>
+
+                              <strong>
+                                ${stock}
+                              </strong>
+
+                            </td>
+
+                            <td>
+                              ${n(
                                 r.stock_minimo
-                              );
+                              )}
+                            </td>
 
-                          return `
+                            <td>
 
-                            <tr>
+                              <span
+                                class="badge ${
+                                  low
+                                    ? 'critical'
+                                    : 'ok'
+                                }"
+                              >
 
-                              <td>
-                                ${esc(
-                                  r.fecha
-                                )}
-                              </td>
+                                ${
+                                  low
+                                    ? 'STOCK BAJO'
+                                    : 'OK'
+                                }
 
-                              <td>
-                                ${esc(
-                                  r.codigo ||
-                                  ''
-                                )}
-                              </td>
+                              </span>
 
-                              <td>
-                                ${esc(
-                                  r.material
-                                )}
-                              </td>
+                            </td>
 
-                              <td>
-                                ${esc(
-                                  r.categoria ||
-                                  ''
-                                )}
-                              </td>
+                            <td>
 
-                              <td>
-                                ${esc(
-                                  r.unidad
-                                )}
-                              </td>
+                              <button
+                                data-edit-inventory="${esc(r.id)}"
+                              >
+                                Editar
+                              </button>
 
-                              <td>
-                                ${n(
-                                  r.stock_inicial
-                                )}
-                              </td>
+                              <button
+                                data-delete-inventory="${esc(r.id)}"
+                              >
+                                Eliminar
+                              </button>
 
-                              <td>
-                                ${n(
-                                  r.entradas
-                                )}
-                              </td>
+                            </td>
 
-                              <td>
-                                ${n(
-                                  r.salidas
-                                )}
-                              </td>
+                          </tr>
 
-                              <td>
+                        `;
 
-                                <strong>
-                                  ${stock}
-                                </strong>
-
-                              </td>
-
-                              <td>
-                                ${n(
-                                  r.stock_minimo
-                                )}
-                              </td>
-
-                              <td>
-
-                                <span
-                                  class="badge ${
-                                    low
-                                      ? 'critical'
-                                      : 'ok'
-                                  }"
-                                >
-
-                                  ${
-                                    low
-                                      ? 'STOCK BAJO'
-                                      : 'OK'
-                                  }
-
-                                </span>
-
-                              </td>
-
-                              <td>
-
-                                <button
-                                  data-edit-inventory="${esc(r.id)}"
-                                >
-                                  Editar
-                                </button>
-
-                                <button
-                                  data-delete-inventory="${esc(r.id)}"
-                                >
-                                  Eliminar
-                                </button>
-
-                              </td>
-
-                            </tr>
-
-                          `;
-
-                        }
-                      )
+                      })
                       .join('')}
 
                   </tbody>
@@ -4916,67 +5222,65 @@ function renderInventory() {
 
   `;
 
+
   updateInventoryStockPreview();
+
 
   [
     'inv_stock_inicial',
     'inv_entradas',
     'inv_salidas'
-  ].forEach(
-    id => {
+  ].forEach(id => {
 
-      document
-        .getElementById(id)
-        ?.addEventListener(
-          'input',
-          updateInventoryStockPreview
-        );
+    document
+      .getElementById(id)
+      ?.addEventListener(
+        'input',
+        updateInventoryStockPreview
+      );
 
-    }
-  );
+  });
+
 
   document.getElementById(
     'inventoryForm'
   ).onsubmit =
     saveInventory;
 
+
   document
     .querySelectorAll(
       '[data-edit-inventory]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          editInventory(
-            button.dataset
-              .editInventory
-          );
+        editInventory(
+          button.dataset.editInventory
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document
     .querySelectorAll(
       '[data-delete-inventory]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          deleteInventory(
-            button.dataset
-              .deleteInventory
-          );
+        deleteInventory(
+          button.dataset.deleteInventory
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document.getElementById(
     'cancelInventory'
@@ -4994,6 +5298,7 @@ function renderInventory() {
 
 }
 
+
 function updateInventoryStockPreview() {
 
   const inicial =
@@ -5003,12 +5308,14 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
+
   const entradas =
     n(
       document.getElementById(
         'inv_entradas'
       )?.value
     );
+
 
   const salidas =
     n(
@@ -5017,10 +5324,12 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
+
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
+
 
   if (output) {
 
@@ -5033,9 +5342,11 @@ function updateInventoryStockPreview() {
 
 }
 
+
 async function saveInventory(e) {
 
   e.preventDefault();
+
 
   const payload = {
 
@@ -5105,16 +5416,17 @@ async function saveInventory(e) {
 
   };
 
+
   msg(
     'inventoryMsg',
     'Guardando inventario…'
   );
 
+
   let result;
 
-  if (
-    editingInventoryId
-  ) {
+
+  if (editingInventoryId) {
 
     result =
       await supabase
@@ -5134,11 +5446,10 @@ async function saveInventory(e) {
     result =
       await supabase
         .from('inventory')
-        .insert(
-          payload
-        );
+        .insert(payload);
 
   }
+
 
   if (result.error) {
 
@@ -5152,14 +5463,17 @@ async function saveInventory(e) {
 
   }
 
+
   editingInventoryId =
     null;
+
 
   await loadInventory();
 
   renderInventory();
 
 }
+
 
 function editInventory(id) {
 
@@ -5169,6 +5483,7 @@ function editInventory(id) {
         String(r.id) ===
         String(id)
     );
+
 
   if (!row) {
 
@@ -5180,10 +5495,13 @@ function editInventory(id) {
 
   }
 
+
   editingInventoryId =
     row.id;
 
+
   renderInventory();
+
 
   document.getElementById(
     'inv_fecha'
@@ -5191,11 +5509,13 @@ function editInventory(id) {
     row.fecha ||
     today;
 
+
   document.getElementById(
     'inv_codigo'
   ).value =
     row.codigo ||
     '';
+
 
   document.getElementById(
     'inv_material'
@@ -5203,17 +5523,20 @@ function editInventory(id) {
     row.material ||
     '';
 
+
   document.getElementById(
     'inv_categoria'
   ).value =
     row.categoria ||
     '';
 
+
   document.getElementById(
     'inv_unidad'
   ).value =
     row.unidad ||
     'kg';
+
 
   document.getElementById(
     'inv_stock_inicial'
@@ -5222,12 +5545,14 @@ function editInventory(id) {
       row.stock_inicial
     );
 
+
   document.getElementById(
     'inv_entradas'
   ).value =
     n(
       row.entradas
     );
+
 
   document.getElementById(
     'inv_salidas'
@@ -5236,6 +5561,7 @@ function editInventory(id) {
       row.salidas
     );
 
+
   document.getElementById(
     'inv_stock_minimo'
   ).value =
@@ -5243,13 +5569,16 @@ function editInventory(id) {
       row.stock_minimo
     );
 
+
   document.getElementById(
     'inv_observaciones'
   ).value =
     row.observaciones ||
     '';
 
+
   updateInventoryStockPreview();
+
 
   window.scrollTo({
 
@@ -5261,6 +5590,7 @@ function editInventory(id) {
 
 }
 
+
 async function deleteInventory(id) {
 
   const row =
@@ -5270,13 +5600,16 @@ async function deleteInventory(id) {
         String(id)
     );
 
+
   if (!row) return;
+
 
   if (
     !confirm(
       `¿Eliminar "${row.material}"?`
     )
   ) return;
+
 
   const {
     error
@@ -5293,6 +5626,7 @@ async function deleteInventory(id) {
         user.id
       );
 
+
   if (error) {
 
     alert(
@@ -5303,6 +5637,7 @@ async function deleteInventory(id) {
     return;
 
   }
+
 
   await loadInventory();
 
@@ -5325,18 +5660,19 @@ function renderPersonal() {
         'activo'
     ).length;
 
+
   const inactivos =
     personalRows.length -
     activos;
 
+
   const areas =
     new Set(
       personalRows
-        .map(
-          r => r.area
-        )
+        .map(r => r.area)
         .filter(Boolean)
     ).size;
+
 
   document.getElementById(
     'content'
@@ -5365,6 +5701,7 @@ function renderPersonal() {
 
       </div>
 
+
       <div class="cards">
 
         <div class="card">
@@ -5378,6 +5715,7 @@ function renderPersonal() {
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -5395,6 +5733,7 @@ function renderPersonal() {
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -5406,6 +5745,7 @@ function renderPersonal() {
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -5421,6 +5761,7 @@ function renderPersonal() {
 
       </div>
 
+
       <section class="panel">
 
         <h2>
@@ -5433,6 +5774,7 @@ function renderPersonal() {
 
         </h2>
 
+
         <form
           id="personalForm"
           class="formGrid"
@@ -5443,6 +5785,7 @@ function renderPersonal() {
             <h2>
               Identificación
             </h2>
+
 
             <label>
 
@@ -5459,6 +5802,7 @@ function renderPersonal() {
 
             </label>
 
+
             <label>
 
               Nombre completo
@@ -5471,6 +5815,7 @@ function renderPersonal() {
               >
 
             </label>
+
 
             <label>
 
@@ -5487,11 +5832,13 @@ function renderPersonal() {
 
           </section>
 
+
           <section>
 
             <h2>
               Puesto
             </h2>
+
 
             <label>
 
@@ -5506,6 +5853,7 @@ function renderPersonal() {
 
             </label>
 
+
             <label>
 
               Área
@@ -5519,13 +5867,12 @@ function renderPersonal() {
 
             </label>
 
+
             <label>
 
               Turno
 
-              <select
-                id="per_turno"
-              >
+              <select id="per_turno">
 
                 <option>
                   Mañana
@@ -5543,13 +5890,12 @@ function renderPersonal() {
 
             </label>
 
+
             <label>
 
               Estado
 
-              <select
-                id="per_estado"
-              >
+              <select id="per_estado">
 
                 <option>
                   Activo
@@ -5565,11 +5911,13 @@ function renderPersonal() {
 
           </section>
 
+
           <section>
 
             <h2>
               Observaciones
             </h2>
+
 
             <label>
 
@@ -5582,10 +5930,12 @@ function renderPersonal() {
 
           </section>
 
+
           <div
             id="personalMsg"
             class="msg full"
           ></div>
+
 
           <div
             class="full"
@@ -5609,6 +5959,7 @@ function renderPersonal() {
 
             </button>
 
+
             ${
               editingPersonalId
                 ? `
@@ -5630,11 +5981,13 @@ function renderPersonal() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Personal registrado
         </h2>
+
 
         ${
           personalRows.length
@@ -5662,94 +6015,88 @@ function renderPersonal() {
 
                   </thead>
 
+
                   <tbody>
 
                     ${personalRows
-                      .map(
-                        r => `
+                      .map(r => `
 
-                          <tr>
+                        <tr>
 
-                            <td>
-                              ${esc(r.dni)}
-                            </td>
+                          <td>
+                            ${esc(r.dni)}
+                          </td>
 
-                            <td>
 
-                              <strong>
-                                ${esc(
-                                  r.nombre
-                                )}
-                              </strong>
+                          <td>
 
-                            </td>
+                            <strong>
+                              ${esc(r.nombre)}
+                            </strong>
 
-                            <td>
-                              ${esc(
-                                r.cargo
-                              )}
-                            </td>
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.area
-                              )}
-                            </td>
 
-                            <td>
-                              ${esc(
-                                r.turno
-                              )}
-                            </td>
+                          <td>
+                            ${esc(r.cargo)}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.fecha_ingreso
-                              )}
-                            </td>
 
-                            <td>
+                          <td>
+                            ${esc(r.area)}
+                          </td>
 
-                              <span
-                                class="badge ${
-                                  String(
-                                    r.estado ||
-                                    ''
-                                  ).toLowerCase() ===
-                                  'activo'
-                                    ? 'ok'
-                                    : 'warn'
-                                }"
-                              >
-                                ${esc(
-                                  r.estado
-                                )}
-                              </span>
 
-                            </td>
+                          <td>
+                            ${esc(r.turno)}
+                          </td>
 
-                            <td>
 
-                              <button
-                                type="button"
-                                data-edit-personal="${esc(r.id)}"
-                              >
-                                Editar
-                              </button>
+                          <td>
+                            ${esc(
+                              r.fecha_ingreso
+                            )}
+                          </td>
 
-                              <button
-                                type="button"
-                                data-delete-personal="${esc(r.id)}"
-                              >
-                                Eliminar
-                              </button>
 
-                            </td>
+                          <td>
 
-                          </tr>
+                            <span
+                              class="badge ${
+                                r.estado ===
+                                'Activo'
+                                  ? 'ok'
+                                  : 'warn'
+                              }"
+                            >
+                              ${esc(r.estado)}
+                            </span>
 
-                        `
-                      )
+                          </td>
+
+
+                          <td>
+
+                            <button
+                              type="button"
+                              data-edit-personal="${esc(r.id)}"
+                            >
+                              Editar
+                            </button>
+
+
+                            <button
+                              type="button"
+                              data-delete-personal="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
+
+                          </td>
+
+                        </tr>
+
+                      `)
                       .join('')}
 
                   </tbody>
@@ -5780,48 +6127,46 @@ function renderPersonal() {
 
   `;
 
+
   document.getElementById(
     'personalForm'
   ).onsubmit =
     savePersonal;
 
+
   document
     .querySelectorAll(
       '[data-edit-personal]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          editPersonal(
-            button.dataset
-              .editPersonal
-          );
+        editPersonal(
+          button.dataset.editPersonal
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document
     .querySelectorAll(
       '[data-delete-personal]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          deletePersonal(
-            button.dataset
-              .deletePersonal
-          );
+        deletePersonal(
+          button.dataset.deletePersonal
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document.getElementById(
     'cancelPersonal'
@@ -5839,9 +6184,11 @@ function renderPersonal() {
 
 }
 
+
 async function savePersonal(e) {
 
   e.preventDefault();
+
 
   const payload = {
 
@@ -5912,6 +6259,7 @@ async function savePersonal(e) {
 
   };
 
+
   if (!payload.dni) {
 
     msg(
@@ -5922,6 +6270,7 @@ async function savePersonal(e) {
     return;
 
   }
+
 
   if (!payload.nombre) {
 
@@ -5934,6 +6283,7 @@ async function savePersonal(e) {
 
   }
 
+
   if (!payload.cargo) {
 
     msg(
@@ -5944,6 +6294,7 @@ async function savePersonal(e) {
     return;
 
   }
+
 
   if (!payload.area) {
 
@@ -5956,6 +6307,7 @@ async function savePersonal(e) {
 
   }
 
+
   if (!payload.fecha_ingreso) {
 
     msg(
@@ -5967,16 +6319,17 @@ async function savePersonal(e) {
 
   }
 
+
   msg(
     'personalMsg',
     'Guardando trabajador…'
   );
 
+
   let result;
 
-  if (
-    editingPersonalId
-  ) {
+
+  if (editingPersonalId) {
 
     result =
       await supabase
@@ -5996,11 +6349,10 @@ async function savePersonal(e) {
     result =
       await supabase
         .from('personal')
-        .insert(
-          payload
-        );
+        .insert(payload);
 
   }
+
 
   if (result.error) {
 
@@ -6028,14 +6380,17 @@ async function savePersonal(e) {
 
   }
 
+
   editingPersonalId =
     null;
+
 
   await loadPersonal();
 
   renderPersonal();
 
 }
+
 
 function editPersonal(id) {
 
@@ -6045,6 +6400,7 @@ function editPersonal(id) {
         String(r.id) ===
         String(id)
     );
+
 
   if (!row) {
 
@@ -6056,10 +6412,13 @@ function editPersonal(id) {
 
   }
 
+
   editingPersonalId =
     row.id;
 
+
   renderPersonal();
+
 
   document.getElementById(
     'per_dni'
@@ -6067,11 +6426,13 @@ function editPersonal(id) {
     row.dni ||
     '';
 
+
   document.getElementById(
     'per_nombre'
   ).value =
     row.nombre ||
     '';
+
 
   document.getElementById(
     'per_fecha_ingreso'
@@ -6079,11 +6440,13 @@ function editPersonal(id) {
     row.fecha_ingreso ||
     today;
 
+
   document.getElementById(
     'per_cargo'
   ).value =
     row.cargo ||
     '';
+
 
   document.getElementById(
     'per_area'
@@ -6091,11 +6454,13 @@ function editPersonal(id) {
     row.area ||
     '';
 
+
   document.getElementById(
     'per_turno'
   ).value =
     row.turno ||
     'Mañana';
+
 
   document.getElementById(
     'per_estado'
@@ -6103,11 +6468,13 @@ function editPersonal(id) {
     row.estado ||
     'Activo';
 
+
   document.getElementById(
     'per_observaciones'
   ).value =
     row.observaciones ||
     '';
+
 
   window.scrollTo({
 
@@ -6119,6 +6486,7 @@ function editPersonal(id) {
 
 }
 
+
 async function deletePersonal(id) {
 
   const row =
@@ -6128,7 +6496,9 @@ async function deletePersonal(id) {
         String(id)
     );
 
+
   if (!row) return;
+
 
   if (
     !confirm(
@@ -6138,6 +6508,7 @@ async function deletePersonal(id) {
       `Esta acción no se puede deshacer.`
     )
   ) return;
+
 
   const {
     error
@@ -6154,6 +6525,7 @@ async function deletePersonal(id) {
         user.id
       );
 
+
   if (error) {
 
     alert(
@@ -6164,6 +6536,7 @@ async function deletePersonal(id) {
     return;
 
   }
+
 
   await loadPersonal();
 
@@ -6193,6 +6566,7 @@ function renderSsoma() {
         Medio Ambiente.
       </p>
 
+
       <div class="cards">
 
         <div class="card">
@@ -6206,6 +6580,7 @@ function renderSsoma() {
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -6231,6 +6606,7 @@ function renderSsoma() {
 
       </div>
 
+
       <section class="panel">
 
         <h2>
@@ -6243,6 +6619,7 @@ function renderSsoma() {
 
         </h2>
 
+
         <form
           id="ssomaForm"
           class="formGrid"
@@ -6253,6 +6630,7 @@ function renderSsoma() {
             <h2>
               Identificación
             </h2>
+
 
             <label>
 
@@ -6266,6 +6644,7 @@ function renderSsoma() {
               >
 
             </label>
+
 
             <label>
 
@@ -6316,6 +6695,7 @@ function renderSsoma() {
 
             </label>
 
+
             <label>
 
               Lugar
@@ -6327,6 +6707,7 @@ function renderSsoma() {
               >
 
             </label>
+
 
             <label>
 
@@ -6361,6 +6742,7 @@ function renderSsoma() {
 
             </label>
 
+
             <label>
 
               Estado
@@ -6392,11 +6774,13 @@ function renderSsoma() {
 
           </section>
 
+
           <section>
 
             <h2>
               Detalle
             </h2>
+
 
             <label>
 
@@ -6409,6 +6793,7 @@ function renderSsoma() {
 
             </label>
 
+
             <label>
 
               Acciones tomadas
@@ -6419,6 +6804,7 @@ function renderSsoma() {
               ></textarea>
 
             </label>
+
 
             <label>
 
@@ -6432,11 +6818,13 @@ function renderSsoma() {
 
           </section>
 
+
           <section>
 
             <h2>
               Observaciones
             </h2>
+
 
             <label>
 
@@ -6448,10 +6836,12 @@ function renderSsoma() {
 
           </section>
 
+
           <div
             id="ssomaMsg"
             class="msg full"
           ></div>
+
 
           <div class="full">
 
@@ -6467,6 +6857,7 @@ function renderSsoma() {
               }
 
             </button>
+
 
             ${
               editingSsomaId
@@ -6489,11 +6880,13 @@ function renderSsoma() {
 
       </section>
 
+
       <section class="panel">
 
         <h2>
           Incidentes registrados
         </h2>
+
 
         ${
           ssomaRows.length
@@ -6520,73 +6913,72 @@ function renderSsoma() {
 
                   </thead>
 
+
                   <tbody>
 
                     ${ssomaRows
-                      .map(
-                        r => `
+                      .map(r => `
 
-                          <tr>
+                        <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                          <td>
+                            ${esc(r.fecha)}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.tipo ||
-                                ''
-                              )}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.tipo ||
+                              ''
+                            )}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.lugar ||
-                                ''
-                              )}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.lugar ||
+                              ''
+                            )}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.gravedad ||
-                                ''
-                              )}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.gravedad ||
+                              ''
+                            )}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.estado ||
-                                ''
-                              )}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.estado ||
+                              ''
+                            )}
+                          </td>
 
-                            <td>
-                              ${esc(
-                                r.hechos ||
-                                ''
-                              )}
-                            </td>
+                          <td>
+                            ${esc(
+                              r.hechos ||
+                              ''
+                            )}
+                          </td>
 
-                            <td>
+                          <td>
 
-                              <button
-                                data-edit-ssoma="${esc(r.id)}"
-                              >
-                                Editar
-                              </button>
+                            <button
+                              data-edit-ssoma="${esc(r.id)}"
+                            >
+                              Editar
+                            </button>
 
-                              <button
-                                data-delete-ssoma="${esc(r.id)}"
-                              >
-                                Eliminar
-                              </button>
+                            <button
+                              data-delete-ssoma="${esc(r.id)}"
+                            >
+                              Eliminar
+                            </button>
 
-                            </td>
+                          </td>
 
-                          </tr>
+                        </tr>
 
-                        `
-                      )
+                      `)
                       .join('')}
 
                   </tbody>
@@ -6615,48 +7007,46 @@ function renderSsoma() {
 
   `;
 
+
   document.getElementById(
     'ssomaForm'
   ).onsubmit =
     saveSsoma;
 
+
   document
     .querySelectorAll(
       '[data-edit-ssoma]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          editSsoma(
-            button.dataset
-              .editSsoma
-          );
+        editSsoma(
+          button.dataset.editSsoma
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document
     .querySelectorAll(
       '[data-delete-ssoma]'
     )
-    .forEach(
-      button => {
+    .forEach(button => {
 
-        button.onclick = () => {
+      button.onclick = () => {
 
-          deleteSsoma(
-            button.dataset
-              .deleteSsoma
-          );
+        deleteSsoma(
+          button.dataset.deleteSsoma
+        );
 
-        };
+      };
 
-      }
-    );
+    });
+
 
   document.getElementById(
     'cancelSsoma'
@@ -6674,9 +7064,11 @@ function renderSsoma() {
 
 }
 
+
 async function saveSsoma(e) {
 
   e.preventDefault();
+
 
   const payload = {
 
@@ -6732,22 +7124,21 @@ async function saveSsoma(e) {
 
   };
 
+
   msg(
     'ssomaMsg',
     'Guardando incidente…'
   );
 
+
   let result;
 
-  if (
-    editingSsomaId
-  ) {
+
+  if (editingSsomaId) {
 
     result =
       await supabase
-        .from(
-          'ssoma_incidents'
-        )
+        .from('ssoma_incidents')
         .update(payload)
         .eq(
           'id',
@@ -6762,14 +7153,11 @@ async function saveSsoma(e) {
 
     result =
       await supabase
-        .from(
-          'ssoma_incidents'
-        )
-        .insert(
-          payload
-        );
+        .from('ssoma_incidents')
+        .insert(payload);
 
   }
+
 
   if (result.error) {
 
@@ -6783,14 +7171,17 @@ async function saveSsoma(e) {
 
   }
 
+
   editingSsomaId =
     null;
+
 
   await loadSsoma();
 
   renderSsoma();
 
 }
+
 
 function editSsoma(id) {
 
@@ -6800,6 +7191,7 @@ function editSsoma(id) {
         String(r.id) ===
         String(id)
     );
+
 
   if (!row) {
 
@@ -6811,10 +7203,13 @@ function editSsoma(id) {
 
   }
 
+
   editingSsomaId =
     row.id;
 
+
   renderSsoma();
+
 
   document.getElementById(
     'ss_fecha'
@@ -6822,11 +7217,13 @@ function editSsoma(id) {
     row.fecha ||
     today;
 
+
   document.getElementById(
     'ss_tipo'
   ).value =
     row.tipo ||
     '';
+
 
   document.getElementById(
     'ss_hechos'
@@ -6834,11 +7231,13 @@ function editSsoma(id) {
     row.hechos ||
     '';
 
+
   document.getElementById(
     'ss_lugar'
   ).value =
     row.lugar ||
     '';
+
 
   document.getElementById(
     'ss_acciones'
@@ -6846,11 +7245,13 @@ function editSsoma(id) {
     row.acciones_tomadas ||
     '';
 
+
   document.getElementById(
     'ss_personas'
   ).value =
     row.personas_involucradas ||
     '';
+
 
   document.getElementById(
     'ss_gravedad'
@@ -6858,17 +7259,20 @@ function editSsoma(id) {
     row.gravedad ||
     '';
 
+
   document.getElementById(
     'ss_estado'
   ).value =
     row.estado ||
     'Abierto';
 
+
   document.getElementById(
     'ss_observaciones'
   ).value =
     row.observaciones ||
     '';
+
 
   window.scrollTo({
 
@@ -6880,6 +7284,7 @@ function editSsoma(id) {
 
 }
 
+
 async function deleteSsoma(id) {
 
   const row =
@@ -6889,7 +7294,9 @@ async function deleteSsoma(id) {
         String(id)
     );
 
+
   if (!row) return;
+
 
   if (
     !confirm(
@@ -6897,13 +7304,12 @@ async function deleteSsoma(id) {
     )
   ) return;
 
+
   const {
     error
   } =
     await supabase
-      .from(
-        'ssoma_incidents'
-      )
+      .from('ssoma_incidents')
       .delete()
       .eq(
         'id',
@@ -6913,6 +7319,7 @@ async function deleteSsoma(id) {
         'user_id',
         user.id
       );
+
 
   if (error) {
 
@@ -6924,6 +7331,7 @@ async function deleteSsoma(id) {
     return;
 
   }
+
 
   await loadSsoma();
 
@@ -6937,13 +7345,9 @@ async function deleteSsoma(id) {
 
 async function load() {
 
-  if (!user?.id) return;
-
   const r =
     await supabase
-      .from(
-        'daily_records'
-      )
+      .from('daily_records')
       .select('*')
       .eq(
         'user_id',
@@ -6955,6 +7359,7 @@ async function load() {
           ascending: true
         }
       );
+
 
   if (!r.error) {
 
@@ -6973,137 +7378,76 @@ async function load() {
 
   }
 
+
   const s =
     await supabase
-      .from(
-        'app_settings'
-      )
+      .from('app_settings')
       .select('*')
       .limit(1)
       .maybeSingle();
 
-  if (
-    s.data
-  ) {
+
+  if (s.data) {
 
     metas = {
 
       ...metas,
 
       cumplimiento:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_cumplimiento
-          )
-        )
-          ? Number(
-              s.data
-                .meta_cumplimiento
-            )
-          : metas.cumplimiento,
+        n(
+          s.data.meta_cumplimiento
+        ) ||
+        metas.cumplimiento,
 
       merma:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_merma
-          )
-        )
-          ? Number(
-              s.data
-                .meta_merma
-            )
-          : metas.merma,
+        n(
+          s.data.meta_merma
+        ) ||
+        metas.merma,
 
       yield:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_yield
-          )
-        )
-          ? Number(
-              s.data
-                .meta_yield
-            )
-          : metas.yield,
+        n(
+          s.data.meta_yield
+        ) ||
+        metas.yield,
 
       disponibilidad:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_disponibilidad
-          )
-        )
-          ? Number(
-              s.data
-                .meta_disponibilidad
-            )
-          : metas.disponibilidad,
+        n(
+          s.data.meta_disponibilidad
+        ) ||
+        metas.disponibilidad,
 
       asistencia:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_asistencia
-          )
-        )
-          ? Number(
-              s.data
-                .meta_asistencia
-            )
-          : metas.asistencia,
+        n(
+          s.data.meta_asistencia
+        ) ||
+        metas.asistencia,
 
       rechazo:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_rechazo
-          )
-        )
-          ? Number(
-              s.data
-                .meta_rechazo
-            )
-          : metas.rechazo,
+        n(
+          s.data.meta_rechazo
+        ) ||
+        metas.rechazo,
 
       otif:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_entregas
-          )
-        )
-          ? Number(
-              s.data
-                .meta_entregas
-            )
-          : metas.otif,
+        n(
+          s.data.meta_entregas
+        ) ||
+        metas.otif,
 
       incidentes:
-        Number.isFinite(
-          Number(
-            s.data
-              .meta_incidentes
-          )
+        n(
+          s.data.meta_incidentes
         )
-          ? Number(
-              s.data
-                .meta_incidentes
-            )
-          : metas.incidentes
 
     };
 
   }
 
+
   await loadInventory();
-
   await loadSsoma();
-
   await loadPersonal();
-
   await loadMaintenance();
 
 }
@@ -7114,13 +7458,9 @@ async function load() {
 
 async function loadInventory() {
 
-  if (!user?.id) return;
-
   const result =
     await supabase
-      .from(
-        'inventory'
-      )
+      .from('inventory')
       .select('*')
       .eq(
         'user_id',
@@ -7139,6 +7479,7 @@ async function loadInventory() {
         }
       );
 
+
   if (result.error) {
 
     console.error(
@@ -7146,12 +7487,12 @@ async function loadInventory() {
       result.error
     );
 
-    inventoryRows =
-      [];
+    inventoryRows = [];
 
     return;
 
   }
+
 
   inventoryRows =
     result.data ||
@@ -7165,13 +7506,9 @@ async function loadInventory() {
 
 async function loadSsoma() {
 
-  if (!user?.id) return;
-
   const result =
     await supabase
-      .from(
-        'ssoma_incidents'
-      )
+      .from('ssoma_incidents')
       .select('*')
       .eq(
         'user_id',
@@ -7190,6 +7527,7 @@ async function loadSsoma() {
         }
       );
 
+
   if (result.error) {
 
     console.error(
@@ -7197,12 +7535,12 @@ async function loadSsoma() {
       result.error
     );
 
-    ssomaRows =
-      [];
+    ssomaRows = [];
 
     return;
 
   }
+
 
   ssomaRows =
     result.data ||
@@ -7216,13 +7554,9 @@ async function loadSsoma() {
 
 async function loadPersonal() {
 
-  if (!user?.id) return;
-
   const result =
     await supabase
-      .from(
-        'personal'
-      )
+      .from('personal')
       .select('*')
       .eq(
         'user_id',
@@ -7241,6 +7575,7 @@ async function loadPersonal() {
         }
       );
 
+
   if (result.error) {
 
     console.error(
@@ -7248,12 +7583,12 @@ async function loadPersonal() {
       result.error
     );
 
-    personalRows =
-      [];
+    personalRows = [];
 
     return;
 
   }
+
 
   personalRows =
     result.data ||
@@ -7267,13 +7602,9 @@ async function loadPersonal() {
 
 async function loadMaintenance() {
 
-  if (!user?.id) return;
-
   const result =
     await supabase
-      .from(
-        'maintenance'
-      )
+      .from('maintenance')
       .select('*')
       .eq(
         'user_id',
@@ -7292,6 +7623,7 @@ async function loadMaintenance() {
         }
       );
 
+
   if (result.error) {
 
     console.error(
@@ -7299,12 +7631,12 @@ async function loadMaintenance() {
       result.error
     );
 
-    maintenanceRows =
-      [];
+    maintenanceRows = [];
 
     return;
 
   }
+
 
   maintenanceRows =
     result.data ||
@@ -7316,9 +7648,7 @@ async function loadMaintenance() {
    PLACEHOLDER
 ========================================================= */
 
-function renderPlaceholder(
-  title
-) {
+function renderPlaceholder(title) {
 
   document.getElementById(
     'content'
@@ -7330,6 +7660,7 @@ function renderPlaceholder(
         ${esc(title)}
       </h1>
 
+
       <section class="panel">
 
         <p>
@@ -7338,6 +7669,7 @@ function renderPlaceholder(
           enlazarse con su tabla correspondiente.
 
         </p>
+
 
         <span class="badge ok">
           Módulo preparado
@@ -7352,55 +7684,31 @@ function renderPlaceholder(
 }
 
 /* =========================================================
-   INICIO SEGURO
+   INICIO
 ========================================================= */
 
-async function init() {
+supabase.auth
+  .getSession()
+  .then(
+    async ({ data }) => {
 
-  if (!app) {
+      user =
+        data.session?.user ||
+        null;
 
-    console.error(
-      'QUIMFLUX: no se encontró el elemento #app.'
-    );
 
-    return;
+      if (user) {
 
-  }
+        await load();
 
-  try {
+      }
 
-    const {
-      data,
-      error
-    } =
-      await supabase.auth.getSession();
 
-    if (error) {
-
-      console.error(
-        'Error obteniendo sesión:',
-        error
-      );
-
-      renderAuth();
-
-      return;
+      render();
 
     }
-
-    user =
-      data.session?.user ||
-      null;
-
-    if (user) {
-
-      await load();
-
-    }
-
-    render();
-
-  } catch (error) {
+  )
+  .catch(error => {
 
     console.error(
       'Error inicializando QUIMFLUX:',
@@ -7409,48 +7717,33 @@ async function init() {
 
     renderAuth();
 
-  }
-
-}
+  });
 
 /* =========================================================
    CAMBIOS DE SESIÓN
 ========================================================= */
 
-supabase.auth.onAuthStateChange(
-  (
-    _event,
-    session
-  ) => {
+supabase.auth
+  .onAuthStateChange(
+    (_event, session) => {
 
-    user =
-      session?.user ||
-      null;
+      user =
+        session?.user ||
+        null;
 
-    if (!user) {
 
-      rows = [];
-      inventoryRows = [];
-      ssomaRows = [];
-      personalRows = [];
-      maintenanceRows = [];
+      if (!user) {
+
+        rows = [];
+        inventoryRows = [];
+        ssomaRows = [];
+        personalRows = [];
+        maintenanceRows = [];
+
+      }
+
+
+      render();
 
     }
-
-    /*
-       IMPORTANTE:
-       NO hacemos load() aquí.
-       Evita la carrera entre getSession(),
-       carga de datos y renderizado.
-    */
-
-    render();
-
-  }
-);
-
-/* =========================================================
-   ARRANQUE
-========================================================= */
-
-init();
+  );
