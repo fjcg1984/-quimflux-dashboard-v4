@@ -1,1 +1,15 @@
-{"name":"quimflux-dashboard-v4","version":"1.0.0","private":true,"type":"module","scripts":{"build":"vite build","dev":"vite","preview":"vite preview"},"dependencies":{"@supabase/supabase-js":"2.57.4","vite":"6.3.6"}}
+{
+  "name": "quimflux-dashboard-v5",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.4",
+    "vite": "6.3.6"
+  }
+}
