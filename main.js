@@ -112,6 +112,49 @@ function msg(id, text) {
 }
 
 /* =========================================================
+   OBTENER ÚLTIMO REGISTRO
+========================================================= */
+
+function getLatestRecord() {
+
+  if (!rows.length) {
+    return null;
+  }
+
+  const ordered =
+    [...rows].sort((a, b) => {
+
+      const dateA =
+        String(a.fecha || '');
+
+      const dateB =
+        String(b.fecha || '');
+
+      if (dateA !== dateB) {
+
+        return dateB.localeCompare(dateA);
+
+      }
+
+      const createdA =
+        a.created_at
+          ? new Date(a.created_at).getTime()
+          : 0;
+
+      const createdB =
+        b.created_at
+          ? new Date(b.created_at).getTime()
+          : 0;
+
+      return createdB - createdA;
+
+    });
+
+  return ordered[0] || null;
+
+}
+
+/* =========================================================
    REGISTRO DIARIO
 ========================================================= */
 
@@ -141,16 +184,11 @@ const fields = [
 
 ];
 
-/* =========================================================
-   CÁLCULO DE KPI
-========================================================= */
-
 function derive(r) {
 
   const p = n(r.programada);
   const q = n(r.producida);
   const mp = n(r.mp);
-  const merma = n(r.merma);
   const h = n(r.horas_turno);
   const stop = n(r.horas_paradas);
   const pp = n(r.personal_programado);
@@ -159,42 +197,15 @@ function derive(r) {
   const pedidos = n(r.pedidos_programados);
   const at = n(r.pedidos_tiempo);
 
-  /*
-    MERMA
-
-    Merma = merma / materia prima consumida
-  */
-
-  const mermaRate =
+  const merma =
     mp
-      ? merma / mp
+      ? n(r.merma) / mp
       : 0;
-
-  /*
-    YIELD CORREGIDO
-
-    Yield = producción / (producción + merma)
-
-    El resultado queda limitado entre 0% y 100%.
-  */
-
-  const yieldBase =
-    q + merma;
 
   const yieldRate =
-    yieldBase > 0
-      ? Math.min(
-          1,
-          Math.max(
-            0,
-            q / yieldBase
-          )
-        )
+    mp
+      ? q / mp
       : 0;
-
-  /*
-    DISPONIBILIDAD
-  */
 
   const disponibilidad =
     h
@@ -204,49 +215,25 @@ function derive(r) {
         )
       : 0;
 
-  /*
-    ASISTENCIA
-  */
-
   const asistencia =
     pp
       ? pa / pp
       : 0;
-
-  /*
-    RECHAZO
-  */
 
   const rechazo =
     q
       ? rej / q
       : 0;
 
-  /*
-    CUMPLIMIENTO
-  */
-
   const cumplimiento =
     p
       ? q / p
       : 0;
 
-  /*
-    OTIF
-  */
-
   const otif =
     pedidos
       ? at / pedidos
       : 0;
-
-  /*
-    OEE
-
-    Disponibilidad × Cumplimiento × Calidad
-
-    Calidad = 1 - rechazo
-  */
 
   const oee =
     disponibilidad *
@@ -256,18 +243,10 @@ function derive(r) {
       1 - rechazo
     );
 
-  /*
-    COSTO UNITARIO
-  */
-
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
       : 0;
-
-  /*
-    ENERGÍA POR UNIDAD
-  */
 
   const energiaUnit =
     q
@@ -279,24 +258,14 @@ function derive(r) {
     ...r,
 
     cumplimiento,
-
-    merma:
-      mermaRate,
-
+    merma,
     yieldRate,
-
     disponibilidad,
-
     asistencia,
-
     rechazo,
-
     oee,
-
     otif,
-
     costoUnitario,
-
     energiaUnit
 
   };
@@ -715,12 +684,6 @@ function getAlerts() {
   const d =
     rows.map(derive);
 
-  if (!d.length) {
-
-    return alerts;
-
-  }
-
   const sum = key =>
     d.reduce(
       (s, r) =>
@@ -738,11 +701,7 @@ function getAlerts() {
     sum('mp');
 
   const merma =
-    rows.reduce(
-      (s, r) =>
-        s + n(r.merma),
-      0
-    );
+    sum('merma');
 
   const horas =
     sum('horas_turno');
@@ -770,18 +729,9 @@ function getAlerts() {
       ? producida / programada
       : 0;
 
-  const yieldBase =
-    producida + merma;
-
   const yieldRate =
-    yieldBase > 0
-      ? Math.min(
-          1,
-          Math.max(
-            0,
-            producida / yieldBase
-          )
-        )
+    mp
+      ? producida / mp
       : 0;
 
   const mermaRate =
@@ -833,7 +783,7 @@ function getAlerts() {
       1 - rechazo
     );
 
-  /* KPI MAYOR ES MEJOR */
+  /* KPI: MAYOR ES MEJOR */
 
   const kpis = [
 
@@ -1333,6 +1283,241 @@ function renderAlerts() {
 }
 
 /* =========================================================
+   KPI DEL ÚLTIMO TURNO
+========================================================= */
+
+function renderLatestKpis() {
+
+  const latest =
+    getLatestRecord();
+
+  if (!latest) {
+
+    return `
+
+      <section class="panel">
+
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              Último turno
+            </h2>
+
+            <p>
+              Todavía no existen registros
+              operativos para evaluar.
+            </p>
+
+          </div>
+
+          <span class="badge ok">
+            SIN DATOS
+          </span>
+
+        </div>
+
+      </section>
+
+    `;
+
+  }
+
+  const r =
+    derive(latest);
+
+  const cumplimientoStatus =
+    status(
+      r.cumplimiento,
+      metas.cumplimiento
+    );
+
+  const yieldStatus =
+    status(
+      r.yieldRate,
+      metas.yield
+    );
+
+  const mermaStatus =
+    status(
+      r.merma,
+      metas.merma,
+      true
+    );
+
+  const disponibilidadStatus =
+    status(
+      r.disponibilidad,
+      metas.disponibilidad
+    );
+
+  const asistenciaStatus =
+    status(
+      r.asistencia,
+      metas.asistencia
+    );
+
+  const rechazoStatus =
+    status(
+      r.rechazo,
+      metas.rechazo,
+      true
+    );
+
+  const oeeStatus =
+    status(
+      r.oee,
+      0.80
+    );
+
+  const otifStatus =
+    status(
+      r.otif,
+      metas.otif
+    );
+
+  const cards = [
+
+    [
+      'Cumplimiento',
+      pct(r.cumplimiento),
+      cumplimientoStatus
+    ],
+
+    [
+      'Yield',
+      pct(r.yieldRate),
+      yieldStatus
+    ],
+
+    [
+      'Merma',
+      pct(r.merma),
+      mermaStatus
+    ],
+
+    [
+      'Disponibilidad',
+      pct(r.disponibilidad),
+      disponibilidadStatus
+    ],
+
+    [
+      'Asistencia',
+      pct(r.asistencia),
+      asistenciaStatus
+    ],
+
+    [
+      'Rechazo',
+      pct(r.rechazo),
+      rechazoStatus
+    ],
+
+    [
+      'OEE',
+      pct(r.oee),
+      oeeStatus
+    ],
+
+    [
+      'OTIF',
+      pct(r.otif),
+      otifStatus
+    ]
+
+  ];
+
+  return `
+
+    <section class="panel">
+
+      <div class="titleRow">
+
+        <div>
+
+          <h2>
+            Último turno
+          </h2>
+
+          <p>
+
+            ${esc(r.fecha)}
+            ·
+            ${esc(r.turno)}
+            ${
+              r.producto
+                ? ` · ${esc(r.producto)}`
+                : ''
+            }
+
+          </p>
+
+        </div>
+
+        <span class="badge ok">
+          REGISTRO MÁS RECIENTE
+        </span>
+
+      </div>
+
+      <div class="cards">
+
+        ${cards.map(c => `
+
+          <div class="card">
+
+            <small>
+              ${esc(c[0])}
+            </small>
+
+            <strong>
+              ${esc(c[1])}
+            </strong>
+
+            <span
+              class="badge ${c[2].cls}"
+            >
+              ${c[2].label}
+            </span>
+
+          </div>
+
+        `).join('')}
+
+      </div>
+
+      <div
+        style="
+          margin-top:15px;
+          padding:12px;
+          border-radius:10px;
+          border:1px solid #ddd;
+        "
+      >
+
+        <strong>
+          Producción del último turno:
+        </strong>
+
+        ${n(r.producida).toLocaleString()}
+
+        de
+
+        ${n(r.programada).toLocaleString()}
+
+        programadas.
+
+      </div>
+
+    </section>
+
+  `;
+
+}
+
+/* =========================================================
    DASHBOARD
 ========================================================= */
 
@@ -1358,11 +1543,7 @@ function renderDashboard() {
     sum('mp');
 
   const merma =
-    rows.reduce(
-      (s, r) =>
-        s + n(r.merma),
-      0
-    );
+    sum('merma');
 
   const horas =
     sum('horas_turno');
@@ -1390,22 +1571,9 @@ function renderDashboard() {
       ? producida / programada
       : 0;
 
-  /*
-    YIELD CORREGIDO
-  */
-
-  const yieldBase =
-    producida + merma;
-
   const yieldRate =
-    yieldBase > 0
-      ? Math.min(
-          1,
-          Math.max(
-            0,
-            producida / yieldBase
-          )
-        )
+    mp
+      ? producida / mp
       : 0;
 
   const mermaRate =
@@ -1714,6 +1882,33 @@ function renderDashboard() {
       </div>
 
       ${renderAlerts()}
+
+      ${renderLatestKpis()}
+
+      <section class="panel">
+
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              Indicadores acumulados de planta
+            </h2>
+
+            <p>
+              Consolidado de todos los registros
+              diarios.
+            </p>
+
+          </div>
+
+          <span class="badge ok">
+            ACUMULADO
+          </span>
+
+        </div>
+
+      </section>
 
       <div class="cards">
 
@@ -2227,11 +2422,7 @@ function renderResumen() {
     sum('mp');
 
   const merma =
-    rows.reduce(
-      (s, r) =>
-        s + n(r.merma),
-      0
-    );
+    sum('merma');
 
   const horas =
     sum('horas_turno');
@@ -2286,22 +2477,9 @@ function renderResumen() {
       ? producida / programada
       : 0;
 
-  /*
-    YIELD CORREGIDO
-  */
-
-  const yieldBase =
-    producida + merma;
-
   const yieldRate =
-    yieldBase > 0
-      ? Math.min(
-          1,
-          Math.max(
-            0,
-            producida / yieldBase
-          )
-        )
+    mp
+      ? producida / mp
       : 0;
 
   const mermaRate =
