@@ -20,8 +20,7 @@ const supabase = createClient(
    APLICACIÓN
 ========================================================= */
 
-const app =
-  document.getElementById('app');
+const app = document.getElementById('app');
 
 const today =
   new Date().toISOString().slice(0, 10);
@@ -83,8 +82,7 @@ function esc(v = '') {
 
 function n(v) {
 
-  const x =
-    Number(v);
+  const x = Number(v);
 
   return Number.isFinite(x)
     ? x
@@ -94,18 +92,8 @@ function n(v) {
 
 function pct(v) {
 
-  if (
-    v === null ||
-    v === undefined ||
-    !Number.isFinite(Number(v))
-  ) {
-
-    return '—';
-
-  }
-
   return (
-    Number(v) * 100
+    n(v) * 100
   ).toFixed(1) + '%';
 
 }
@@ -155,104 +143,62 @@ const fields = [
 
 /* =========================================================
    DERIVAR KPI
-   SIN DATOS NO ES IGUAL A 0%
+   IMPORTANTE:
+   merma conserva el valor REAL registrado.
+   mermaRate es el porcentaje calculado.
 ========================================================= */
 
 function derive(r) {
 
-  const p =
-    n(r.programada);
+  const p = n(r.programada);
+  const q = n(r.producida);
+  const mp = n(r.mp);
+  const h = n(r.horas_turno);
+  const stop = n(r.horas_paradas);
+  const pp = n(r.personal_programado);
+  const pa = n(r.personal_presente);
+  const rej = n(r.rechazadas);
+  const pedidos = n(r.pedidos_programados);
+  const at = n(r.pedidos_tiempo);
+  const mermaReal = n(r.merma);
 
-  const q =
-    n(r.producida);
-
-  const mp =
-    n(r.mp);
-
-  const h =
-    n(r.horas_turno);
-
-  const stop =
-    n(r.horas_paradas);
-
-  const pp =
-    n(r.personal_programado);
-
-  const pa =
-    n(r.personal_presente);
-
-  const rej =
-    n(r.rechazadas);
-
-  const pedidos =
-    n(r.pedidos_programados);
-
-  const at =
-    n(r.pedidos_tiempo);
-
-
-  /* CUMPLIMIENTO */
-
-  const cumplimiento =
-    p > 0
-      ? q / p
+  const mermaRate =
+    mp
+      ? mermaReal / mp
       : null;
 
-
-  /* YIELD */
-
   const yieldRate =
-    mp > 0
+    mp
       ? q / mp
       : null;
 
-
-  /* MERMA */
-
-  const merma =
-    mp > 0
-      ? n(r.merma) / mp
-      : null;
-
-
-  /* DISPONIBILIDAD */
-
   const disponibilidad =
-    h > 0
-
+    h
       ? Math.max(
           0,
           (h - stop) / h
         )
-
       : null;
 
-
-  /* ASISTENCIA */
-
   const asistencia =
-    pp > 0
+    pp
       ? pa / pp
       : null;
 
-
-  /* RECHAZO */
-
   const rechazo =
-    q > 0
+    q
       ? rej / q
       : null;
 
-
-  /* OTIF */
-
-  const otif =
-    pedidos > 0
-      ? at / pedidos
+  const cumplimiento =
+    p
+      ? q / p
       : null;
 
-
-  /* OEE */
+  const otif =
+    pedidos
+      ? at / pedidos
+      : null;
 
   const oee =
     disponibilidad !== null &&
@@ -268,29 +214,28 @@ function derive(r) {
 
       : null;
 
-
-  /* COSTO UNITARIO */
-
   const costoUnitario =
-    q > 0
+    q
       ? n(r.costo_produccion) / q
       : null;
 
-
-  /* ENERGÍA POR UNIDAD */
-
   const energiaUnit =
-    q > 0
+    q
       ? n(r.energia) / q
       : null;
-
 
   return {
 
     ...r,
 
+    /* VALORES REALES */
+
+    merma: mermaReal,
+
+    /* KPI CALCULADOS */
+
     cumplimiento,
-    merma,
+    mermaRate,
     yieldRate,
     disponibilidad,
     asistencia,
@@ -666,7 +611,7 @@ function render() {
 }
 
 /* =========================================================
-   STATUS / SEMÁFORO KPI
+   STATUS
 ========================================================= */
 
 function status(
@@ -675,138 +620,46 @@ function status(
   invert = false
 ) {
 
-  /*
-     SIN DATOS
-
-     null, undefined o valores no numéricos
-     NO significan 0%.
-  */
-
   if (
     value === null ||
     value === undefined ||
-    !Number.isFinite(Number(value))
+    !Number.isFinite(value)
   ) {
 
     return {
 
       label: 'SIN DATOS',
-
-      cls: 'nodata'
-
-    };
-
-  }
-
-
-  const v =
-    Number(value);
-
-  const meta =
-    Number(target);
-
-
-  if (
-    !Number.isFinite(meta)
-  ) {
-
-    return {
-
-      label: 'SIN DATOS',
-
-      cls: 'nodata'
-
-    };
-
-  }
-
-
-  /*
-     MAYOR ES MEJOR
-  */
-
-  if (!invert) {
-
-    if (
-      v >= meta
-    ) {
-
-      return {
-
-        label: 'OK',
-
-        cls: 'ok'
-
-      };
-
-    }
-
-
-    if (
-      v < meta * 0.85
-    ) {
-
-      return {
-
-        label: 'CRÍTICO',
-
-        cls: 'critical'
-
-      };
-
-    }
-
-
-    return {
-
-      label: 'REVISAR',
-
-      cls: 'warn'
-
-    };
-
-  }
-
-
-  /*
-     MENOR ES MEJOR
-  */
-
-  if (
-    v <= meta
-  ) {
-
-    return {
-
-      label: 'OK',
-
       cls: 'ok'
 
     };
 
   }
 
+  const ok =
+    invert
+      ? value <= target
+      : value >= target;
 
-  if (
-    v > meta * 1.5
-  ) {
-
-    return {
-
-      label: 'CRÍTICO',
-
-      cls: 'critical'
-
-    };
-
-  }
-
+  const critical =
+    invert
+      ? value > target * 1.5
+      : value < target * 0.85;
 
   return {
 
-    label: 'REVISAR',
+    label:
+      critical
+        ? 'CRÍTICO'
+        : ok
+          ? 'OK'
+          : 'REVISAR',
 
-    cls: 'warn'
+    cls:
+      critical
+        ? 'critical'
+        : ok
+          ? 'ok'
+          : 'warn'
 
   };
 
@@ -820,24 +673,8 @@ function getAlerts() {
 
   const alerts = [];
 
-
-  /*
-     SI NO EXISTEN REGISTROS
-  */
-
-  if (
-    !Array.isArray(rows) ||
-    rows.length === 0
-  ) {
-
-    return alerts;
-
-  }
-
-
   const d =
     rows.map(derive);
-
 
   const sum = key =>
     d.reduce(
@@ -845,7 +682,6 @@ function getAlerts() {
         s + n(r[key]),
       0
     );
-
 
   const programada =
     sum('programada');
@@ -855,6 +691,8 @@ function getAlerts() {
 
   const mp =
     sum('mp');
+
+  /* MERMA REAL */
 
   const merma =
     sum('merma');
@@ -880,106 +718,56 @@ function getAlerts() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
-
-  /*
-     DATOS OPERATIVOS
-  */
-
-  const existeDatoOperativo =
-
-       programada > 0
-    || producida > 0
-    || mp > 0
-    || merma > 0
-    || horas > 0
-    || paradasDiarias > 0
-    || personalProgramado > 0
-    || personalPresente > 0
-    || rechazadas > 0
-    || pedidos > 0
-    || pedidosTiempo > 0;
-
-
-  if (!existeDatoOperativo) {
-
-    return alerts;
-
-  }
-
-
-  /*
-     KPI
-  */
-
   const cumplimiento =
     programada > 0
       ? producida / programada
       : null;
-
 
   const yieldRate =
     mp > 0
       ? producida / mp
       : null;
 
-
   const mermaRate =
     mp > 0
       ? merma / mp
       : null;
 
-
   const horasParadaMantenimiento =
-    Array.isArray(maintenanceRows)
-
-      ? maintenanceRows.reduce(
-          (total, r) =>
-            total +
-            n(r.horas_parada),
-          0
-        )
-
-      : 0;
-
+    maintenanceRows.reduce(
+      (total, r) =>
+        total + n(r.horas_parada),
+      0
+    );
 
   const paradas =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradasDiarias;
 
-
   const disponibilidad =
     horas > 0
-
       ? Math.max(
           0,
-          (horas - paradas) /
-            horas
+          (horas - paradas) / horas
         )
-
       : null;
-
 
   const asistencia =
     personalProgramado > 0
-
       ? personalPresente /
         personalProgramado
-
       : null;
-
 
   const rechazo =
     producida > 0
       ? rechazadas / producida
       : null;
 
-
   const otif =
     pedidos > 0
       ? pedidosTiempo / pedidos
       : null;
-
 
   const oee =
     disponibilidad !== null &&
@@ -995,97 +783,64 @@ function getAlerts() {
 
       : null;
 
-
-  /*
-     KPI
-  */
+  /* =======================================================
+     KPI MAYOR ES MEJOR
+  ======================================================= */
 
   const kpis = [
 
     {
       nombre: 'Cumplimiento',
       valor: cumplimiento,
-      meta: metas.cumplimiento,
-      invert: false
+      meta: metas.cumplimiento
     },
 
     {
       nombre: 'Yield',
       valor: yieldRate,
-      meta: metas.yield,
-      invert: false
+      meta: metas.yield
     },
 
     {
       nombre: 'Disponibilidad',
       valor: disponibilidad,
-      meta: metas.disponibilidad,
-      invert: false
+      meta: metas.disponibilidad
     },
 
     {
       nombre: 'Asistencia',
       valor: asistencia,
-      meta: metas.asistencia,
-      invert: false
+      meta: metas.asistencia
     },
 
     {
       nombre: 'OTIF',
       valor: otif,
-      meta: metas.otif,
-      invert: false
+      meta: metas.otif
     },
 
     {
       nombre: 'OEE',
       valor: oee,
-      meta: 0.80,
-      invert: false
-    },
-
-    {
-      nombre: 'Merma',
-      valor: mermaRate,
-      meta: metas.merma,
-      invert: true
-    },
-
-    {
-      nombre: 'Rechazo',
-      valor: rechazo,
-      meta: metas.rechazo,
-      invert: true
+      meta: 0.80
     }
 
   ];
-
 
   kpis.forEach(kpi => {
 
     if (
       kpi.valor === null ||
-      kpi.valor === undefined ||
-      !Number.isFinite(
-        Number(kpi.valor)
-      )
+      kpi.valor === undefined
     ) {
 
       return;
 
     }
 
-
-    const s =
-      status(
-        kpi.valor,
-        kpi.meta,
-        kpi.invert
-      );
-
-
     if (
-      s.label === 'CRÍTICO'
+      kpi.valor <
+      kpi.meta * 0.85
     ) {
 
       alerts.push({
@@ -1096,16 +851,13 @@ function getAlerts() {
           `${kpi.nombre} en nivel crítico`,
 
         detalle:
-          `${pct(kpi.valor)} · Meta ${
-            kpi.invert
-              ? 'máxima '
-              : ''
-          }${pct(kpi.meta)}`
+          `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
 
       });
 
     } else if (
-      s.label === 'REVISAR'
+      kpi.valor <
+      kpi.meta
     ) {
 
       alerts.push({
@@ -1116,11 +868,7 @@ function getAlerts() {
           `${kpi.nombre} requiere revisión`,
 
         detalle:
-          `${pct(kpi.valor)} · Meta ${
-            kpi.invert
-              ? 'máxima '
-              : ''
-          }${pct(kpi.meta)}`
+          `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
 
       });
 
@@ -1128,6 +876,93 @@ function getAlerts() {
 
   });
 
+  /* =======================================================
+     MERMA
+  ======================================================= */
+
+  if (mermaRate !== null) {
+
+    if (
+      mermaRate >
+      metas.merma * 1.5
+    ) {
+
+      alerts.push({
+
+        nivel: 'critical',
+
+        titulo:
+          'Merma en nivel crítico',
+
+        detalle:
+          `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
+
+      });
+
+    } else if (
+      mermaRate >
+      metas.merma
+    ) {
+
+      alerts.push({
+
+        nivel: 'warn',
+
+        titulo:
+          'Merma por encima de la meta',
+
+        detalle:
+          `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
+
+      });
+
+    }
+
+  }
+
+  /* =======================================================
+     RECHAZO
+  ======================================================= */
+
+  if (rechazo !== null) {
+
+    if (
+      rechazo >
+      metas.rechazo * 1.5
+    ) {
+
+      alerts.push({
+
+        nivel: 'critical',
+
+        titulo:
+          'Rechazo de calidad crítico',
+
+        detalle:
+          `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
+
+      });
+
+    } else if (
+      rechazo >
+      metas.rechazo
+    ) {
+
+      alerts.push({
+
+        nivel: 'warn',
+
+        titulo:
+          'Rechazo de calidad elevado',
+
+        detalle:
+          `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
+
+      });
+
+    }
+
+  }
 
   /* =======================================================
      INVENTARIO
@@ -1143,7 +978,6 @@ function getAlerts() {
     const minimo =
       n(r.stock_minimo);
 
-
     if (
       minimo > 0 &&
       stock <= minimo
@@ -1157,18 +991,13 @@ function getAlerts() {
           `Stock bajo: ${r.material}`,
 
         detalle:
-          `Stock actual ${stock} ${
-            r.unidad || ''
-          } · Mínimo ${minimo} ${
-            r.unidad || ''
-          }`
+          `Stock actual ${stock} ${r.unidad || ''} · Mínimo ${minimo} ${r.unidad || ''}`
 
       });
 
     }
 
   });
-
 
   /* =======================================================
      MANTENIMIENTO
@@ -1180,7 +1009,6 @@ function getAlerts() {
       String(
         r.estado || ''
       ).toLowerCase();
-
 
     if (
       estado === 'abierto' ||
@@ -1195,15 +1023,11 @@ function getAlerts() {
           `Mantenimiento pendiente: ${r.equipo}`,
 
         detalle:
-          `${r.estado} · ${
-            r.fecha ||
-            'Sin fecha'
-          }`
+          `${r.estado} · ${r.fecha || 'Sin fecha'}`
 
       });
 
     }
-
 
     if (
       estado === 'programado' &&
@@ -1219,16 +1043,13 @@ function getAlerts() {
           `Mantenimiento vencido: ${r.equipo}`,
 
         detalle:
-          `Programado para ${
-            r.fecha_programada
-          }`
+          `Programado para ${r.fecha_programada}`
 
       });
 
     }
 
   });
-
 
   /* =======================================================
      SSOMA
@@ -1241,7 +1062,6 @@ function getAlerts() {
         r.estado || ''
       ).toLowerCase();
 
-
     if (
       estado !== 'cerrado'
     ) {
@@ -1251,7 +1071,6 @@ function getAlerts() {
           r.gravedad || ''
         ).toLowerCase();
 
-
       const nivel =
         (
           gravedad === 'grave' ||
@@ -1259,7 +1078,6 @@ function getAlerts() {
         )
           ? 'critical'
           : 'warn';
-
 
       alerts.push({
 
@@ -1269,13 +1087,7 @@ function getAlerts() {
           'Incidente SSOMA abierto',
 
         detalle:
-          `${r.tipo || 'Incidente'} · ${
-            r.gravedad ||
-            'Sin gravedad'
-          } · ${
-            r.fecha ||
-            ''
-          }`
+          `${r.tipo || 'Incidente'} · ${r.gravedad || 'Sin gravedad'} · ${r.fecha || ''}`
 
       });
 
@@ -1283,14 +1095,12 @@ function getAlerts() {
 
   });
 
-
   /* =======================================================
-     INCIDENTES REGISTRO DIARIO
+     INCIDENTES DEL REGISTRO DIARIO
   ======================================================= */
 
   const incidentes =
     sum('incidentes');
-
 
   if (
     incidentes >
@@ -1308,14 +1118,11 @@ function getAlerts() {
         'Incidentes SSOMA registrados',
 
       detalle:
-        `${incidentes} incidente(s) · Meta ${
-          metas.incidentes
-        }`
+        `${incidentes} incidente(s) · Meta ${metas.incidentes}`
 
     });
 
   }
-
 
   /* =======================================================
      ORDEN
@@ -1332,7 +1139,6 @@ function getAlerts() {
 
       };
 
-
       return (
         prioridad[a.nivel] -
         prioridad[b.nivel]
@@ -1340,7 +1146,6 @@ function getAlerts() {
 
     }
   );
-
 
   return alerts;
 
@@ -1352,125 +1157,8 @@ function getAlerts() {
 
 function renderAlerts() {
 
-  const tieneDatos =
-    Array.isArray(rows) &&
-    rows.some(r => {
-
-      return (
-
-           n(r.programada) > 0
-        || n(r.producida) > 0
-        || n(r.mp) > 0
-        || n(r.merma) > 0
-        || n(r.horas_turno) > 0
-        || n(r.horas_paradas) > 0
-        || n(r.personal_programado) > 0
-        || n(r.personal_presente) > 0
-        || n(r.rechazadas) > 0
-        || n(r.pedidos_programados) > 0
-        || n(r.pedidos_tiempo) > 0
-
-      );
-
-    });
-
-
-  /*
-     SIN DATOS
-  */
-
-  if (!tieneDatos) {
-
-    return `
-
-      <section class="panel">
-
-        <div class="titleRow">
-
-          <div>
-
-            <h2>
-              🚨 Alertas QUIMFLUX
-            </h2>
-
-            <p>
-              Todavía no existen datos
-              operativos suficientes para
-              evaluar las alertas.
-            </p>
-
-          </div>
-
-          <span class="badge ok">
-            0 CRÍTICAS
-          </span>
-
-        </div>
-
-
-        <div
-          style="
-            padding:25px;
-            text-align:center;
-          "
-        >
-
-          <div
-            style="
-              font-size:48px;
-              margin-bottom:12px;
-            "
-          >
-            ℹ️
-          </div>
-
-
-          <h2>
-            SIN DATOS OPERATIVOS
-          </h2>
-
-
-          <p>
-            Ingresa un registro diario con
-            datos reales para comenzar a
-            evaluar los KPI.
-          </p>
-
-
-          <span class="badge nodata">
-            SIN DATOS
-          </span>
-
-        </div>
-
-      </section>
-
-    `;
-
-  }
-
-
   const alerts =
     getAlerts();
-
-
-  const critical =
-    alerts.filter(
-      a =>
-        a.nivel === 'critical'
-    ).length;
-
-
-  const warnings =
-    alerts.filter(
-      a =>
-        a.nivel === 'warn'
-    ).length;
-
-
-  /*
-     SIN ALERTAS
-  */
 
   if (!alerts.length) {
 
@@ -1483,13 +1171,12 @@ function renderAlerts() {
           <div>
 
             <h2>
-              🚨 Alertas QUIMFLUX
+              Alertas QUIMFLUX
             </h2>
 
             <p>
-              Los indicadores disponibles
-              no presentan desviaciones
-              críticas.
+              No se detectan desviaciones
+              que requieran atención.
             </p>
 
           </div>
@@ -1506,10 +1193,17 @@ function renderAlerts() {
 
   }
 
+  const critical =
+    alerts.filter(
+      a =>
+        a.nivel === 'critical'
+    ).length;
 
-  /*
-     ALERTAS
-  */
+  const warnings =
+    alerts.filter(
+      a =>
+        a.nivel === 'warn'
+    ).length;
 
   return `
 
@@ -1530,7 +1224,6 @@ function renderAlerts() {
 
         </div>
 
-
         <div
           style="
             display:flex;
@@ -1541,43 +1234,27 @@ function renderAlerts() {
 
           ${
             critical
-
               ? `
-
-                <span
-                  class="badge critical"
-                >
-                  ${critical}
-                  CRÍTICA${critical > 1 ? 'S' : ''}
+                <span class="badge critical">
+                  ${critical} CRÍTICA${critical > 1 ? 'S' : ''}
                 </span>
-
               `
-
               : ''
           }
 
-
           ${
             warnings
-
               ? `
-
-                <span
-                  class="badge warn"
-                >
-                  ${warnings}
-                  REVISIÓN${warnings > 1 ? 'ES' : ''}
+                <span class="badge warn">
+                  ${warnings} REVISIÓN${warnings > 1 ? 'ES' : ''}
                 </span>
-
               `
-
               : ''
           }
 
         </div>
 
       </div>
-
 
       <div
         style="
@@ -1612,13 +1289,11 @@ function renderAlerts() {
 
             </span>
 
-
             <div>
 
               <strong>
                 ${esc(a.titulo)}
               </strong>
-
 
               <div>
 
@@ -1651,14 +1326,12 @@ function renderDashboard() {
   const d =
     rows.map(derive);
 
-
   const sum = key =>
     d.reduce(
       (s, r) =>
         s + n(r[key]),
       0
     );
-
 
   const programada =
     sum('programada');
@@ -1693,76 +1366,56 @@ function renderDashboard() {
   const pedidosTiempo =
     sum('pedidos_tiempo');
 
-
-  /* KPI */
-
   const cumplimiento =
     programada > 0
       ? producida / programada
       : null;
-
 
   const yieldRate =
     mp > 0
       ? producida / mp
       : null;
 
-
   const mermaRate =
     mp > 0
       ? merma / mp
       : null;
 
-
-  /* MANTENIMIENTO */
-
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.horas_parada),
+        total + n(r.horas_parada),
       0
     );
-
 
   const paradas =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradasDiarias;
 
-
   const disponibilidad =
     horas > 0
-
       ? Math.max(
           0,
-          (horas - paradas) /
-            horas
+          (horas - paradas) / horas
         )
-
       : null;
-
 
   const asistencia =
     personalProgramado > 0
-
       ? personalPresente /
         personalProgramado
-
       : null;
-
 
   const rechazo =
     producida > 0
       ? rechazadas / producida
       : null;
 
-
   const otif =
     pedidos > 0
       ? pedidosTiempo / pedidos
       : null;
-
 
   const oee =
     disponibilidad !== null &&
@@ -1778,75 +1431,52 @@ function renderDashboard() {
 
       : null;
 
-
-  /* COSTOS */
-
   const costo =
     sum('costo_produccion');
-
 
   const mantenimientoDiario =
     sum('costo_mantenimiento');
 
-
   const mantenimientoSupabase =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.costo),
+        total + n(r.costo),
       0
     );
-
 
   const mantenimiento =
     mantenimientoSupabase > 0
       ? mantenimientoSupabase
       : mantenimientoDiario;
 
-
   const costoUnitario =
     producida > 0
       ? costo / producida
       : null;
 
-
-  const energiaTotal =
-    sum('energia');
-
-
   const energia =
     producida > 0
-      ? energiaTotal / producida
+      ? sum('energia') / producida
       : null;
-
 
   const incidentes =
     sum('incidentes');
 
-
-  /* MANTENIMIENTOS */
-
   const mantenimientosProgramados =
     maintenanceRows.filter(
       r =>
-        String(
-          r.estado || ''
-        )
+        String(r.estado || '')
           .toLowerCase() ===
         'programado'
     ).length;
-
 
   const mantenimientosAbiertos =
     maintenanceRows.filter(
       r => {
 
         const estado =
-          String(
-            r.estado || ''
-          )
+          String(r.estado || '')
             .toLowerCase();
-
 
         return (
           estado === 'abierto' ||
@@ -1856,304 +1486,197 @@ function renderDashboard() {
       }
     ).length;
 
-
   const mantenimientosCerrados =
     maintenanceRows.filter(
       r =>
-        String(
-          r.estado || ''
-        )
+        String(r.estado || '')
           .toLowerCase() ===
         'cerrado'
     ).length;
 
-
-  /* =======================================================
-     TARJETAS
-  ======================================================= */
-
   const cards = [
 
-    {
-      nombre:
-        'Producción total',
+    [
+      'Producción total',
+      producida.toLocaleString()
+    ],
 
-      valor:
-        producida > 0
-          ? producida.toLocaleString()
-          : '—'
-
-    },
-
-
-    {
-      nombre:
-        'Cumplimiento',
-
-      valor:
+    [
+      'Cumplimiento',
+      cumplimiento !== null
+        ? pct(cumplimiento)
+        : '—',
+      status(
         cumplimiento,
+        metas.cumplimiento
+      )
+    ],
 
-      meta:
-        metas.cumplimiento,
-
-      invert:
-        false
-
-    },
-
-
-    {
-      nombre:
-        'Yield',
-
-      valor:
+    [
+      'Yield',
+      yieldRate !== null
+        ? pct(yieldRate)
+        : '—',
+      status(
         yieldRate,
+        metas.yield
+      )
+    ],
 
-      meta:
-        metas.yield,
-
-      invert:
-        false
-
-    },
-
-
-    {
-      nombre:
-        'Merma',
-
-      valor:
+    [
+      'Merma',
+      mermaRate !== null
+        ? pct(mermaRate)
+        : '—',
+      status(
         mermaRate,
-
-      meta:
         metas.merma,
-
-      invert:
         true
+      )
+    ],
 
-    },
-
-
-    {
-      nombre:
-        'Disponibilidad',
-
-      valor:
+    [
+      'Disponibilidad',
+      disponibilidad !== null
+        ? pct(disponibilidad)
+        : '—',
+      status(
         disponibilidad,
+        metas.disponibilidad
+      )
+    ],
 
-      meta:
-        metas.disponibilidad,
-
-      invert:
-        false
-
-    },
-
-
-    {
-      nombre:
-        'Asistencia',
-
-      valor:
+    [
+      'Asistencia',
+      asistencia !== null
+        ? pct(asistencia)
+        : '—',
+      status(
         asistencia,
+        metas.asistencia
+      )
+    ],
 
-      meta:
-        metas.asistencia,
-
-      invert:
-        false
-
-    },
-
-
-    {
-      nombre:
-        'Rechazo calidad',
-
-      valor:
+    [
+      'Rechazo calidad',
+      rechazo !== null
+        ? pct(rechazo)
+        : '—',
+      status(
         rechazo,
-
-      meta:
         metas.rechazo,
-
-      invert:
         true
+      )
+    ],
 
-    },
-
-
-    {
-      nombre:
-        'OEE',
-
-      valor:
+    [
+      'OEE',
+      oee !== null
+        ? pct(oee)
+        : '—',
+      status(
         oee,
+        0.80
+      )
+    ],
 
-      meta:
-        0.80,
+    [
+      'Costo producción',
+      'S/ ' +
+      costo.toLocaleString()
+    ],
 
-      invert:
-        false
+    [
+      'Costo mantenimiento',
+      'S/ ' +
+      mantenimiento.toLocaleString()
+    ],
 
-    },
+    [
+      'Horas parada mantenimiento',
+      paradas.toFixed(2) +
+      ' h'
+    ],
 
+    [
+      'Mantenimientos registrados',
+      String(
+        maintenanceRows.length
+      )
+    ],
 
-    {
-      nombre:
-        'Costo producción',
+    [
+      'Mantenimientos pendientes',
+      String(
+        mantenimientosProgramados +
+        mantenimientosAbiertos
+      ),
 
-      texto:
-        'S/ ' +
-        costo.toLocaleString()
+      {
+        label:
+          (
+            mantenimientosProgramados +
+            mantenimientosAbiertos
+          )
+            ? 'PENDIENTE'
+            : 'OK',
 
-    },
+        cls:
+          (
+            mantenimientosProgramados +
+            mantenimientosAbiertos
+          )
+            ? 'warn'
+            : 'ok'
+      }
 
+    ],
 
-    {
-      nombre:
-        'Costo mantenimiento',
+    [
+      'Mantenimientos cerrados',
+      String(
+        mantenimientosCerrados
+      )
+    ],
 
-      texto:
-        'S/ ' +
-        mantenimiento.toLocaleString()
+    [
+      'Costo unitario',
+      costoUnitario !== null
+        ? 'S/ ' +
+          costoUnitario.toFixed(3)
+        : '—'
+    ],
 
-    },
+    [
+      'Energía',
+      energia !== null
+        ? energia.toFixed(3) +
+          ' kWh/unidad'
+        : '—'
+    ],
 
-
-    {
-      nombre:
-        'Horas parada mantenimiento',
-
-      texto:
-        paradas.toFixed(2) +
-        ' h'
-
-    },
-
-
-    {
-      nombre:
-        'Mantenimientos registrados',
-
-      texto:
-        String(
-          maintenanceRows.length
-        )
-
-    },
-
-
-    {
-      nombre:
-        'Mantenimientos pendientes',
-
-      texto:
-        String(
-          mantenimientosProgramados +
-          mantenimientosAbiertos
-        ),
-
-      estado:
-
-        (
-          mantenimientosProgramados +
-          mantenimientosAbiertos
-        )
-
-          ? {
-
-              label:
-                'PENDIENTE',
-
-              cls:
-                'warn'
-
-            }
-
-          : {
-
-              label:
-                'OK',
-
-              cls:
-                'ok'
-
-            }
-
-    },
-
-
-    {
-      nombre:
-        'Mantenimientos cerrados',
-
-      texto:
-        String(
-          mantenimientosCerrados
-        )
-
-    },
-
-
-    {
-      nombre:
-        'Costo unitario',
-
-      texto:
-        costoUnitario !== null
-          ? 'S/ ' +
-            costoUnitario.toFixed(3)
-          : '—'
-
-    },
-
-
-    {
-      nombre:
-        'Energía',
-
-      texto:
-        energia !== null
-          ? energia.toFixed(3) +
-            ' kWh/unidad'
-          : '—'
-
-    },
-
-
-    {
-      nombre:
-        'Entregas a tiempo',
-
-      valor:
+    [
+      'Entregas a tiempo',
+      otif !== null
+        ? pct(otif)
+        : '—',
+      status(
         otif,
+        metas.otif
+      )
+    ],
 
-      meta:
-        metas.otif,
-
-      invert:
-        false
-
-    },
-
-
-    {
-      nombre:
-        'Incidentes SSOMA',
-
-      valor:
+    [
+      'Incidentes SSOMA',
+      String(incidentes),
+      status(
         incidentes,
-
-      meta:
         metas.incidentes,
-
-      invert:
         true
-
-    }
+      )
+    ]
 
   ];
-
 
   document.getElementById(
     'content'
@@ -2171,8 +1694,7 @@ function renderDashboard() {
 
           <p>
             Datos sincronizados con Supabase ·
-            ${rows.length}
-            registros diarios ·
+            ${rows.length} registros diarios ·
             ${maintenanceRows.length}
             mantenimientos
           </p>
@@ -2185,102 +1707,39 @@ function renderDashboard() {
 
       </div>
 
-
       ${renderAlerts()}
-
 
       <div class="cards">
 
-        ${cards.map(c => {
+        ${cards.map(c => `
 
-          /*
-             KPI CON SEMÁFORO
-          */
+          <div class="card">
 
-          if (
-            c.valor !== undefined &&
-            c.meta !== undefined
-          ) {
+            <small>
+              ${esc(c[0])}
+            </small>
 
-            const s =
-              status(
-                c.valor,
-                c.meta,
-                c.invert || false
-              );
+            <strong>
+              ${esc(c[1])}
+            </strong>
 
+            ${
+              c.length > 2
+                ? `
+                  <span
+                    class="badge ${c[2].cls}"
+                  >
+                    ${c[2].label}
+                  </span>
+                `
+                : ''
+            }
 
-            return `
+          </div>
 
-              <div class="card">
-
-                <small>
-                  ${esc(c.nombre)}
-                </small>
-
-                <strong>
-                  ${
-                    s.label === 'SIN DATOS'
-                      ? '—'
-                      : pct(c.valor)
-                  }
-                </strong>
-
-                <span
-                  class="badge ${s.cls}"
-                >
-                  ${s.label}
-                </span>
-
-              </div>
-
-            `;
-
-          }
-
-
-          /*
-             TARJETA NORMAL
-          */
-
-          return `
-
-            <div class="card">
-
-              <small>
-                ${esc(c.nombre)}
-              </small>
-
-              <strong>
-                ${esc(
-                  c.texto ??
-                  c.valor ??
-                  '—'
-                )}
-              </strong>
-
-              ${
-                c.estado
-                  ? `
-
-                    <span
-                      class="badge ${c.estado.cls}"
-                    >
-                      ${c.estado.label}
-                    </span>
-
-                  `
-                  : ''
-              }
-
-            </div>
-
-          `;
-
-        }).join('')}
+        `).join('')}
 
       </div>
-
 
       <section class="panel">
 
@@ -2348,7 +1807,11 @@ function renderDashboard() {
                           </td>
 
                           <td>
-                            ${pct(r.oee)}
+                            ${
+                              r.oee !== null
+                                ? pct(r.oee)
+                                : '—'
+                            }
                           </td>
 
                           <td>
@@ -2396,7 +1859,6 @@ function renderDashboard() {
 
   `;
 
-
   document
     .querySelectorAll(
       '[data-delete-id]'
@@ -2431,14 +1893,12 @@ async function deleteRecord(id) {
 
   }
 
-
   const row =
     rows.find(
       r =>
         String(r.id) ===
         String(id)
     );
-
 
   const detail =
     row
@@ -2448,14 +1908,12 @@ async function deleteRecord(id) {
         }`
       : 'este registro';
 
-
   if (
     !confirm(
       `¿Eliminar ${detail}?\n\n` +
       `Esta acción no se puede deshacer.`
     )
   ) return;
-
 
   const {
     error
@@ -2472,7 +1930,6 @@ async function deleteRecord(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
@@ -2483,7 +1940,6 @@ async function deleteRecord(id) {
     return;
 
   }
-
 
   await load();
 
@@ -2500,7 +1956,6 @@ function renderForm() {
   const r =
     empty();
 
-
   document.getElementById(
     'content'
   ).innerHTML = `
@@ -2515,7 +1970,6 @@ function renderForm() {
         Ingresa los datos del turno.
         Los KPI se calculan automáticamente.
       </p>
-
 
       <form
         id="daily"
@@ -2538,7 +1992,6 @@ function renderForm() {
 
         </section>
 
-
         <section>
 
           <h2>
@@ -2554,7 +2007,6 @@ function renderForm() {
             .join('')}
 
         </section>
-
 
         <section>
 
@@ -2572,7 +2024,6 @@ function renderForm() {
 
         </section>
 
-
         <section>
 
           <h2>
@@ -2589,12 +2040,10 @@ function renderForm() {
 
         </section>
 
-
         <div
           id="saveMsg"
           class="msg full"
         ></div>
-
 
         <button
           class="primary full"
@@ -2609,13 +2058,11 @@ function renderForm() {
 
   `;
 
-
   document.getElementById(
     'daily'
   ).onsubmit = async e => {
 
     e.preventDefault();
-
 
     const payload = {
 
@@ -2624,7 +2071,6 @@ function renderForm() {
 
     };
 
-
     fields.forEach(
       ([key, , type]) => {
 
@@ -2632,7 +2078,6 @@ function renderForm() {
           document.getElementById(
             'f_' + key
           );
-
 
         payload[key] =
           type === 'number'
@@ -2648,12 +2093,10 @@ function renderForm() {
       }
     );
 
-
     msg(
       'saveMsg',
       'Guardando…'
     );
-
 
     const {
       error
@@ -2661,7 +2104,6 @@ function renderForm() {
       await supabase
         .from('daily_records')
         .insert(payload);
-
 
     if (error) {
 
@@ -2674,15 +2116,12 @@ function renderForm() {
 
     }
 
-
     msg(
       'saveMsg',
       'Registro guardado correctamente.'
     );
 
-
     await load();
-
 
     setTimeout(
       () => render(),
@@ -2693,7 +2132,6 @@ function renderForm() {
 
 }
 
-
 function control(f, r) {
 
   const [
@@ -2702,9 +2140,7 @@ function control(f, r) {
     type
   ] = f;
 
-
   let input;
-
 
   if (type === 'select') {
 
@@ -2749,7 +2185,6 @@ function control(f, r) {
 
   }
 
-
   return `
 
     <label>
@@ -2773,14 +2208,12 @@ function renderResumen() {
   const d =
     rows.map(derive);
 
-
   const sum = key =>
     d.reduce(
       (s, r) =>
         s + n(r[key]),
       0
     );
-
 
   const programada =
     sum('programada');
@@ -2821,21 +2254,17 @@ function renderResumen() {
   const mantenimientoDiario =
     sum('costo_mantenimiento');
 
-
   const mantenimientoSupabase =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.costo),
+        total + n(r.costo),
       0
     );
-
 
   const mantenimiento =
     mantenimientoSupabase > 0
       ? mantenimientoSupabase
       : mantenimientoDiario;
-
 
   const energia =
     sum('energia');
@@ -2846,72 +2275,57 @@ function renderResumen() {
   const noConformidades =
     sum('no_conformidades');
 
-
   const cumplimiento =
     programada > 0
       ? producida / programada
       : null;
-
 
   const yieldRate =
     mp > 0
       ? producida / mp
       : null;
 
-
   const mermaRate =
     mp > 0
       ? merma / mp
       : null;
 
-
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.horas_parada),
+        total + n(r.horas_parada),
       0
     );
-
 
   const paradasFinal =
     horasParadaMantenimiento > 0
       ? horasParadaMantenimiento
       : paradas;
 
-
   const disponibilidad =
     horas > 0
-
       ? Math.max(
           0,
           (horas - paradasFinal) /
             horas
         )
-
       : null;
-
 
   const asistencia =
     personalProgramado > 0
-
       ? personalPresente /
         personalProgramado
-
       : null;
-
 
   const rechazo =
     producida > 0
       ? rechazadas / producida
       : null;
 
-
   const otif =
     pedidos > 0
       ? pedidosTiempo / pedidos
       : null;
-
 
   const oee =
     disponibilidad !== null &&
@@ -2927,79 +2341,109 @@ function renderResumen() {
 
       : null;
 
-
   const costoUnitario =
     producida > 0
       ? costo / producida
       : null;
-
 
   const energiaUnit =
     producida > 0
       ? energia / producida
       : null;
 
-
   const kpis = [
 
     [
       'Cumplimiento',
-      cumplimiento,
-      metas.cumplimiento,
-      false
+      cumplimiento !== null
+        ? pct(cumplimiento)
+        : '—',
+      status(
+        cumplimiento,
+        metas.cumplimiento
+      )
     ],
 
     [
       'Yield',
-      yieldRate,
-      metas.yield,
-      false
+      yieldRate !== null
+        ? pct(yieldRate)
+        : '—',
+      status(
+        yieldRate,
+        metas.yield
+      )
     ],
 
     [
       'Merma',
-      mermaRate,
-      metas.merma,
-      true
+      mermaRate !== null
+        ? pct(mermaRate)
+        : '—',
+      status(
+        mermaRate,
+        metas.merma,
+        true
+      )
     ],
 
     [
       'Disponibilidad',
-      disponibilidad,
-      metas.disponibilidad,
-      false
+      disponibilidad !== null
+        ? pct(disponibilidad)
+        : '—',
+      status(
+        disponibilidad,
+        metas.disponibilidad
+      )
     ],
 
     [
       'Asistencia',
-      asistencia,
-      metas.asistencia,
-      false
+      asistencia !== null
+        ? pct(asistencia)
+        : '—',
+      status(
+        asistencia,
+        metas.asistencia
+      )
     ],
 
     [
       'Rechazo',
-      rechazo,
-      metas.rechazo,
-      true
+      rechazo !== null
+        ? pct(rechazo)
+        : '—',
+      status(
+        rechazo,
+        metas.rechazo,
+        true
+      )
     ],
 
     [
       'OEE',
-      oee,
-      0.80,
-      false
+      oee !== null
+        ? pct(oee)
+        : '—',
+      status(
+        oee,
+        0.80
+      )
     ],
 
     [
       'OTIF',
-      otif,
-      metas.otif,
-      false
+      otif !== null
+        ? pct(otif)
+        : '—',
+      status(
+        otif,
+        metas.otif
+      )
     ]
 
   ];
-
 
   document.getElementById(
     'content'
@@ -3016,58 +2460,39 @@ function renderResumen() {
         de la planta.
       </p>
 
-
       <section class="panel">
 
         <h2>
           Indicadores principales
         </h2>
 
-
         <div class="cards">
 
-          ${kpis.map(k => {
+          ${kpis.map(k => `
 
-            const s =
-              status(
-                k[1],
-                k[2],
-                k[3]
-              );
+            <div class="card">
 
+              <small>
+                ${k[0]}
+              </small>
 
-            return `
+              <strong>
+                ${k[1]}
+              </strong>
 
-              <div class="card">
+              <span
+                class="badge ${k[2].cls}"
+              >
+                ${k[2].label}
+              </span>
 
-                <small>
-                  ${esc(k[0])}
-                </small>
+            </div>
 
-                <strong>
-                  ${
-                    s.label === 'SIN DATOS'
-                      ? '—'
-                      : pct(k[1])
-                  }
-                </strong>
-
-                <span
-                  class="badge ${s.cls}"
-                >
-                  ${s.label}
-                </span>
-
-              </div>
-
-            `;
-
-          }).join('')}
+          `).join('')}
 
         </div>
 
       </section>
-
 
       <section class="panel">
 
@@ -3075,97 +2500,71 @@ function renderResumen() {
           Producción
         </h2>
 
-
         <div class="cards">
 
           <div class="card">
-
             <small>
               Producción programada
             </small>
-
             <strong>
               ${programada.toLocaleString()}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Producción real
             </small>
-
             <strong>
               ${producida.toLocaleString()}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Materia prima consumida
             </small>
-
             <strong>
               ${mp.toLocaleString()}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Merma
             </small>
-
             <strong>
               ${merma.toLocaleString()}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Horas de turno
             </small>
-
             <strong>
               ${horas.toFixed(1)}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Horas de parada
             </small>
-
             <strong>
               ${paradasFinal.toFixed(2)}
             </strong>
-
           </div>
 
         </div>
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Costos y eficiencia
         </h2>
-
 
         <div class="cards">
 
@@ -3181,7 +2580,6 @@ function renderResumen() {
 
           </div>
 
-
           <div class="card">
 
             <small>
@@ -3193,7 +2591,6 @@ function renderResumen() {
             </strong>
 
           </div>
-
 
           <div class="card">
 
@@ -3212,7 +2609,6 @@ function renderResumen() {
 
           </div>
 
-
           <div class="card">
 
             <small>
@@ -3224,7 +2620,6 @@ function renderResumen() {
             </strong>
 
           </div>
-
 
           <div class="card">
 
@@ -3247,13 +2642,11 @@ function renderResumen() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Mantenimiento
         </h2>
-
 
         <div class="cards">
 
@@ -3269,7 +2662,6 @@ function renderResumen() {
 
           </div>
 
-
           <div class="card">
 
             <small>
@@ -3277,22 +2669,17 @@ function renderResumen() {
             </small>
 
             <strong>
-
               ${
                 maintenanceRows.filter(
                   r =>
-                    String(
-                      r.estado || ''
-                    )
+                    String(r.estado || '')
                       .toLowerCase() ===
                     'programado'
                 ).length
               }
-
             </strong>
 
           </div>
-
 
           <div class="card">
 
@@ -3301,7 +2688,6 @@ function renderResumen() {
             </small>
 
             <strong>
-
               ${
                 maintenanceRows.filter(
                   r => {
@@ -3309,8 +2695,7 @@ function renderResumen() {
                     const estado =
                       String(
                         r.estado || ''
-                      )
-                        .toLowerCase();
+                      ).toLowerCase();
 
                     return (
                       estado === 'abierto' ||
@@ -3320,11 +2705,9 @@ function renderResumen() {
                   }
                 ).length
               }
-
             </strong>
 
           </div>
-
 
           <div class="card">
 
@@ -3333,22 +2716,18 @@ function renderResumen() {
             </small>
 
             <strong>
-
               ${
                 maintenanceRows.filter(
                   r =>
                     String(
                       r.estado || ''
-                    )
-                      .toLowerCase() ===
+                    ).toLowerCase() ===
                     'cerrado'
                 ).length
               }
-
             </strong>
 
           </div>
-
 
           <div class="card">
 
@@ -3367,117 +2746,84 @@ function renderResumen() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Calidad, personal y despacho
         </h2>
 
-
         <div class="cards">
 
           <div class="card">
-
             <small>
               Personal programado
             </small>
-
             <strong>
               ${personalProgramado}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Personal presente
             </small>
-
             <strong>
               ${personalPresente}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Unidades rechazadas
             </small>
-
             <strong>
               ${rechazadas}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Reproceso
             </small>
-
             <strong>
               ${reproceso}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               No conformidades
             </small>
-
             <strong>
               ${noConformidades}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Pedidos programados
             </small>
-
             <strong>
               ${pedidos}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Pedidos a tiempo
             </small>
-
             <strong>
               ${pedidosTiempo}
             </strong>
-
           </div>
 
-
           <div class="card">
-
             <small>
               Incidentes SSOMA
             </small>
-
             <strong>
               ${ssomaRows.length}
             </strong>
-
           </div>
 
         </div>
@@ -3499,7 +2845,6 @@ function renderMaintenance() {
   const total =
     maintenanceRows.length;
 
-
   const programados =
     maintenanceRows.filter(
       r =>
@@ -3507,7 +2852,6 @@ function renderMaintenance() {
           .toLowerCase() ===
         'programado'
     ).length;
-
 
   const pendientes =
     maintenanceRows.filter(
@@ -3526,7 +2870,6 @@ function renderMaintenance() {
       }
     ).length;
 
-
   const cerrados =
     maintenanceRows.filter(
       r =>
@@ -3535,24 +2878,19 @@ function renderMaintenance() {
         'cerrado'
     ).length;
 
-
   const horasParada =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.horas_parada),
+        total + n(r.horas_parada),
       0
     );
-
 
   const costoTotal =
     maintenanceRows.reduce(
       (total, r) =>
-        total +
-        n(r.costo),
+        total + n(r.costo),
       0
     );
-
 
   document.getElementById(
     'content'
@@ -3582,107 +2920,78 @@ function renderMaintenance() {
 
       </div>
 
-
       <div class="cards">
 
         <div class="card">
-
           <small>
             Mantenimientos registrados
           </small>
-
           <strong>
             ${total}
           </strong>
-
         </div>
 
-
         <div class="card">
-
           <small>
             Programados
           </small>
-
           <strong>
             ${programados}
           </strong>
-
           <span class="badge ok">
             PROGRAMADO
           </span>
-
         </div>
 
-
         <div class="card">
-
           <small>
             Abiertos / En proceso
           </small>
-
           <strong>
             ${pendientes}
           </strong>
-
           <span class="badge ${
             pendientes
               ? 'warn'
               : 'ok'
           }">
-
             ${
               pendientes
                 ? 'PENDIENTE'
                 : 'OK'
             }
-
           </span>
-
         </div>
 
-
         <div class="card">
-
           <small>
             Cerrados
           </small>
-
           <strong>
             ${cerrados}
           </strong>
-
         </div>
 
-
         <div class="card">
-
           <small>
             Horas de parada
           </small>
-
           <strong>
             ${horasParada.toFixed(2)}
             horas
           </strong>
-
         </div>
 
-
         <div class="card">
-
           <small>
             Costo total
           </small>
-
           <strong>
             S/ ${costoTotal.toFixed(2)}
           </strong>
-
         </div>
 
       </div>
-
 
       <section class="panel">
 
@@ -3696,7 +3005,6 @@ function renderMaintenance() {
 
         </h2>
 
-
         <form
           id="maintenanceForm"
           class="formGrid"
@@ -3708,9 +3016,7 @@ function renderMaintenance() {
               Identificación
             </h2>
 
-
             <label>
-
               Fecha
 
               <input
@@ -3719,12 +3025,9 @@ function renderMaintenance() {
                 value="${today}"
                 required
               >
-
             </label>
 
-
             <label>
-
               Equipo
 
               <input
@@ -3733,12 +3036,9 @@ function renderMaintenance() {
                 placeholder="Ej. Mezclador principal"
                 required
               >
-
             </label>
 
-
             <label>
-
               Código de equipo
 
               <input
@@ -3746,12 +3046,9 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Ej. EQ-001"
               >
-
             </label>
 
-
             <label>
-
               Tipo
 
               <select
@@ -3787,9 +3084,7 @@ function renderMaintenance() {
 
             </label>
 
-
             <label>
-
               Causa
 
               <input
@@ -3797,11 +3092,9 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Ej. Desgaste de rodamiento"
               >
-
             </label>
 
           </section>
-
 
           <section>
 
@@ -3809,9 +3102,7 @@ function renderMaintenance() {
               Intervención
             </h2>
 
-
             <label>
-
               Descripción
 
               <textarea
@@ -3819,12 +3110,9 @@ function renderMaintenance() {
                 placeholder="Describe el mantenimiento realizado o requerido."
                 required
               ></textarea>
-
             </label>
 
-
             <label>
-
               Horas de parada
 
               <input
@@ -3834,12 +3122,9 @@ function renderMaintenance() {
                 min="0"
                 value="0"
               >
-
             </label>
 
-
             <label>
-
               Costo (S/)
 
               <input
@@ -3849,12 +3134,9 @@ function renderMaintenance() {
                 min="0"
                 value="0"
               >
-
             </label>
 
-
             <label>
-
               Responsable
 
               <input
@@ -3862,11 +3144,9 @@ function renderMaintenance() {
                 type="text"
                 placeholder="Técnico responsable"
               >
-
             </label>
 
           </section>
-
 
           <section>
 
@@ -3874,9 +3154,7 @@ function renderMaintenance() {
               Programación y estado
             </h2>
 
-
             <label>
-
               Estado
 
               <select
@@ -3908,33 +3186,25 @@ function renderMaintenance() {
 
             </label>
 
-
             <label>
-
               Fecha programada
 
               <input
                 id="mt_fecha_programada"
                 type="date"
               >
-
             </label>
 
-
             <label>
-
               Fecha de cierre
 
               <input
                 id="mt_fecha_cierre"
                 type="date"
               >
-
             </label>
 
-
             <label>
-
               Observaciones
 
               <textarea
@@ -3946,12 +3216,10 @@ function renderMaintenance() {
 
           </section>
 
-
           <div
             id="maintenanceMsg"
             class="msg full"
           ></div>
-
 
           <div
             class="full"
@@ -3975,7 +3243,6 @@ function renderMaintenance() {
 
             </button>
 
-
             ${
               editingMaintenanceId
                 ? `
@@ -3997,13 +3264,11 @@ function renderMaintenance() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Mantenimientos registrados
         </h2>
-
 
         ${
           maintenanceRows.length
@@ -4033,7 +3298,6 @@ function renderMaintenance() {
 
                   </thead>
 
-
                   <tbody>
 
                     ${maintenanceRows
@@ -4044,7 +3308,6 @@ function renderMaintenance() {
                           <td>
                             ${esc(r.fecha)}
                           </td>
-
 
                           <td>
 
@@ -4067,11 +3330,9 @@ function renderMaintenance() {
 
                           </td>
 
-
                           <td>
                             ${esc(r.tipo)}
                           </td>
-
 
                           <td>
                             ${n(
@@ -4079,13 +3340,11 @@ function renderMaintenance() {
                             ).toFixed(2)}
                           </td>
 
-
                           <td>
                             ${esc(
                               r.causa || ''
                             )}
                           </td>
-
 
                           <td>
                             S/
@@ -4094,13 +3353,11 @@ function renderMaintenance() {
                             ).toFixed(2)}
                           </td>
 
-
                           <td>
                             ${esc(
                               r.responsable || ''
                             )}
                           </td>
-
 
                           <td>
 
@@ -4133,14 +3390,12 @@ function renderMaintenance() {
 
                           </td>
 
-
                           <td>
                             ${esc(
                               r.fecha_programada ||
                               ''
                             )}
                           </td>
-
 
                           <td>
 
@@ -4150,7 +3405,6 @@ function renderMaintenance() {
                             >
                               Editar
                             </button>
-
 
                             <button
                               type="button"
@@ -4192,12 +3446,10 @@ function renderMaintenance() {
 
   `;
 
-
   document.getElementById(
     'maintenanceForm'
   ).onsubmit =
     saveMaintenance;
-
 
   document
     .querySelectorAll(
@@ -4215,7 +3467,6 @@ function renderMaintenance() {
 
     });
 
-
   document
     .querySelectorAll(
       '[data-delete-maintenance]'
@@ -4231,7 +3482,6 @@ function renderMaintenance() {
       };
 
     });
-
 
   document.getElementById(
     'cancelMaintenance'
@@ -4257,7 +3507,6 @@ async function saveMaintenance(e) {
 
   e.preventDefault();
 
-
   const payload = {
 
     user_id:
@@ -4276,8 +3525,7 @@ async function saveMaintenance(e) {
     codigo_equipo:
       document.getElementById(
         'mt_codigo_equipo'
-      ).value.trim() ||
-      null,
+      ).value.trim() || null,
 
     tipo:
       document.getElementById(
@@ -4287,8 +3535,7 @@ async function saveMaintenance(e) {
     causa:
       document.getElementById(
         'mt_causa'
-      ).value.trim() ||
-      null,
+      ).value.trim() || null,
 
     descripcion:
       document.getElementById(
@@ -4312,8 +3559,7 @@ async function saveMaintenance(e) {
     responsable:
       document.getElementById(
         'mt_responsable'
-      ).value.trim() ||
-      null,
+      ).value.trim() || null,
 
     estado:
       document.getElementById(
@@ -4323,23 +3569,19 @@ async function saveMaintenance(e) {
     fecha_programada:
       document.getElementById(
         'mt_fecha_programada'
-      ).value ||
-      null,
+      ).value || null,
 
     fecha_cierre:
       document.getElementById(
         'mt_fecha_cierre'
-      ).value ||
-      null,
+      ).value || null,
 
     observaciones:
       document.getElementById(
         'mt_observaciones'
-      ).value.trim() ||
-      null
+      ).value.trim() || null
 
   };
-
 
   if (!payload.fecha) {
 
@@ -4352,7 +3594,6 @@ async function saveMaintenance(e) {
 
   }
 
-
   if (!payload.equipo) {
 
     msg(
@@ -4363,7 +3604,6 @@ async function saveMaintenance(e) {
     return;
 
   }
-
 
   if (!payload.descripcion) {
 
@@ -4376,10 +3616,7 @@ async function saveMaintenance(e) {
 
   }
 
-
-  if (
-    payload.horas_parada < 0
-  ) {
+  if (payload.horas_parada < 0) {
 
     msg(
       'maintenanceMsg',
@@ -4390,10 +3627,7 @@ async function saveMaintenance(e) {
 
   }
 
-
-  if (
-    payload.costo < 0
-  ) {
+  if (payload.costo < 0) {
 
     msg(
       'maintenanceMsg',
@@ -4404,15 +3638,12 @@ async function saveMaintenance(e) {
 
   }
 
-
   msg(
     'maintenanceMsg',
     'Guardando mantenimiento…'
   );
 
-
   let result;
-
 
   if (editingMaintenanceId) {
 
@@ -4438,7 +3669,6 @@ async function saveMaintenance(e) {
 
   }
 
-
   if (result.error) {
 
     msg(
@@ -4451,10 +3681,8 @@ async function saveMaintenance(e) {
 
   }
 
-
   editingMaintenanceId =
     null;
-
 
   await loadMaintenance();
 
@@ -4475,7 +3703,6 @@ function editMaintenance(id) {
         String(id)
     );
 
-
   if (!row) {
 
     alert(
@@ -4486,13 +3713,10 @@ function editMaintenance(id) {
 
   }
 
-
   editingMaintenanceId =
     row.id;
 
-
   renderMaintenance();
-
 
   document.getElementById(
     'mt_fecha'
@@ -4500,13 +3724,11 @@ function editMaintenance(id) {
     row.fecha ||
     today;
 
-
   document.getElementById(
     'mt_equipo'
   ).value =
     row.equipo ||
     '';
-
 
   document.getElementById(
     'mt_codigo_equipo'
@@ -4514,13 +3736,11 @@ function editMaintenance(id) {
     row.codigo_equipo ||
     '';
 
-
   document.getElementById(
     'mt_tipo'
   ).value =
     row.tipo ||
     'Preventivo';
-
 
   document.getElementById(
     'mt_causa'
@@ -4528,13 +3748,11 @@ function editMaintenance(id) {
     row.causa ||
     '';
 
-
   document.getElementById(
     'mt_descripcion'
   ).value =
     row.descripcion ||
     '';
-
 
   document.getElementById(
     'mt_horas_parada'
@@ -4543,7 +3761,6 @@ function editMaintenance(id) {
       row.horas_parada
     );
 
-
   document.getElementById(
     'mt_costo'
   ).value =
@@ -4551,13 +3768,11 @@ function editMaintenance(id) {
       row.costo
     );
 
-
   document.getElementById(
     'mt_responsable'
   ).value =
     row.responsable ||
     '';
-
 
   document.getElementById(
     'mt_estado'
@@ -4565,13 +3780,11 @@ function editMaintenance(id) {
     row.estado ||
     'Abierto';
 
-
   document.getElementById(
     'mt_fecha_programada'
   ).value =
     row.fecha_programada ||
     '';
-
 
   document.getElementById(
     'mt_fecha_cierre'
@@ -4579,13 +3792,11 @@ function editMaintenance(id) {
     row.fecha_cierre ||
     '';
 
-
   document.getElementById(
     'mt_observaciones'
   ).value =
     row.observaciones ||
     '';
-
 
   window.scrollTo({
 
@@ -4610,9 +3821,7 @@ async function deleteMaintenance(id) {
         String(id)
     );
 
-
   if (!row) return;
-
 
   if (
     !confirm(
@@ -4622,7 +3831,6 @@ async function deleteMaintenance(id) {
       `Esta acción no se puede deshacer.`
     )
   ) return;
-
 
   const {
     error
@@ -4639,7 +3847,6 @@ async function deleteMaintenance(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
@@ -4650,7 +3857,6 @@ async function deleteMaintenance(id) {
     return;
 
   }
-
 
   await loadMaintenance();
 
@@ -4672,7 +3878,6 @@ function renderInventory() {
         n(r.entradas) -
         n(r.salidas);
 
-
       return (
         n(r.stock_minimo) > 0 &&
         stock <=
@@ -4680,7 +3885,6 @@ function renderInventory() {
       );
 
     }).length;
-
 
   document.getElementById(
     'content'
@@ -4697,7 +3901,6 @@ function renderInventory() {
         de materiales y productos.
       </p>
 
-
       <div class="cards">
 
         <div class="card">
@@ -4711,7 +3914,6 @@ function renderInventory() {
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -4741,7 +3943,6 @@ function renderInventory() {
 
       </div>
 
-
       <section class="panel">
 
         <h2>
@@ -4754,7 +3955,6 @@ function renderInventory() {
 
         </h2>
 
-
         <form
           id="inventoryForm"
           class="formGrid"
@@ -4765,7 +3965,6 @@ function renderInventory() {
             <h2>
               Identificación
             </h2>
-
 
             <label>
 
@@ -4780,7 +3979,6 @@ function renderInventory() {
 
             </label>
 
-
             <label>
 
               Código
@@ -4793,7 +3991,6 @@ function renderInventory() {
 
             </label>
 
-
             <label>
 
               Material / Producto
@@ -4805,7 +4002,6 @@ function renderInventory() {
               >
 
             </label>
-
 
             <label>
 
@@ -4847,7 +4043,6 @@ function renderInventory() {
 
             </label>
 
-
             <label>
 
               Unidad
@@ -4871,13 +4066,11 @@ function renderInventory() {
 
           </section>
 
-
           <section>
 
             <h2>
               Movimiento
             </h2>
-
 
             <label>
 
@@ -4893,7 +4086,6 @@ function renderInventory() {
 
             </label>
 
-
             <label>
 
               Entradas
@@ -4907,7 +4099,6 @@ function renderInventory() {
               >
 
             </label>
-
 
             <label>
 
@@ -4923,7 +4114,6 @@ function renderInventory() {
 
             </label>
 
-
             <label>
 
               Stock mínimo
@@ -4937,7 +4127,6 @@ function renderInventory() {
               >
 
             </label>
-
 
             <div class="panel">
 
@@ -4960,13 +4149,11 @@ function renderInventory() {
 
           </section>
 
-
           <section>
 
             <h2>
               Observaciones
             </h2>
-
 
             <label>
 
@@ -4979,12 +4166,10 @@ function renderInventory() {
 
           </section>
 
-
           <div
             id="inventoryMsg"
             class="msg full"
           ></div>
-
 
           <div class="full">
 
@@ -5000,7 +4185,6 @@ function renderInventory() {
               }
 
             </button>
-
 
             ${
               editingInventoryId
@@ -5021,13 +4205,11 @@ function renderInventory() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Inventario registrado
         </h2>
-
 
         ${
           inventoryRows.length
@@ -5059,7 +4241,6 @@ function renderInventory() {
 
                   </thead>
 
-
                   <tbody>
 
                     ${inventoryRows
@@ -5076,7 +4257,6 @@ function renderInventory() {
                             r.salidas
                           );
 
-
                         const low =
                           n(
                             r.stock_minimo
@@ -5085,7 +4265,6 @@ function renderInventory() {
                             n(
                               r.stock_minimo
                             );
-
 
                         return `
 
@@ -5140,11 +4319,9 @@ function renderInventory() {
                             </td>
 
                             <td>
-
                               <strong>
                                 ${stock}
                               </strong>
-
                             </td>
 
                             <td>
@@ -5222,9 +4399,7 @@ function renderInventory() {
 
   `;
 
-
   updateInventoryStockPreview();
-
 
   [
     'inv_stock_inicial',
@@ -5241,12 +4416,10 @@ function renderInventory() {
 
   });
 
-
   document.getElementById(
     'inventoryForm'
   ).onsubmit =
     saveInventory;
-
 
   document
     .querySelectorAll(
@@ -5264,7 +4437,6 @@ function renderInventory() {
 
     });
 
-
   document
     .querySelectorAll(
       '[data-delete-inventory]'
@@ -5280,7 +4452,6 @@ function renderInventory() {
       };
 
     });
-
 
   document.getElementById(
     'cancelInventory'
@@ -5298,7 +4469,6 @@ function renderInventory() {
 
 }
 
-
 function updateInventoryStockPreview() {
 
   const inicial =
@@ -5308,14 +4478,12 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
-
   const entradas =
     n(
       document.getElementById(
         'inv_entradas'
       )?.value
     );
-
 
   const salidas =
     n(
@@ -5324,12 +4492,10 @@ function updateInventoryStockPreview() {
       )?.value
     );
 
-
   const output =
     document.getElementById(
       'inv_stock_actual'
     );
-
 
   if (output) {
 
@@ -5342,11 +4508,9 @@ function updateInventoryStockPreview() {
 
 }
 
-
 async function saveInventory(e) {
 
   e.preventDefault();
-
 
   const payload = {
 
@@ -5416,15 +4580,12 @@ async function saveInventory(e) {
 
   };
 
-
   msg(
     'inventoryMsg',
     'Guardando inventario…'
   );
 
-
   let result;
-
 
   if (editingInventoryId) {
 
@@ -5450,7 +4611,6 @@ async function saveInventory(e) {
 
   }
 
-
   if (result.error) {
 
     msg(
@@ -5463,17 +4623,14 @@ async function saveInventory(e) {
 
   }
 
-
   editingInventoryId =
     null;
-
 
   await loadInventory();
 
   renderInventory();
 
 }
-
 
 function editInventory(id) {
 
@@ -5483,7 +4640,6 @@ function editInventory(id) {
         String(r.id) ===
         String(id)
     );
-
 
   if (!row) {
 
@@ -5495,13 +4651,10 @@ function editInventory(id) {
 
   }
 
-
   editingInventoryId =
     row.id;
 
-
   renderInventory();
-
 
   document.getElementById(
     'inv_fecha'
@@ -5509,13 +4662,11 @@ function editInventory(id) {
     row.fecha ||
     today;
 
-
   document.getElementById(
     'inv_codigo'
   ).value =
     row.codigo ||
     '';
-
 
   document.getElementById(
     'inv_material'
@@ -5523,20 +4674,17 @@ function editInventory(id) {
     row.material ||
     '';
 
-
   document.getElementById(
     'inv_categoria'
   ).value =
     row.categoria ||
     '';
 
-
   document.getElementById(
     'inv_unidad'
   ).value =
     row.unidad ||
     'kg';
-
 
   document.getElementById(
     'inv_stock_inicial'
@@ -5545,14 +4693,12 @@ function editInventory(id) {
       row.stock_inicial
     );
 
-
   document.getElementById(
     'inv_entradas'
   ).value =
     n(
       row.entradas
     );
-
 
   document.getElementById(
     'inv_salidas'
@@ -5561,7 +4707,6 @@ function editInventory(id) {
       row.salidas
     );
 
-
   document.getElementById(
     'inv_stock_minimo'
   ).value =
@@ -5569,16 +4714,13 @@ function editInventory(id) {
       row.stock_minimo
     );
 
-
   document.getElementById(
     'inv_observaciones'
   ).value =
     row.observaciones ||
     '';
 
-
   updateInventoryStockPreview();
-
 
   window.scrollTo({
 
@@ -5590,7 +4732,6 @@ function editInventory(id) {
 
 }
 
-
 async function deleteInventory(id) {
 
   const row =
@@ -5600,16 +4741,13 @@ async function deleteInventory(id) {
         String(id)
     );
 
-
   if (!row) return;
-
 
   if (
     !confirm(
       `¿Eliminar "${row.material}"?`
     )
   ) return;
-
 
   const {
     error
@@ -5626,7 +4764,6 @@ async function deleteInventory(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
@@ -5637,7 +4774,6 @@ async function deleteInventory(id) {
     return;
 
   }
-
 
   await loadInventory();
 
@@ -5660,11 +4796,9 @@ function renderPersonal() {
         'activo'
     ).length;
 
-
   const inactivos =
     personalRows.length -
     activos;
-
 
   const areas =
     new Set(
@@ -5672,7 +4806,6 @@ function renderPersonal() {
         .map(r => r.area)
         .filter(Boolean)
     ).size;
-
 
   document.getElementById(
     'content'
@@ -5701,7 +4834,6 @@ function renderPersonal() {
 
       </div>
 
-
       <div class="cards">
 
         <div class="card">
@@ -5715,7 +4847,6 @@ function renderPersonal() {
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -5733,7 +4864,6 @@ function renderPersonal() {
 
         </div>
 
-
         <div class="card">
 
           <small>
@@ -5745,7 +4875,6 @@ function renderPersonal() {
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -5761,7 +4890,6 @@ function renderPersonal() {
 
       </div>
 
-
       <section class="panel">
 
         <h2>
@@ -5774,7 +4902,6 @@ function renderPersonal() {
 
         </h2>
 
-
         <form
           id="personalForm"
           class="formGrid"
@@ -5785,7 +4912,6 @@ function renderPersonal() {
             <h2>
               Identificación
             </h2>
-
 
             <label>
 
@@ -5802,7 +4928,6 @@ function renderPersonal() {
 
             </label>
 
-
             <label>
 
               Nombre completo
@@ -5815,7 +4940,6 @@ function renderPersonal() {
               >
 
             </label>
-
 
             <label>
 
@@ -5832,13 +4956,11 @@ function renderPersonal() {
 
           </section>
 
-
           <section>
 
             <h2>
               Puesto
             </h2>
-
 
             <label>
 
@@ -5853,7 +4975,6 @@ function renderPersonal() {
 
             </label>
 
-
             <label>
 
               Área
@@ -5866,7 +4987,6 @@ function renderPersonal() {
               >
 
             </label>
-
 
             <label>
 
@@ -5890,7 +5010,6 @@ function renderPersonal() {
 
             </label>
 
-
             <label>
 
               Estado
@@ -5911,13 +5030,11 @@ function renderPersonal() {
 
           </section>
 
-
           <section>
 
             <h2>
               Observaciones
             </h2>
-
 
             <label>
 
@@ -5930,12 +5047,10 @@ function renderPersonal() {
 
           </section>
 
-
           <div
             id="personalMsg"
             class="msg full"
           ></div>
-
 
           <div
             class="full"
@@ -5959,7 +5074,6 @@ function renderPersonal() {
 
             </button>
 
-
             ${
               editingPersonalId
                 ? `
@@ -5981,13 +5095,11 @@ function renderPersonal() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Personal registrado
         </h2>
-
 
         ${
           personalRows.length
@@ -6015,7 +5127,6 @@ function renderPersonal() {
 
                   </thead>
 
-
                   <tbody>
 
                     ${personalRows
@@ -6027,7 +5138,6 @@ function renderPersonal() {
                             ${esc(r.dni)}
                           </td>
 
-
                           <td>
 
                             <strong>
@@ -6036,28 +5146,23 @@ function renderPersonal() {
 
                           </td>
 
-
                           <td>
                             ${esc(r.cargo)}
                           </td>
-
 
                           <td>
                             ${esc(r.area)}
                           </td>
 
-
                           <td>
                             ${esc(r.turno)}
                           </td>
-
 
                           <td>
                             ${esc(
                               r.fecha_ingreso
                             )}
                           </td>
-
 
                           <td>
 
@@ -6074,7 +5179,6 @@ function renderPersonal() {
 
                           </td>
 
-
                           <td>
 
                             <button
@@ -6083,7 +5187,6 @@ function renderPersonal() {
                             >
                               Editar
                             </button>
-
 
                             <button
                               type="button"
@@ -6127,12 +5230,10 @@ function renderPersonal() {
 
   `;
 
-
   document.getElementById(
     'personalForm'
   ).onsubmit =
     savePersonal;
-
 
   document
     .querySelectorAll(
@@ -6150,7 +5251,6 @@ function renderPersonal() {
 
     });
 
-
   document
     .querySelectorAll(
       '[data-delete-personal]'
@@ -6166,7 +5266,6 @@ function renderPersonal() {
       };
 
     });
-
 
   document.getElementById(
     'cancelPersonal'
@@ -6184,11 +5283,9 @@ function renderPersonal() {
 
 }
 
-
 async function savePersonal(e) {
 
   e.preventDefault();
-
 
   const payload = {
 
@@ -6259,7 +5356,6 @@ async function savePersonal(e) {
 
   };
 
-
   if (!payload.dni) {
 
     msg(
@@ -6270,7 +5366,6 @@ async function savePersonal(e) {
     return;
 
   }
-
 
   if (!payload.nombre) {
 
@@ -6283,7 +5378,6 @@ async function savePersonal(e) {
 
   }
 
-
   if (!payload.cargo) {
 
     msg(
@@ -6294,7 +5388,6 @@ async function savePersonal(e) {
     return;
 
   }
-
 
   if (!payload.area) {
 
@@ -6307,7 +5400,6 @@ async function savePersonal(e) {
 
   }
 
-
   if (!payload.fecha_ingreso) {
 
     msg(
@@ -6319,15 +5411,12 @@ async function savePersonal(e) {
 
   }
 
-
   msg(
     'personalMsg',
     'Guardando trabajador…'
   );
 
-
   let result;
-
 
   if (editingPersonalId) {
 
@@ -6352,7 +5441,6 @@ async function savePersonal(e) {
         .insert(payload);
 
   }
-
 
   if (result.error) {
 
@@ -6380,17 +5468,14 @@ async function savePersonal(e) {
 
   }
 
-
   editingPersonalId =
     null;
-
 
   await loadPersonal();
 
   renderPersonal();
 
 }
-
 
 function editPersonal(id) {
 
@@ -6400,7 +5485,6 @@ function editPersonal(id) {
         String(r.id) ===
         String(id)
     );
-
 
   if (!row) {
 
@@ -6412,13 +5496,10 @@ function editPersonal(id) {
 
   }
 
-
   editingPersonalId =
     row.id;
 
-
   renderPersonal();
-
 
   document.getElementById(
     'per_dni'
@@ -6426,13 +5507,11 @@ function editPersonal(id) {
     row.dni ||
     '';
 
-
   document.getElementById(
     'per_nombre'
   ).value =
     row.nombre ||
     '';
-
 
   document.getElementById(
     'per_fecha_ingreso'
@@ -6440,13 +5519,11 @@ function editPersonal(id) {
     row.fecha_ingreso ||
     today;
 
-
   document.getElementById(
     'per_cargo'
   ).value =
     row.cargo ||
     '';
-
 
   document.getElementById(
     'per_area'
@@ -6454,13 +5531,11 @@ function editPersonal(id) {
     row.area ||
     '';
 
-
   document.getElementById(
     'per_turno'
   ).value =
     row.turno ||
     'Mañana';
-
 
   document.getElementById(
     'per_estado'
@@ -6468,13 +5543,11 @@ function editPersonal(id) {
     row.estado ||
     'Activo';
 
-
   document.getElementById(
     'per_observaciones'
   ).value =
     row.observaciones ||
     '';
-
 
   window.scrollTo({
 
@@ -6486,7 +5559,6 @@ function editPersonal(id) {
 
 }
 
-
 async function deletePersonal(id) {
 
   const row =
@@ -6496,9 +5568,7 @@ async function deletePersonal(id) {
         String(id)
     );
 
-
   if (!row) return;
-
 
   if (
     !confirm(
@@ -6508,7 +5578,6 @@ async function deletePersonal(id) {
       `Esta acción no se puede deshacer.`
     )
   ) return;
-
 
   const {
     error
@@ -6525,7 +5594,6 @@ async function deletePersonal(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
@@ -6536,7 +5604,6 @@ async function deletePersonal(id) {
     return;
 
   }
-
 
   await loadPersonal();
 
@@ -6566,7 +5633,6 @@ function renderSsoma() {
         Medio Ambiente.
       </p>
 
-
       <div class="cards">
 
         <div class="card">
@@ -6580,7 +5646,6 @@ function renderSsoma() {
           </strong>
 
         </div>
-
 
         <div class="card">
 
@@ -6606,7 +5671,6 @@ function renderSsoma() {
 
       </div>
 
-
       <section class="panel">
 
         <h2>
@@ -6619,7 +5683,6 @@ function renderSsoma() {
 
         </h2>
 
-
         <form
           id="ssomaForm"
           class="formGrid"
@@ -6630,7 +5693,6 @@ function renderSsoma() {
             <h2>
               Identificación
             </h2>
-
 
             <label>
 
@@ -6644,7 +5706,6 @@ function renderSsoma() {
               >
 
             </label>
-
 
             <label>
 
@@ -6695,7 +5756,6 @@ function renderSsoma() {
 
             </label>
 
-
             <label>
 
               Lugar
@@ -6707,7 +5767,6 @@ function renderSsoma() {
               >
 
             </label>
-
 
             <label>
 
@@ -6742,7 +5801,6 @@ function renderSsoma() {
 
             </label>
 
-
             <label>
 
               Estado
@@ -6774,13 +5832,11 @@ function renderSsoma() {
 
           </section>
 
-
           <section>
 
             <h2>
               Detalle
             </h2>
-
 
             <label>
 
@@ -6793,7 +5849,6 @@ function renderSsoma() {
 
             </label>
 
-
             <label>
 
               Acciones tomadas
@@ -6804,7 +5859,6 @@ function renderSsoma() {
               ></textarea>
 
             </label>
-
 
             <label>
 
@@ -6818,13 +5872,11 @@ function renderSsoma() {
 
           </section>
 
-
           <section>
 
             <h2>
               Observaciones
             </h2>
-
 
             <label>
 
@@ -6836,12 +5888,10 @@ function renderSsoma() {
 
           </section>
 
-
           <div
             id="ssomaMsg"
             class="msg full"
           ></div>
-
 
           <div class="full">
 
@@ -6857,7 +5907,6 @@ function renderSsoma() {
               }
 
             </button>
-
 
             ${
               editingSsomaId
@@ -6880,13 +5929,11 @@ function renderSsoma() {
 
       </section>
 
-
       <section class="panel">
 
         <h2>
           Incidentes registrados
         </h2>
-
 
         ${
           ssomaRows.length
@@ -6912,7 +5959,6 @@ function renderSsoma() {
                     </tr>
 
                   </thead>
-
 
                   <tbody>
 
@@ -7007,12 +6053,10 @@ function renderSsoma() {
 
   `;
 
-
   document.getElementById(
     'ssomaForm'
   ).onsubmit =
     saveSsoma;
-
 
   document
     .querySelectorAll(
@@ -7030,7 +6074,6 @@ function renderSsoma() {
 
     });
 
-
   document
     .querySelectorAll(
       '[data-delete-ssoma]'
@@ -7046,7 +6089,6 @@ function renderSsoma() {
       };
 
     });
-
 
   document.getElementById(
     'cancelSsoma'
@@ -7064,11 +6106,9 @@ function renderSsoma() {
 
 }
 
-
 async function saveSsoma(e) {
 
   e.preventDefault();
-
 
   const payload = {
 
@@ -7124,15 +6164,12 @@ async function saveSsoma(e) {
 
   };
 
-
   msg(
     'ssomaMsg',
     'Guardando incidente…'
   );
 
-
   let result;
-
 
   if (editingSsomaId) {
 
@@ -7158,7 +6195,6 @@ async function saveSsoma(e) {
 
   }
 
-
   if (result.error) {
 
     msg(
@@ -7171,17 +6207,14 @@ async function saveSsoma(e) {
 
   }
 
-
   editingSsomaId =
     null;
-
 
   await loadSsoma();
 
   renderSsoma();
 
 }
-
 
 function editSsoma(id) {
 
@@ -7191,7 +6224,6 @@ function editSsoma(id) {
         String(r.id) ===
         String(id)
     );
-
 
   if (!row) {
 
@@ -7203,13 +6235,10 @@ function editSsoma(id) {
 
   }
 
-
   editingSsomaId =
     row.id;
 
-
   renderSsoma();
-
 
   document.getElementById(
     'ss_fecha'
@@ -7217,13 +6246,11 @@ function editSsoma(id) {
     row.fecha ||
     today;
 
-
   document.getElementById(
     'ss_tipo'
   ).value =
     row.tipo ||
     '';
-
 
   document.getElementById(
     'ss_hechos'
@@ -7231,13 +6258,11 @@ function editSsoma(id) {
     row.hechos ||
     '';
 
-
   document.getElementById(
     'ss_lugar'
   ).value =
     row.lugar ||
     '';
-
 
   document.getElementById(
     'ss_acciones'
@@ -7245,13 +6270,11 @@ function editSsoma(id) {
     row.acciones_tomadas ||
     '';
 
-
   document.getElementById(
     'ss_personas'
   ).value =
     row.personas_involucradas ||
     '';
-
 
   document.getElementById(
     'ss_gravedad'
@@ -7259,20 +6282,17 @@ function editSsoma(id) {
     row.gravedad ||
     '';
 
-
   document.getElementById(
     'ss_estado'
   ).value =
     row.estado ||
     'Abierto';
 
-
   document.getElementById(
     'ss_observaciones'
   ).value =
     row.observaciones ||
     '';
-
 
   window.scrollTo({
 
@@ -7284,7 +6304,6 @@ function editSsoma(id) {
 
 }
 
-
 async function deleteSsoma(id) {
 
   const row =
@@ -7294,16 +6313,13 @@ async function deleteSsoma(id) {
         String(id)
     );
 
-
   if (!row) return;
-
 
   if (
     !confirm(
       `¿Eliminar el incidente del ${row.fecha}?`
     )
   ) return;
-
 
   const {
     error
@@ -7320,7 +6336,6 @@ async function deleteSsoma(id) {
         user.id
       );
 
-
   if (error) {
 
     alert(
@@ -7331,7 +6346,6 @@ async function deleteSsoma(id) {
     return;
 
   }
-
 
   await loadSsoma();
 
@@ -7360,7 +6374,6 @@ async function load() {
         }
       );
 
-
   if (!r.error) {
 
     rows =
@@ -7378,14 +6391,12 @@ async function load() {
 
   }
 
-
   const s =
     await supabase
       .from('app_settings')
       .select('*')
       .limit(1)
       .maybeSingle();
-
 
   if (s.data) {
 
@@ -7444,7 +6455,6 @@ async function load() {
 
   }
 
-
   await loadInventory();
   await loadSsoma();
   await loadPersonal();
@@ -7479,7 +6489,6 @@ async function loadInventory() {
         }
       );
 
-
   if (result.error) {
 
     console.error(
@@ -7492,7 +6501,6 @@ async function loadInventory() {
     return;
 
   }
-
 
   inventoryRows =
     result.data ||
@@ -7527,7 +6535,6 @@ async function loadSsoma() {
         }
       );
 
-
   if (result.error) {
 
     console.error(
@@ -7540,7 +6547,6 @@ async function loadSsoma() {
     return;
 
   }
-
 
   ssomaRows =
     result.data ||
@@ -7575,7 +6581,6 @@ async function loadPersonal() {
         }
       );
 
-
   if (result.error) {
 
     console.error(
@@ -7588,7 +6593,6 @@ async function loadPersonal() {
     return;
 
   }
-
 
   personalRows =
     result.data ||
@@ -7623,7 +6627,6 @@ async function loadMaintenance() {
         }
       );
 
-
   if (result.error) {
 
     console.error(
@@ -7636,7 +6639,6 @@ async function loadMaintenance() {
     return;
 
   }
-
 
   maintenanceRows =
     result.data ||
@@ -7660,7 +6662,6 @@ function renderPlaceholder(title) {
         ${esc(title)}
       </h1>
 
-
       <section class="panel">
 
         <p>
@@ -7669,7 +6670,6 @@ function renderPlaceholder(title) {
           enlazarse con su tabla correspondiente.
 
         </p>
-
 
         <span class="badge ok">
           Módulo preparado
@@ -7696,13 +6696,11 @@ supabase.auth
         data.session?.user ||
         null;
 
-
       if (user) {
 
         await load();
 
       }
-
 
       render();
 
@@ -7731,7 +6729,6 @@ supabase.auth
         session?.user ||
         null;
 
-
       if (!user) {
 
         rows = [];
@@ -7741,7 +6738,6 @@ supabase.auth
         maintenanceRows = [];
 
       }
-
 
       render();
 
