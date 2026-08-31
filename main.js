@@ -1080,6 +1080,245 @@ function renderTrendChart(data) {
   `;
 }
 
+
+/* =========================================================
+   EVALUACIÓN AUTOMÁTICA DE KPI - QUIMFLUX
+   SOLO LECTURA: no modifica registros ni otros módulos.
+========================================================= */
+
+function buildKpiEvaluation(metrics) {
+  const items = [];
+
+  const add = (nombre, valor, meta, invert, revisar, acciones) => {
+    if (valor === null || !Number.isFinite(Number(valor))) return;
+
+    const v = Number(valor);
+    const t = Number(meta);
+    const critical = invert ? v > t * 1.5 : v < t * 0.85;
+    const warn = invert ? v > t : v < t;
+
+    if (critical || warn) {
+      items.push({
+        nombre,
+        valor: v,
+        meta: t,
+        nivel: critical ? 'critical' : 'warn',
+        revisar,
+        acciones
+      });
+    }
+  };
+
+  add(
+    'Cumplimiento',
+    metrics.cumplimiento,
+    metas.cumplimiento,
+    false,
+    'Programa de producción, capacidad disponible, horas de parada, disponibilidad de materia prima y cobertura de personal.',
+    'Comparar programado vs producido por turno/producto e identificar dónde se pierde producción.'
+  );
+
+  add(
+    'Yield',
+    metrics.yieldRate,
+    metas.yield,
+    false,
+    'Consumo de materia prima, merma, reproceso, dosificación y pérdidas durante el proceso.',
+    'Identificar el producto y turno con menor rendimiento y determinar el punto donde se genera la pérdida.'
+  );
+
+  add(
+    'Merma',
+    metrics.merma,
+    metas.merma,
+    true,
+    'Pérdidas de materia prima, proceso, manipulación, equipos, reproceso y producto rechazado.',
+    'Separar la merma por producto/turno y registrar la causa principal antes de aplicar una acción correctiva.'
+  );
+
+  add(
+    'Disponibilidad',
+    metrics.disponibilidad,
+    metas.disponibilidad,
+    false,
+    'Horas de parada y registros de mantenimiento, especialmente mantenimientos correctivos.',
+    'Identificar los equipos con mayor tiempo detenido y priorizar las causas que generan más horas de parada.'
+  );
+
+  add(
+    'Asistencia',
+    metrics.asistencia,
+    metas.asistencia,
+    false,
+    'Personal programado, personal presente, permisos, vacaciones, faltas y cobertura del turno.',
+    'Revisar la cobertura real de cada turno y anticipar reemplazos cuando existan ausencias programadas.'
+  );
+
+  add(
+    'Rechazo de calidad',
+    metrics.rechazo,
+    metas.rechazo,
+    true,
+    'Causas de rechazo, producto afectado, turno, reproceso y no conformidades.',
+    'Clasificar los rechazos por causa y atacar primero la causa que representa mayor pérdida.'
+  );
+
+  add(
+    'OEE',
+    metrics.oee,
+    0.80,
+    false,
+    'Disponibilidad, cumplimiento/rendimiento y rechazo/calidad.',
+    'Atacar primero el componente del OEE que esté más alejado de su meta; no intervenir todos los factores a la vez.'
+  );
+
+  add(
+    'OTIF',
+    metrics.otif,
+    metas.otif,
+    false,
+    'Producción disponible, cumplimiento del programa, pedidos pendientes y despacho.',
+    'Identificar los pedidos fuera de tiempo y determinar si el origen está en producción, inventario o despacho.'
+  );
+
+  const priority = { critical: 1, warn: 2 };
+  items.sort((a, b) => priority[a.nivel] - priority[b.nivel]);
+
+  return items;
+}
+
+function renderKpiEvaluation(metrics) {
+  const items = buildKpiEvaluation(metrics);
+
+  if (!items.length) {
+    return `
+      <section class="panel">
+        <div class="titleRow">
+          <div>
+            <h2>🧠 Evaluación de desempeño</h2>
+            <p>
+              El motor de evaluación no detecta desviaciones relevantes
+              en los KPI con datos disponibles.
+            </p>
+          </div>
+          <span class="badge ok">DESEMPEÑO DENTRO DE META</span>
+        </div>
+
+        <div class="empty">
+          Mantener el seguimiento periódico y continuar registrando
+          datos por turno para detectar cambios oportunamente.
+        </div>
+      </section>
+    `;
+  }
+
+  const critical = items.filter(x => x.nivel === 'critical').length;
+  const warn = items.filter(x => x.nivel === 'warn').length;
+
+  return `
+    <section class="panel">
+      <div class="titleRow">
+        <div>
+          <h2>🧠 Evaluación de desempeño y acciones</h2>
+          <p>
+            Diagnóstico automático basado en los KPI registrados.
+            Las recomendaciones son una guía para investigar la causa.
+          </p>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${
+            critical
+              ? `<span class="badge critical">${critical} PRIORIDAD${critical > 1 ? 'ES' : ''} ALTA${critical > 1 ? 'S' : ''}</span>`
+              : ''
+          }
+          ${
+            warn
+              ? `<span class="badge warn">${warn} PARA REVISAR</span>`
+              : ''
+          }
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        ${items.map(item => `
+          <div style="
+            border:1px solid #ddd;
+            border-radius:12px;
+            padding:16px;
+          ">
+            <div class="titleRow">
+              <div>
+                <strong style="font-size:17px;">
+                  ${esc(item.nombre)}
+                </strong>
+                <div style="margin-top:5px;">
+                  <span class="badge ${item.nivel}">
+                    ${item.nivel === 'critical' ? 'PRIORIDAD ALTA' : 'REVISAR'}
+                  </span>
+                </div>
+              </div>
+
+              <div style="text-align:right;">
+                <strong>${pct(item.valor)}</strong>
+                <br>
+                <small>Meta ${pct(item.meta)}</small>
+              </div>
+            </div>
+
+            <div style="
+              display:grid;
+              grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+              gap:12px;
+              margin-top:14px;
+            ">
+              <div>
+                <small><b>¿Qué significa?</b></small>
+                <p style="margin:5px 0 0;">
+                  ${esc(
+                    item.nombre === 'Merma'
+                      ? 'La pérdida de materia prima está por encima del nivel objetivo.'
+                      : item.nombre === 'Rechazo de calidad'
+                        ? 'La proporción de unidades rechazadas supera el nivel objetivo.'
+                        : 'El indicador se encuentra por debajo de la meta establecida.'
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <small><b>Aspectos a revisar</b></small>
+                <p style="margin:5px 0 0;">
+                  ${esc(item.revisar)}
+                </p>
+              </div>
+
+              <div>
+                <small><b>Acción recomendada</b></small>
+                <p style="margin:5px 0 0;">
+                  ${esc(item.acciones)}
+                </p>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="
+        margin-top:16px;
+        padding:14px;
+        border-radius:10px;
+        border:1px dashed #aaa;
+      ">
+        <strong>Regla de trabajo QUIMFLUX:</strong>
+        primero identificar el KPI crítico, después investigar la causa
+        con los datos de Producción, Mantenimiento, Inventario, Personal,
+        Calidad y SSOMA, y finalmente registrar la acción correctiva.
+      </div>
+    </section>
+  `;
+}
+
+
 function renderDashboard() {
   const metrics = aggregateMetrics(rows);
   const latest = metrics.d.length ? metrics.d[metrics.d.length - 1] : null;
@@ -1133,6 +1372,8 @@ function renderDashboard() {
       </div>
 
       ${renderAlerts()}
+
+      ${renderKpiEvaluation(metrics)}
 
       ${latest ? `
         <section class="panel">
