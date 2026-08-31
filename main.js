@@ -7,43 +7,42 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   'sb_publishable_sULeDyfJ1l5xfuVhFgXRKA_bsim9qSe';
 
-const supabase =
-  createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-const app =
-  document.getElementById('app');
+const app = document.getElementById('app');
 
 const fields = [
-  ['fecha','Fecha','date'],
-  ['turno','Turno','select'],
-  ['producto','Producto','text'],
-  ['programada','Cantidad programada','number'],
-  ['producida','Cantidad producida','number'],
-  ['mp','Materia prima consumida','number'],
-  ['merma','Merma','number'],
-  ['horas_turno','Horas de turno','number'],
-  ['horas_paradas','Horas de parada','number'],
-  ['personal_programado','Personal programado','number'],
-  ['personal_presente','Personal presente','number'],
-  ['rechazadas','Unidades rechazadas','number'],
-  ['costo_produccion','Costo producción (S/)','number'],
-  ['energia','Energía (kWh)','number'],
-  ['costo_mantenimiento','Costo mantenimiento (S/)','number'],
-  ['incidentes','Incidentes SSOMA','number'],
-  ['pedidos_programados','Pedidos programados','number'],
-  ['pedidos_tiempo','Pedidos a tiempo','number'],
-  ['reproceso','Reproceso','number'],
-  ['no_conformidades','No conformidades','number'],
-  ['observaciones','Observaciones','textarea']
+  ['fecha', 'Fecha', 'date'],
+  ['turno', 'Turno', 'select'],
+  ['producto', 'Producto', 'text'],
+  ['programada', 'Cantidad programada', 'number'],
+  ['producida', 'Cantidad producida', 'number'],
+  ['mp', 'Materia prima consumida', 'number'],
+  ['merma', 'Merma', 'number'],
+
+  ['horas_turno', 'Horas de turno', 'number'],
+  ['horas_paradas', 'Horas de parada', 'number'],
+  ['personal_programado', 'Personal programado', 'number'],
+  ['personal_presente', 'Personal presente', 'number'],
+  ['rechazadas', 'Unidades rechazadas', 'number'],
+
+  ['costo_produccion', 'Costo producción (S/)', 'number'],
+  ['energia', 'Energía (kWh)', 'number'],
+  ['costo_mantenimiento', 'Costo mantenimiento (S/)', 'number'],
+
+  ['incidentes', 'Incidentes SSOMA', 'number'],
+  ['pedidos_programados', 'Pedidos programados', 'number'],
+  ['pedidos_tiempo', 'Pedidos a tiempo', 'number'],
+  ['reproceso', 'Reproceso', 'number'],
+  ['no_conformidades', 'No conformidades', 'number'],
+  ['observaciones', 'Observaciones', 'textarea']
 ];
 
 const today =
-  new Date()
-    .toISOString()
-    .slice(0,10);
+  new Date().toISOString().slice(0, 10);
 
 let user = null;
 let rows = [];
@@ -61,49 +60,36 @@ let metas = {
 };
 
 
-/* =====================================================
+/* =========================================================
    UTILIDADES
-===================================================== */
+========================================================= */
 
 function esc(v = '') {
-
   return String(v).replace(
     /[&<>"']/g,
     c => ({
-      '&':'&amp;',
-      '<':'&lt;',
-      '>':'&gt;',
-      '"':'&quot;',
-      "'":'&#039;'
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
     }[c])
   );
-
 }
-
 
 function n(v) {
-
   const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : 0;
-
+  return Number.isFinite(x) ? x : 0;
 }
-
 
 function pct(v) {
-
-  return (
-    n(v) * 100
-  ).toFixed(1) + '%';
-
+  return (n(v) * 100).toFixed(1) + '%';
 }
 
 
-/* =====================================================
-   KPI
-===================================================== */
+/* =========================================================
+   CÁLCULO DE KPI
+========================================================= */
 
 function derive(r) {
 
@@ -114,20 +100,13 @@ function derive(r) {
   const h = n(r.horas_turno);
   const stop = n(r.horas_paradas);
 
-  const pp =
-    n(r.personal_programado);
+  const pp = n(r.personal_programado);
+  const pa = n(r.personal_presente);
 
-  const pa =
-    n(r.personal_presente);
+  const rej = n(r.rechazadas);
 
-  const rej =
-    n(r.rechazadas);
-
-  const pedidos =
-    n(r.pedidos_programados);
-
-  const at =
-    n(r.pedidos_tiempo);
+  const pedidos = n(r.pedidos_programados);
+  const at = n(r.pedidos_tiempo);
 
   const merma =
     mp ? n(r.merma) / mp : 0;
@@ -137,10 +116,7 @@ function derive(r) {
 
   const disponibilidad =
     h
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
+      ? Math.max(0, (h - stop) / h)
       : 0;
 
   const asistencia =
@@ -149,66 +125,55 @@ function derive(r) {
   const rechazo =
     q ? rej / q : 0;
 
+  const cumplimiento =
+    p ? q / p : 0;
+
+  const otif =
+    pedidos ? at / pedidos : 0;
+
+  const oee =
+    disponibilidad *
+    cumplimiento *
+    Math.max(0, 1 - rechazo);
+
+  const costoUnitario =
+    q
+      ? n(r.costo_produccion) / q
+      : 0;
+
+  const energiaUnit =
+    q
+      ? n(r.energia) / q
+      : 0;
+
   return {
-
     ...r,
-
-    cumplimiento:
-      p ? q / p : 0,
-
+    cumplimiento,
     merma,
-
     yieldRate,
-
     disponibilidad,
-
     asistencia,
-
     rechazo,
-
-    oee:
-      disponibilidad *
-      yieldRate *
-      Math.max(
-        0,
-        1 - rechazo
-      ),
-
-    otif:
-      pedidos
-        ? at / pedidos
-        : 0,
-
-    costoUnitario:
-      q
-        ? n(r.costo_produccion) / q
-        : 0,
-
-    energiaUnit:
-      q
-        ? n(r.energia) / q
-        : 0
-
+    oee,
+    otif,
+    costoUnitario,
+    energiaUnit
   };
-
 }
 
 
-/* =====================================================
+/* =========================================================
    REGISTRO VACÍO
-===================================================== */
+========================================================= */
 
 function empty() {
 
   return {
-
     fecha: today,
     turno: 'Mañana',
     producto: '',
-
     programada: 0,
     producida: 0,
-
     mp: 0,
     merma: 0,
 
@@ -233,20 +198,17 @@ function empty() {
     no_conformidades: 0,
 
     observaciones: ''
-
   };
-
 }
 
 
-/* =====================================================
-   PANTALLA DE LOGIN
-===================================================== */
+/* =========================================================
+   LOGIN
+========================================================= */
 
-function renderAuth(message = '') {
+function renderAuth() {
 
   app.innerHTML = `
-
     <div class="auth">
 
       <div class="authCard">
@@ -263,16 +225,6 @@ function renderAuth(message = '') {
           Inicia sesión para acceder al dashboard.
         </p>
 
-        ${
-          message
-            ? `
-              <div class="msg">
-                ${esc(message)}
-              </div>
-            `
-            : ''
-        }
-
         <form id="authForm">
 
           <label>
@@ -286,7 +238,6 @@ function renderAuth(message = '') {
             >
           </label>
 
-
           <label>
             Contraseña
 
@@ -299,29 +250,22 @@ function renderAuth(message = '') {
             >
           </label>
 
-
           <div
             id="authMsg"
             class="msg">
           </div>
 
-
           <button
             class="primary"
             type="submit">
-
             Entrar
-
           </button>
-
 
           <button
             class="link"
             id="signup"
             type="button">
-
             Crear una cuenta
-
           </button>
 
         </form>
@@ -329,177 +273,103 @@ function renderAuth(message = '') {
       </div>
 
     </div>
-
   `;
 
+  const emailInput =
+    document.getElementById('email');
 
-  const form =
-    document.getElementById(
-      'authForm'
-    );
+  const passwordInput =
+    document.getElementById('password');
 
-
-  form.onsubmit =
-    async e => {
+  document
+    .getElementById('authForm')
+    .onsubmit = async e => {
 
       e.preventDefault();
 
       const msg =
-        document.getElementById(
-          'authMsg'
-        );
-
-      const email =
-        document.getElementById(
-          'email'
-        ).value.trim();
-
-      const password =
-        document.getElementById(
-          'password'
-        ).value;
+        document.getElementById('authMsg');
 
       msg.textContent =
-        'Conectando con Supabase…';
+        'Procesando…';
 
+      const {
+        data,
+        error
+      } =
+        await supabase.auth.signInWithPassword({
+          email: emailInput.value.trim(),
+          password: passwordInput.value
+        });
 
-      try {
-
-        const {
-          data,
-          error
-        } =
-          await supabase.auth
-            .signInWithPassword({
-              email,
-              password
-            });
-
-
-        if (error) {
-
-          msg.textContent =
-            'Supabase: ' +
-            error.message;
-
-          return;
-
-        }
-
-
-        user =
-          data.user;
-
-        await load();
-
-        render();
-
-      }
-
-      catch (error) {
+      if (error) {
 
         msg.textContent =
-          'Error de conexión: ' +
           error.message;
 
+        return;
       }
 
+      user = data.user;
+
+      await load();
+
+      render();
     };
 
 
   document
     .getElementById('signup')
-    .onclick =
-      async () => {
+    .onclick = async () => {
 
-        const msg =
-          document.getElementById(
-            'authMsg'
-          );
+      const msg =
+        document.getElementById('authMsg');
 
-        const email =
-          document.getElementById(
-            'email'
-          ).value.trim();
+      const email =
+        emailInput.value.trim();
 
-        const password =
-          document.getElementById(
-            'password'
-          ).value;
+      const password =
+        passwordInput.value;
 
-
-        if (!email || !password) {
-
-          msg.textContent =
-            'Ingresa correo y contraseña.';
-
-          return;
-
-        }
-
+      if (!email || !password) {
 
         msg.textContent =
-          'Creando cuenta…';
+          'Ingresa correo y contraseña.';
 
+        return;
+      }
 
-        try {
+      msg.textContent =
+        'Creando cuenta…';
 
-          const {
-            data,
-            error
-          } =
-            await supabase.auth
-              .signUp({
-                email,
-                password
-              });
+      const {
+        data,
+        error
+      } =
+        await supabase.auth.signUp({
+          email,
+          password
+        });
 
+      if (error) {
 
-          if (error) {
+        msg.textContent =
+          error.message;
 
-            msg.textContent =
-              error.message;
+        return;
+      }
 
-            return;
-
-          }
-
-
-          if (data.session) {
-
-            user =
-              data.user;
-
-            await load();
-
-            render();
-
-          }
-
-          else {
-
-            msg.textContent =
-              'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.';
-
-          }
-
-        }
-
-        catch (error) {
-
-          msg.textContent =
-            error.message;
-
-        }
-
-      };
-
+      msg.textContent =
+        data.session
+          ? 'Cuenta creada correctamente.'
+          : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
+    };
 }
 
 
-/* =====================================================
-   APP PRINCIPAL
-===================================================== */
+/* =========================================================
+   RENDER PRINCIPAL
+========================================================= */
 
 function render() {
 
@@ -508,45 +378,34 @@ function render() {
     renderAuth();
 
     return;
-
   }
 
-
   const nav = [
-
-    ['dashboard','Dashboard'],
-    ['registro','Registro Diario'],
-    ['resumen','Resumen Ejecutivo'],
-    ['costos','Costos'],
-    ['mantenimiento','Mantenimiento'],
-    ['inventario','Inventario'],
-    ['personal','Personal'],
-    ['ssoma','SSOMA']
-
+    ['dashboard', 'Dashboard'],
+    ['registro', 'Registro Diario'],
+    ['resumen', 'Resumen Ejecutivo'],
+    ['costos', 'Costos'],
+    ['mantenimiento', 'Mantenimiento'],
+    ['inventario', 'Inventario'],
+    ['personal', 'Personal'],
+    ['ssoma', 'SSOMA']
   ];
-
 
   app.innerHTML = `
 
     <header>
 
       <div>
-
         <b>QUIMFLUX</b>
-
         <span>
           · Administrador de Planta V4
         </span>
-
       </div>
-
 
       <button
         id="logout"
         class="logout">
-
         Salir
-
       </button>
 
     </header>
@@ -558,14 +417,8 @@ function render() {
 
         <button
           data-tab="${x[0]}"
-          class="${
-            tab === x[0]
-              ? 'active'
-              : ''
-          }">
-
+          class="${tab === x[0] ? 'active' : ''}">
           ${x[1]}
-
         </button>
 
       `).join('')}
@@ -574,75 +427,57 @@ function render() {
 
 
     <div id="content"></div>
-
   `;
 
 
   document
-    .querySelectorAll(
-      'nav button'
-    )
+    .querySelectorAll('nav button')
     .forEach(button => {
 
-      button.onclick =
-        () => {
+      button.onclick = () => {
 
-          tab =
-            button.dataset.tab;
+        tab =
+          button.dataset.tab;
 
-          render();
-
-        };
-
+        render();
+      };
     });
 
 
   document
     .getElementById('logout')
-    .onclick =
-      async () => {
+    .onclick = async () => {
 
-        await supabase.auth
-          .signOut();
+      await supabase.auth.signOut();
 
-        user = null;
-        rows = [];
-        tab = 'dashboard';
+      user = null;
+      rows = [];
 
-        render();
-
-      };
+      render();
+    };
 
 
   if (tab === 'dashboard') {
 
     renderDashboard();
 
-  }
-
-  else if (tab === 'registro') {
+  } else if (tab === 'registro') {
 
     renderForm();
 
-  }
-
-  else {
+  } else {
 
     renderPlaceholder(
-      nav.find(
-        x => x[0] === tab
-      )?.[1] ||
-      'QUIMFLUX'
+      nav.find(x => x[0] === tab)?.[1]
+      || 'QUIMFLUX'
     );
-
   }
-
 }
 
 
-/* =====================================================
+/* =========================================================
    DASHBOARD
-===================================================== */
+========================================================= */
 
 function renderDashboard() {
 
@@ -650,63 +485,61 @@ function renderDashboard() {
     rows.map(derive);
 
 
-  const sums =
-    key =>
-      d.reduce(
-        (s,r) =>
-          s + n(r[key]),
-        0
-      );
+  const sum = key =>
+    d.reduce(
+      (s, r) => s + n(r[key]),
+      0
+    );
 
 
   const programada =
-    sums('programada');
+    sum('programada');
 
   const producida =
-    sums('producida');
+    sum('producida');
 
   const mp =
-    sums('mp');
+    sum('mp');
+
+  const merma =
+    sum('merma');
 
   const horas =
-    sums('horas_turno');
+    sum('horas_turno');
 
   const paradas =
-    sums('horas_paradas');
+    sum('horas_paradas');
 
   const personalProgramado =
-    sums('personal_programado');
+    sum('personal_programado');
 
   const personalPresente =
-    sums('personal_presente');
+    sum('personal_presente');
 
   const rechazadas =
-    sums('rechazadas');
+    sum('rechazadas');
 
   const pedidos =
-    sums('pedidos_programados');
+    sum('pedidos_programados');
 
   const pedidosTiempo =
-    sums('pedidos_tiempo');
+    sum('pedidos_tiempo');
 
 
-  const cum =
+  const cumplimiento =
     programada
       ? producida / programada
       : 0;
-
 
   const yieldRate =
     mp
       ? producida / mp
       : 0;
 
-
-  const merma =
+  const mermaRate =
     mp
-      ? sums('merma') / mp
+      ? merma / mp
       : 0;
-
 
   const disponibilidad =
     horas
@@ -716,19 +549,16 @@ function renderDashboard() {
         )
       : 0;
 
-
   const asistencia =
     personalProgramado
       ? personalPresente /
         personalProgramado
       : 0;
 
-
   const rechazo =
     producida
       ? rechazadas / producida
       : 0;
-
 
   const otif =
     pedidos
@@ -738,36 +568,28 @@ function renderDashboard() {
 
   const oee =
     disponibilidad *
-    yieldRate *
-    Math.max(
-      0,
-      1 - rechazo
-    );
+    cumplimiento *
+    Math.max(0, 1 - rechazo);
 
 
   const costo =
-    sums('costo_produccion');
-
+    sum('costo_produccion');
 
   const mantenimiento =
-    sums('costo_mantenimiento');
+    sum('costo_mantenimiento');
 
-
-  const unitario =
+  const costoUnitario =
     producida
       ? costo / producida
       : 0;
 
-
   const energia =
     producida
-      ? sums('energia') /
-        producida
+      ? sum('energia') / producida
       : 0;
 
-
   const incidentes =
-    sums('incidentes');
+    sum('incidentes');
 
 
   function status(
@@ -780,7 +602,6 @@ function renderDashboard() {
       invert
         ? value <= target
         : value >= target;
-
 
     const critical =
       invert
@@ -803,9 +624,7 @@ function renderDashboard() {
           : ok
             ? 'ok'
             : 'warn'
-
     };
-
   }
 
 
@@ -818,9 +637,9 @@ function renderDashboard() {
 
     [
       'Cumplimiento',
-      pct(cum),
+      pct(cumplimiento),
       status(
-        cum,
+        cumplimiento,
         metas.cumplimiento
       )
     ],
@@ -836,9 +655,9 @@ function renderDashboard() {
 
     [
       'Merma',
-      pct(merma),
+      pct(mermaRate),
       status(
-        merma,
+        mermaRate,
         metas.merma,
         true
       )
@@ -890,7 +709,7 @@ function renderDashboard() {
     [
       'Costo unitario',
       'S/ ' +
-      unitario.toFixed(3)
+      costoUnitario.toFixed(3)
     ],
 
     [
@@ -923,243 +742,232 @@ function renderDashboard() {
         true
       )
     ]
-
   ];
 
 
-  document
-    .getElementById('content')
-    .innerHTML = `
+  document.getElementById(
+    'content'
+  ).innerHTML = `
 
-      <main>
+    <main>
+
+      <div class="titleRow">
+
+        <div>
+
+          <h1>
+            Dashboard de Administración de Planta
+          </h1>
+
+          <p>
+            Datos sincronizados con Supabase ·
+            ${rows.length} registros
+          </p>
+
+        </div>
+
+        <span class="online">
+          ● EN LÍNEA
+        </span>
+
+      </div>
+
+
+      <div class="cards">
+
+        ${cards.map(c => `
+
+          <div class="card">
+
+            <small>
+              ${c[0]}
+            </small>
+
+            <strong>
+              ${c[1]}
+            </strong>
+
+            ${
+              c.length > 2
+                ? `
+                  <span
+                    class="badge ${c[2].cls}">
+                    ${c[2].label}
+                  </span>
+                `
+                : ''
+            }
+
+          </div>
+
+        `).join('')}
+
+      </div>
+
+
+      <section class="panel">
 
         <div class="titleRow">
 
           <div>
 
-            <h1>
-              Dashboard de Administración de Planta
-            </h1>
+            <h2>
+              Últimos registros
+            </h2>
 
             <p>
-              Datos sincronizados con Supabase ·
-              ${rows.length} registros
+              Desde aquí puedes eliminar registros.
             </p>
 
           </div>
 
-
-          <span class="online">
-            ● EN LÍNEA
-          </span>
-
         </div>
 
 
-        <div class="cards">
+        ${
+          d.length
 
-          ${cards.map(c => `
+            ? `
 
-            <div class="card">
+              <div class="tableWrap">
 
-              <small>
-                ${c[0]}
-              </small>
+                <table>
 
-              <strong>
-                ${c[1]}
-              </strong>
+                  <thead>
 
+                    <tr>
 
-              ${
-                c.length > 2
+                      <th>Fecha</th>
+                      <th>Turno</th>
+                      <th>Producto</th>
+                      <th>Programada</th>
+                      <th>Producida</th>
+                      <th>Merma</th>
+                      <th>OEE</th>
+                      <th>Acción</th>
 
-                  ? `
+                    </tr>
 
-                    <span
-                      class="badge ${c[2].cls}">
+                  </thead>
 
-                      ${c[2].label}
 
-                    </span>
+                  <tbody>
 
-                  `
+                    ${
+                      d
+                        .slice(-20)
+                        .reverse()
+                        .map(r => `
 
-                  : ''
+                          <tr>
 
-              }
+                            <td>
+                              ${esc(r.fecha)}
+                            </td>
 
-            </div>
+                            <td>
+                              ${esc(r.turno)}
+                            </td>
 
-          `).join('')}
+                            <td>
+                              ${esc(
+                                r.producto
+                              )}
+                            </td>
 
-        </div>
+                            <td>
+                              ${n(
+                                r.programada
+                              )}
+                            </td>
 
+                            <td>
+                              ${n(
+                                r.producida
+                              )}
+                            </td>
 
-        <section class="panel">
+                            <td>
+                              ${n(r.merma)}
+                            </td>
 
-          <div class="titleRow">
+                            <td>
+                              ${pct(r.oee)}
+                            </td>
 
-            <div>
+                            <td>
 
-              <h2>
-                Últimos registros
-              </h2>
+                              <button
+                                type="button"
+                                data-delete-id="${esc(r.id)}"
+                                style="
+                                  background:#7f1d1d;
+                                  color:#fff;
+                                  border:0;
+                                  border-radius:8px;
+                                  padding:7px 10px;
+                                  font-weight:600;
+                                  cursor:pointer;
+                                ">
+                                Eliminar
+                              </button>
 
-              <p>
-                Puedes eliminar registros desde aquí.
-              </p>
+                            </td>
 
-            </div>
+                          </tr>
 
-          </div>
+                        `)
+                        .join('')
+                    }
 
+                  </tbody>
 
-          ${
-            d.length
+                </table>
 
-              ? `
+              </div>
 
-                <div class="tableWrap">
+            `
 
-                  <table>
+            : `
 
-                    <thead>
+              <div class="empty">
 
-                      <tr>
+                Todavía no hay registros.
 
-                        <th>Fecha</th>
-                        <th>Turno</th>
-                        <th>Producto</th>
-                        <th>Programada</th>
-                        <th>Producida</th>
-                        <th>Merma</th>
-                        <th>OEE</th>
-                        <th>Acción</th>
+                Ve a
+                <b>Registro Diario</b>
+                para ingresar el primero.
 
-                      </tr>
+              </div>
 
-                    </thead>
+            `
+        }
 
+      </section>
 
-                    <tbody>
-
-                      ${
-                        d
-                          .slice(-20)
-                          .reverse()
-                          .map(r => `
-
-                            <tr>
-
-                              <td>
-                                ${esc(r.fecha)}
-                              </td>
-
-                              <td>
-                                ${esc(r.turno)}
-                              </td>
-
-                              <td>
-                                ${esc(r.producto)}
-                              </td>
-
-                              <td>
-                                ${n(r.programada)}
-                              </td>
-
-                              <td>
-                                ${n(r.producida)}
-                              </td>
-
-                              <td>
-                                ${n(r.merma)}
-                              </td>
-
-                              <td>
-                                ${pct(r.oee)}
-                              </td>
-
-                              <td>
-
-                                <button
-                                  type="button"
-                                  data-delete-id="${esc(r.id)}"
-                                  style="
-                                    background:#7f1d1d;
-                                    color:#fff;
-                                    border:0;
-                                    border-radius:8px;
-                                    padding:7px 10px;
-                                    font-weight:600;
-                                    cursor:pointer;
-                                  ">
-
-                                  Eliminar
-
-                                </button>
-
-                              </td>
-
-                            </tr>
-
-                          `)
-                          .join('')
-                      }
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-              `
-
-              : `
-
-                <div class="empty">
-
-                  Todavía no hay registros.
-
-                  Ve a
-                  <b>Registro Diario</b>
-                  para ingresar el primero.
-
-                </div>
-
-              `
-          }
-
-        </section>
-
-      </main>
-
-    `;
+    </main>
+  `;
 
 
   document
-    .querySelectorAll(
-      '[data-delete-id]'
-    )
+    .querySelectorAll('[data-delete-id]')
     .forEach(button => {
 
-      button.onclick =
-        () => {
+      button.onclick = () => {
 
-          deleteRecord(
-            button.dataset.deleteId
-          );
+        deleteRecord(
+          button.dataset.deleteId
+        );
 
-        };
+      };
 
     });
-
 }
 
 
-/* =====================================================
-   ELIMINAR
-===================================================== */
+/* =========================================================
+   ELIMINAR REGISTRO
+========================================================= */
 
 async function deleteRecord(id) {
 
@@ -1170,7 +978,6 @@ async function deleteRecord(id) {
     );
 
     return;
-
   }
 
 
@@ -1184,24 +991,20 @@ async function deleteRecord(id) {
 
   const detail =
     row
-
-      ? `${row.fecha} · ${row.turno} · ${
-          row.producto ||
-          'Sin producto'
-        }`
-
+      ? `${row.fecha} · ${row.turno} · ${row.producto || 'Sin producto'}`
       : 'este registro';
 
 
-  if (
-    !confirm(
+  const confirmed =
+    confirm(
       `¿Eliminar ${detail}?\n\n` +
       `Esta acción no se puede deshacer.`
-    )
-  ) {
+    );
+
+
+  if (!confirmed) {
 
     return;
-
   }
 
 
@@ -1209,246 +1012,216 @@ async function deleteRecord(id) {
     error
   } =
     await supabase
-
       .from('daily_records')
-
       .delete()
-
       .eq('id', id)
-
-      .eq(
-        'user_id',
-        user.id
-      );
+      .eq('user_id', user.id);
 
 
   if (error) {
 
     alert(
-      'No se pudo eliminar:\n\n' +
+      'No se pudo eliminar el registro:\n' +
       error.message
     );
 
     return;
-
   }
 
 
   await load();
 
   render();
-
 }
 
 
-/* =====================================================
-   FORMULARIO
-===================================================== */
+/* =========================================================
+   FORMULARIO REGISTRO DIARIO
+========================================================= */
 
 function renderForm() {
 
-  const r =
-    empty();
+  const r = empty();
 
 
-  document
-    .getElementById('content')
-    .innerHTML = `
+  document.getElementById(
+    'content'
+  ).innerHTML = `
 
-      <main>
+    <main>
 
-        <h1>
-          Registro Diario
-        </h1>
+      <h1>
+        Registro Diario
+      </h1>
 
-        <p>
-          Ingresa los datos del turno.
-        </p>
-
-
-        <form
-          id="daily"
-          class="formGrid">
+      <p>
+        Ingresa los datos del turno.
+        Los KPI se calculan automáticamente.
+      </p>
 
 
-          <section>
-
-            <h2>
-              Producción
-            </h2>
-
-            ${fields
-              .slice(0,7)
-              .map(
-                f => control(f,r)
-              )
-              .join('')}
-
-          </section>
+      <form
+        id="daily"
+        class="formGrid">
 
 
-          <section>
+        <section>
 
-            <h2>
-              Operación y personal
-            </h2>
+          <h2>
+            Producción
+          </h2>
 
-            ${fields
-              .slice(7,12)
-              .map(
-                f => control(f,r)
-              )
-              .join('')}
+          ${fields
+            .slice(0, 7)
+            .map(f => control(f, r))
+            .join('')}
 
-          </section>
+        </section>
 
 
-          <section>
+        <section>
 
-            <h2>
-              Costos y energía
-            </h2>
+          <h2>
+            Operación y personal
+          </h2>
 
-            ${fields
-              .slice(12,15)
-              .map(
-                f => control(f,r)
-              )
-              .join('')}
+          ${fields
+            .slice(7, 12)
+            .map(f => control(f, r))
+            .join('')}
 
-          </section>
+        </section>
 
 
-          <section>
+        <section>
 
-            <h2>
-              Despacho y SSOMA
-            </h2>
+          <h2>
+            Costos y energía
+          </h2>
 
-            ${fields
-              .slice(15)
-              .map(
-                f => control(f,r)
-              )
-              .join('')}
+          ${fields
+            .slice(12, 15)
+            .map(f => control(f, r))
+            .join('')}
 
-          </section>
+        </section>
 
 
-          <div
-            id="saveMsg"
-            class="msg full">
-          </div>
+        <section>
+
+          <h2>
+            Despacho y SSOMA
+          </h2>
+
+          ${fields
+            .slice(15)
+            .map(f => control(f, r))
+            .join('')}
+
+        </section>
 
 
-          <button
-            class="primary full"
-            type="submit">
-
-            Guardar registro diario
-
-          </button>
+        <div
+          id="saveMsg"
+          class="msg full">
+        </div>
 
 
-        </form>
+        <button
+          class="primary full"
+          type="submit">
 
-      </main>
+          Guardar registro diario
 
-    `;
-
-
-  document
-    .getElementById('daily')
-    .onsubmit =
-      async e => {
-
-        e.preventDefault();
+        </button>
 
 
-        const msg =
+      </form>
+
+    </main>
+  `;
+
+
+  document.getElementById(
+    'daily'
+  ).onsubmit = async e => {
+
+    e.preventDefault();
+
+
+    const msg =
+      document.getElementById(
+        'saveMsg'
+      );
+
+
+    const payload = {
+      user_id: user.id
+    };
+
+
+    fields.forEach(
+      ([key, , type]) => {
+
+        const el =
           document.getElementById(
-            'saveMsg'
+            'f_' + key
           );
 
 
-        const payload = {
-
-          user_id:
-            user.id
-
-        };
-
-
-        fields.forEach(
-          ([key,,type]) => {
-
-            const el =
-              document.getElementById(
-                'f_' + key
-              );
+        payload[key] =
+          type === 'number'
+            ? (
+                el.value === ''
+                  ? null
+                  : n(el.value)
+              )
+            : el.value;
+      }
+    );
 
 
-            payload[key] =
-              type === 'number'
-
-                ? (
-                    el.value === ''
-                      ? null
-                      : n(el.value)
-                  )
-
-                : el.value;
-
-          }
-        );
+    msg.textContent =
+      'Guardando…';
 
 
-        msg.textContent =
-          'Guardando…';
+    const {
+      error
+    } =
+      await supabase
+        .from('daily_records')
+        .insert(payload);
 
 
-        const {
-          error
-        } =
-          await supabase
+    if (error) {
 
-            .from('daily_records')
+      msg.textContent =
+        error.message;
 
-            .insert(payload);
-
-
-        if (error) {
-
-          msg.textContent =
-            error.message;
-
-          return;
-
-        }
+      return;
+    }
 
 
-        msg.textContent =
-          'Registro guardado correctamente.';
+    msg.textContent =
+      'Registro guardado correctamente.';
 
 
-        await load();
+    await load();
 
 
-        setTimeout(
-          () => render(),
-          400
-        );
-
-      };
-
+    setTimeout(
+      () => render(),
+      400
+    );
+  };
 }
 
 
-/* =====================================================
-   CONTROLES
-===================================================== */
+/* =========================================================
+   CONTROLES DEL FORMULARIO
+========================================================= */
 
-function control(f,r) {
+function control(f, r) {
 
   const [
     key,
@@ -1464,8 +1237,7 @@ function control(f,r) {
 
     input = `
 
-      <select
-        id="f_${key}">
+      <select id="f_${key}">
 
         <option>Mañana</option>
         <option>Tarde</option>
@@ -1475,9 +1247,7 @@ function control(f,r) {
 
     `;
 
-  }
-
-  else if (type === 'textarea') {
+  } else if (type === 'textarea') {
 
     input = `
 
@@ -1487,9 +1257,7 @@ function control(f,r) {
 
     `;
 
-  }
-
-  else {
+  } else {
 
     input = `
 
@@ -1497,15 +1265,12 @@ function control(f,r) {
         id="f_${key}"
         type="${type}"
         value="${esc(r[key])}"
-        ${
-          type === 'number'
-            ? 'step="any"'
-            : ''
-        }
+        ${type === 'number'
+          ? 'step="any"'
+          : ''}
       >
 
     `;
-
   }
 
 
@@ -1520,71 +1285,57 @@ function control(f,r) {
     </label>
 
   `;
-
 }
 
 
-/* =====================================================
-   MÓDULOS
-===================================================== */
+/* =========================================================
+   MÓDULOS PENDIENTES
+========================================================= */
 
 function renderPlaceholder(title) {
 
-  document
-    .getElementById('content')
-    .innerHTML = `
+  document.getElementById(
+    'content'
+  ).innerHTML = `
 
-      <main>
+    <main>
 
-        <h1>
-          ${esc(title)}
-        </h1>
-
-
-        <section class="panel">
-
-          <p>
-            Este módulo está preparado
-            para enlazarse con Supabase
-            en la siguiente fase.
-          </p>
+      <h1>
+        ${esc(title)}
+      </h1>
 
 
-          <span class="badge ok">
-            Módulo preparado
-          </span>
+      <section class="panel">
 
-        </section>
+        <p>
+          Este módulo está preparado para
+          enlazarse con su tabla correspondiente
+          de Supabase en la siguiente fase.
+        </p>
 
-      </main>
 
-    `;
+        <span class="badge ok">
+          Módulo preparado
+        </span>
 
+      </section>
+
+    </main>
+
+  `;
 }
 
 
-/* =====================================================
+/* =========================================================
    CARGAR DATOS
-===================================================== */
+========================================================= */
 
 async function load() {
 
-  if (!user) {
-
-    rows = [];
-
-    return;
-
-  }
-
-
-  const result =
+  const r =
     await supabase
-
       .from('daily_records')
-
       .select('*')
-
       .order(
         'fecha',
         {
@@ -1593,157 +1344,115 @@ async function load() {
       );
 
 
-  if (result.error) {
+  if (!r.error) {
+
+    rows =
+      r.data || [];
+
+  } else {
 
     console.error(
-      'daily_records:',
-      result.error
+      'Error cargando registros:',
+      r.error
     );
 
   }
 
-  else {
 
-    rows =
-      result.data || [];
-
-  }
-
-
-  const settings =
+  const s =
     await supabase
-
       .from('app_settings')
-
       .select('*')
-
       .limit(1)
-
       .maybeSingle();
 
 
-  if (settings.data) {
+  if (s.data) {
 
     metas = {
-
       ...metas,
 
       cumplimiento:
         n(
-          settings.data.meta_cumplimiento
+          s.data.meta_cumplimiento
         ) ||
         metas.cumplimiento,
 
       merma:
         n(
-          settings.data.meta_merma
+          s.data.meta_merma
         ) ||
         metas.merma,
 
       yield:
         n(
-          settings.data.meta_yield
+          s.data.meta_yield
         ) ||
         metas.yield,
 
       disponibilidad:
         n(
-          settings.data.meta_disponibilidad
+          s.data.meta_disponibilidad
         ) ||
         metas.disponibilidad,
 
       asistencia:
         n(
-          settings.data.meta_asistencia
+          s.data.meta_asistencia
         ) ||
         metas.asistencia,
 
       rechazo:
         n(
-          settings.data.meta_rechazo
+          s.data.meta_rechazo
         ) ||
         metas.rechazo,
 
       otif:
         n(
-          settings.data.meta_entregas
+          s.data.meta_entregas
         ) ||
         metas.otif,
 
       incidentes:
         n(
-          settings.data.meta_incidentes
+          s.data.meta_incidentes
         )
-
     };
-
   }
-
 }
 
 
-/* =====================================================
-   INICIO
-===================================================== */
+/* =========================================================
+   INICIO DE LA APLICACIÓN
+========================================================= */
 
-async function init() {
+supabase.auth
+  .getSession()
+  .then(
+    async ({ data }) => {
 
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabase.auth
-        .getSession();
+      user =
+        data.session?.user ||
+        null;
 
 
-    if (error) {
+      if (user) {
 
-      renderAuth(
-        'Supabase: ' +
-        error.message
-      );
+        await load();
 
-      return;
+      }
+
+
+      render();
 
     }
+  );
 
 
-    user =
-      data.session?.user ||
-      null;
-
-
-    if (user) {
-
-      await load();
-
-    }
-
-
-    render();
-
-  }
-
-  catch (error) {
-
-    renderAuth(
-      'Error conectando con Supabase: ' +
-      error.message
-    );
-
-  }
-
-}
-
-
-init();
-
-
-/* =====================================================
+/* =========================================================
    CAMBIOS DE SESIÓN
-===================================================== */
+========================================================= */
 
 supabase.auth
   .onAuthStateChange(
@@ -1752,14 +1461,6 @@ supabase.auth
       user =
         session?.user ||
         null;
-
-
-      if (!user) {
-
-        rows = [];
-
-      }
-
 
       render();
 
