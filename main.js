@@ -36,7 +36,6 @@ let inventoryRows = [];
 let ssomaRows = [];
 let personalRows = [];
 let novedadesRows = [];
-let selectedPersonalDni = 'TODOS';
 let maintenanceRows = [];
 
 let tab = 'dashboard';
@@ -45,10 +44,6 @@ let editingInventoryId = null;
 let editingSsomaId = null;
 let editingPersonalId = null;
 let editingMaintenanceId = null;
-let inventoryView = 'registro';
-let inventorySearch = '';
-let inventorySearchField = 'todos';
-let editingDailyId = null;
 
 /* =========================================================
    METAS
@@ -97,6 +92,46 @@ function pct(v) {
 function msg(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+
+/* =========================================================
+   SSOMA - INDICADORES
+   Fuente oficial: ssoma_incidents.
+   Para el indicador de días se consideran Accidente e Incidente.
+========================================================= */
+
+function getSsomaStats() {
+  const eventos = Array.isArray(ssomaRows) ? ssomaRows : [];
+
+  const accidentesIncidentes = eventos.filter(r => {
+    const tipo = String(r.tipo || '').trim().toLowerCase();
+    return tipo === 'accidente' || tipo === 'incidente';
+  });
+
+  const fechasValidas = accidentesIncidentes
+    .map(r => String(r.fecha || '').slice(0, 10))
+    .filter(fecha => /^\d{4}-\d{2}-\d{2}$/.test(fecha))
+    .sort();
+
+  const ultimaFecha = fechasValidas.length
+    ? fechasValidas[fechasValidas.length - 1]
+    : null;
+
+  let diasSinAccidenteIncidente = null;
+
+  if (ultimaFecha) {
+    const hoy = new Date(`${today}T00:00:00`);
+    const ultimo = new Date(`${ultimaFecha}T00:00:00`);
+    const diferencia = hoy.getTime() - ultimo.getTime();
+    diasSinAccidenteIncidente = Math.max(0, Math.floor(diferencia / 86400000));
+  }
+
+  return {
+    totalEventos: eventos.length,
+    totalAccidentesIncidentes: accidentesIncidentes.length,
+    ultimaFecha,
+    diasSinAccidenteIncidente
+  };
 }
 
 /* =========================================================
@@ -361,7 +396,6 @@ function render() {
     ssomaRows = [];
     personalRows = [];
     novedadesRows = [];
-    selectedPersonalDni = 'TODOS';
     maintenanceRows = [];
 
     render();
@@ -382,6 +416,8 @@ function render() {
       renderSsoma();
     } else if (tab === 'mantenimiento') {
       renderMaintenance();
+    } else if (tab === 'costos') {
+      renderCostosEnergia();
     } else {
       renderPlaceholder(
         nav.find(x => x[0] === tab)?.[1] || 'QUIMFLUX'
@@ -638,15 +674,21 @@ function getAlerts() {
       });
     }
 
-    const incidentes = sum('incidentes');
+  }
 
-    if (incidentes > metas.incidentes) {
-      alerts.push({
-        nivel: incidentes >= 2 ? 'critical' : 'warn',
-        titulo: 'Incidentes SSOMA registrados',
-        detalle: `${incidentes} incidente(s) · Meta ${metas.incidentes}`
-      });
-    }
+  /* -------------------------------------------------------
+     SSOMA - FUENTE OFICIAL DE INCIDENTES
+     Se evalúa independientemente de los datos operativos.
+  ------------------------------------------------------- */
+  const ssomaStats = getSsomaStats();
+  const incidentes = ssomaStats.totalEventos;
+
+  if (incidentes > metas.incidentes) {
+    alerts.push({
+      nivel: incidentes >= 2 ? 'critical' : 'warn',
+      titulo: 'Incidentes SSOMA registrados',
+      detalle: `${incidentes} evento(s) · Meta ${metas.incidentes}`
+    });
   }
 
   /* -------------------------------------------------------
@@ -894,7 +936,8 @@ function aggregateMetrics(data, useMaintenance = true) {
   const pedidosTiempo = sum('pedidos_tiempo');
   const costo = sum('costo_produccion');
   const energiaTotal = sum('energia');
-  const incidentes = sum('incidentes');
+  // INCIDENTES SSOMA: fuente oficial ssoma_incidents.
+  const incidentes = Array.isArray(ssomaRows) ? ssomaRows.length : 0;
 
   const cumplimiento = programada > 0 ? producida / programada : null;
   const yieldRate = mp > 0 ? producida / mp : null;
@@ -1080,245 +1123,6 @@ function renderTrendChart(data) {
   `;
 }
 
-
-/* =========================================================
-   EVALUACIÓN AUTOMÁTICA DE KPI - QUIMFLUX
-   SOLO LECTURA: no modifica registros ni otros módulos.
-========================================================= */
-
-function buildKpiEvaluation(metrics) {
-  const items = [];
-
-  const add = (nombre, valor, meta, invert, revisar, acciones) => {
-    if (valor === null || !Number.isFinite(Number(valor))) return;
-
-    const v = Number(valor);
-    const t = Number(meta);
-    const critical = invert ? v > t * 1.5 : v < t * 0.85;
-    const warn = invert ? v > t : v < t;
-
-    if (critical || warn) {
-      items.push({
-        nombre,
-        valor: v,
-        meta: t,
-        nivel: critical ? 'critical' : 'warn',
-        revisar,
-        acciones
-      });
-    }
-  };
-
-  add(
-    'Cumplimiento',
-    metrics.cumplimiento,
-    metas.cumplimiento,
-    false,
-    'Programa de producción, capacidad disponible, horas de parada, disponibilidad de materia prima y cobertura de personal.',
-    'Comparar programado vs producido por turno/producto e identificar dónde se pierde producción.'
-  );
-
-  add(
-    'Yield',
-    metrics.yieldRate,
-    metas.yield,
-    false,
-    'Consumo de materia prima, merma, reproceso, dosificación y pérdidas durante el proceso.',
-    'Identificar el producto y turno con menor rendimiento y determinar el punto donde se genera la pérdida.'
-  );
-
-  add(
-    'Merma',
-    metrics.merma,
-    metas.merma,
-    true,
-    'Pérdidas de materia prima, proceso, manipulación, equipos, reproceso y producto rechazado.',
-    'Separar la merma por producto/turno y registrar la causa principal antes de aplicar una acción correctiva.'
-  );
-
-  add(
-    'Disponibilidad',
-    metrics.disponibilidad,
-    metas.disponibilidad,
-    false,
-    'Horas de parada y registros de mantenimiento, especialmente mantenimientos correctivos.',
-    'Identificar los equipos con mayor tiempo detenido y priorizar las causas que generan más horas de parada.'
-  );
-
-  add(
-    'Asistencia',
-    metrics.asistencia,
-    metas.asistencia,
-    false,
-    'Personal programado, personal presente, permisos, vacaciones, faltas y cobertura del turno.',
-    'Revisar la cobertura real de cada turno y anticipar reemplazos cuando existan ausencias programadas.'
-  );
-
-  add(
-    'Rechazo de calidad',
-    metrics.rechazo,
-    metas.rechazo,
-    true,
-    'Causas de rechazo, producto afectado, turno, reproceso y no conformidades.',
-    'Clasificar los rechazos por causa y atacar primero la causa que representa mayor pérdida.'
-  );
-
-  add(
-    'OEE',
-    metrics.oee,
-    0.80,
-    false,
-    'Disponibilidad, cumplimiento/rendimiento y rechazo/calidad.',
-    'Atacar primero el componente del OEE que esté más alejado de su meta; no intervenir todos los factores a la vez.'
-  );
-
-  add(
-    'OTIF',
-    metrics.otif,
-    metas.otif,
-    false,
-    'Producción disponible, cumplimiento del programa, pedidos pendientes y despacho.',
-    'Identificar los pedidos fuera de tiempo y determinar si el origen está en producción, inventario o despacho.'
-  );
-
-  const priority = { critical: 1, warn: 2 };
-  items.sort((a, b) => priority[a.nivel] - priority[b.nivel]);
-
-  return items;
-}
-
-function renderKpiEvaluation(metrics) {
-  const items = buildKpiEvaluation(metrics);
-
-  if (!items.length) {
-    return `
-      <section class="panel">
-        <div class="titleRow">
-          <div>
-            <h2>🧠 Evaluación de desempeño</h2>
-            <p>
-              El motor de evaluación no detecta desviaciones relevantes
-              en los KPI con datos disponibles.
-            </p>
-          </div>
-          <span class="badge ok">DESEMPEÑO DENTRO DE META</span>
-        </div>
-
-        <div class="empty">
-          Mantener el seguimiento periódico y continuar registrando
-          datos por turno para detectar cambios oportunamente.
-        </div>
-      </section>
-    `;
-  }
-
-  const critical = items.filter(x => x.nivel === 'critical').length;
-  const warn = items.filter(x => x.nivel === 'warn').length;
-
-  return `
-    <section class="panel">
-      <div class="titleRow">
-        <div>
-          <h2>🧠 Evaluación de desempeño y acciones</h2>
-          <p>
-            Diagnóstico automático basado en los KPI registrados.
-            Las recomendaciones son una guía para investigar la causa.
-          </p>
-        </div>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${
-            critical
-              ? `<span class="badge critical">${critical} PRIORIDAD${critical > 1 ? 'ES' : ''} ALTA${critical > 1 ? 'S' : ''}</span>`
-              : ''
-          }
-          ${
-            warn
-              ? `<span class="badge warn">${warn} PARA REVISAR</span>`
-              : ''
-          }
-        </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        ${items.map(item => `
-          <div style="
-            border:1px solid #ddd;
-            border-radius:12px;
-            padding:16px;
-          ">
-            <div class="titleRow">
-              <div>
-                <strong style="font-size:17px;">
-                  ${esc(item.nombre)}
-                </strong>
-                <div style="margin-top:5px;">
-                  <span class="badge ${item.nivel}">
-                    ${item.nivel === 'critical' ? 'PRIORIDAD ALTA' : 'REVISAR'}
-                  </span>
-                </div>
-              </div>
-
-              <div style="text-align:right;">
-                <strong>${pct(item.valor)}</strong>
-                <br>
-                <small>Meta ${pct(item.meta)}</small>
-              </div>
-            </div>
-
-            <div style="
-              display:grid;
-              grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-              gap:12px;
-              margin-top:14px;
-            ">
-              <div>
-                <small><b>¿Qué significa?</b></small>
-                <p style="margin:5px 0 0;">
-                  ${esc(
-                    item.nombre === 'Merma'
-                      ? 'La pérdida de materia prima está por encima del nivel objetivo.'
-                      : item.nombre === 'Rechazo de calidad'
-                        ? 'La proporción de unidades rechazadas supera el nivel objetivo.'
-                        : 'El indicador se encuentra por debajo de la meta establecida.'
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <small><b>Aspectos a revisar</b></small>
-                <p style="margin:5px 0 0;">
-                  ${esc(item.revisar)}
-                </p>
-              </div>
-
-              <div>
-                <small><b>Acción recomendada</b></small>
-                <p style="margin:5px 0 0;">
-                  ${esc(item.acciones)}
-                </p>
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div style="
-        margin-top:16px;
-        padding:14px;
-        border-radius:10px;
-        border:1px dashed #aaa;
-      ">
-        <strong>Regla de trabajo QUIMFLUX:</strong>
-        primero identificar el KPI crítico, después investigar la causa
-        con los datos de Producción, Mantenimiento, Inventario, Personal,
-        Calidad y SSOMA, y finalmente registrar la acción correctiva.
-      </div>
-    </section>
-  `;
-}
-
-
 function renderDashboard() {
   const metrics = aggregateMetrics(rows);
   const latest = metrics.d.length ? metrics.d[metrics.d.length - 1] : null;
@@ -1342,6 +1146,9 @@ function renderDashboard() {
     ['Entregas a tiempo', pct(metrics.otif), status(metrics.otif, metas.otif)],
     ['Incidentes SSOMA', String(metrics.incidentes), status(metrics.incidentes, metas.incidentes, true)]
   ];
+
+  const ssomaStats = getSsomaStats();
+  const diasSinAccidenteIncidente = ssomaStats.diasSinAccidenteIncidente;
 
   const trendCum = trendClass(trend.map(x => x.cumplimiento === null ? null : x.cumplimiento / 100));
   const trendYield = trendClass(trend.map(x => x.yieldRate === null ? null : x.yieldRate / 100));
@@ -1373,7 +1180,27 @@ function renderDashboard() {
 
       ${renderAlerts()}
 
-      ${renderKpiEvaluation(metrics)}
+      <section class="panel">
+        <h2>Seguridad: días sin accidente/incidente</h2>
+        <p>Indicador calculado automáticamente a partir de los registros oficiales de SSOMA.</p>
+        <div class="cards">
+          <div class="card">
+            <small>Días sin accidente/incidente</small>
+            <strong>${diasSinAccidenteIncidente === null ? 'SIN DATOS' : diasSinAccidenteIncidente}</strong>
+            <span class="badge ${diasSinAccidenteIncidente === null ? 'ok' : diasSinAccidenteIncidente === 0 ? 'critical' : 'ok'}">
+              ${diasSinAccidenteIncidente === null ? 'SIN REGISTROS' : diasSinAccidenteIncidente === 0 ? 'EVENTO HOY' : 'EN CONTROL'}
+            </span>
+          </div>
+          <div class="card">
+            <small>Último accidente/incidente</small>
+            <strong>${esc(ssomaStats.ultimaFecha || '—')}</strong>
+          </div>
+          <div class="card">
+            <small>Total eventos SSOMA</small>
+            <strong>${ssomaStats.totalEventos}</strong>
+          </div>
+        </div>
+      </section>
 
       ${latest ? `
         <section class="panel">
@@ -1458,12 +1285,7 @@ function renderDashboard() {
                     <td>${esc(r.fecha)}</td><td>${esc(r.turno)}</td><td>${esc(r.producto)}</td>
                     <td>${n(r.programada).toLocaleString()}</td><td>${n(r.producida).toLocaleString()}</td>
                     <td>${pct(r.merma)}</td><td>${pct(r.oee)}</td>
-                    <td style="min-width:150px;white-space:nowrap;">
-                      <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;">
-                        <button type="button" class="link" data-view-id="${esc(r.id)}" style="padding:6px 10px;font-size:12px;white-space:nowrap;">Visualizar</button>
-                        <button type="button" data-delete-id="${esc(r.id)}" style="padding:6px 10px;font-size:12px;white-space:nowrap;">Eliminar</button>
-                      </div>
-                    </td>
+                    <td><button type="button" data-delete-id="${esc(r.id)}">Eliminar</button></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1473,10 +1295,6 @@ function renderDashboard() {
       </section>
     </main>
   `;
-
-  document.querySelectorAll('[data-view-id]').forEach(button => {
-    button.onclick = () => viewDaily(button.dataset.viewId);
-  });
 
   document.querySelectorAll('[data-delete-id]').forEach(button => {
     button.onclick = () => deleteRecord(button.dataset.deleteId);
@@ -1526,21 +1344,16 @@ async function deleteRecord(id) {
    FORMULARIO DIARIO
 ========================================================= */
 
-function renderForm(existing = null) {
-  const r = existing ? { ...empty(), ...existing } : empty();
-  editingDailyId = existing ? existing.id : null;
+function renderForm() {
+  const r = empty();
 
   document.getElementById('content').innerHTML = `
     <main>
-      <div class="titleRow">
-        <div>
-          <h1>${editingDailyId ? 'Editar registro diario' : 'Registro Diario'}</h1>
-          <p>
-            ${editingDailyId ? 'Modifica los datos del turno. Los KPI se recalcularán automáticamente.' : 'Ingresa los datos del turno. Los KPI se calculan automáticamente.'}
-          </p>
-        </div>
-        <button id="backDaily" type="button" class="link">← Volver</button>
-      </div>
+      <h1>Registro Diario</h1>
+      <p>
+        Ingresa los datos del turno.
+        Los KPI se calculan automáticamente.
+      </p>
 
       <form id="daily" class="formGrid">
         <section>
@@ -1559,23 +1372,19 @@ function renderForm(existing = null) {
         </section>
 
         <section>
-          <h2>Despacho y SSOMA</h2>
+          <h2>Despacho y datos complementarios</h2>
+          <p><small>El indicador oficial de incidentes se obtiene del módulo SSOMA. Este campo diario se conserva como dato complementario histórico.</small></p>
           ${fields.slice(15).map(f => control(f, r)).join('')}
         </section>
 
         <div id="saveMsg" class="msg full"></div>
 
         <button class="primary full" type="submit">
-          ${editingDailyId ? 'Guardar cambios' : 'Guardar registro diario'}
+          Guardar registro diario
         </button>
       </form>
     </main>
   `;
-
-  document.getElementById('backDaily').onclick = () => {
-    editingDailyId = null;
-    render();
-  };
 
   document.getElementById('daily').onsubmit = async e => {
     e.preventDefault();
@@ -1596,33 +1405,21 @@ function renderForm(existing = null) {
 
     msg('saveMsg', 'Guardando…');
 
-    let result;
-
-    if (editingDailyId) {
-      result = await supabase
-        .from('daily_records')
-        .update(payload)
-        .eq('id', editingDailyId)
-        .eq('user_id', user.id);
-    } else {
-      result = await supabase
+    const { error } =
+      await supabase
         .from('daily_records')
         .insert(payload);
-    }
 
-    if (result.error) {
-      msg('saveMsg', result.error.message);
+    if (error) {
+      msg('saveMsg', error.message);
       return;
     }
 
     msg(
       'saveMsg',
-      editingDailyId
-        ? 'Registro actualizado correctamente.'
-        : 'Registro guardado correctamente.'
+      'Registro guardado correctamente.'
     );
 
-    editingDailyId = null;
     await load();
 
     setTimeout(() => render(), 500);
@@ -1637,21 +1434,21 @@ function control(f, r) {
   if (type === 'select') {
     input = `
       <select id="f_${key}">
-        <option ${r[key] === 'Mañana' ? 'selected' : ''}>Mañana</option>
-        <option ${r[key] === 'Tarde' ? 'selected' : ''}>Tarde</option>
-        <option ${r[key] === 'Noche' ? 'selected' : ''}>Noche</option>
+        <option>Mañana</option>
+        <option>Tarde</option>
+        <option>Noche</option>
       </select>
     `;
   } else if (type === 'textarea') {
     input = `
-      <textarea id="f_${key}">${esc(r[key] ?? '')}</textarea>
+      <textarea id="f_${key}"></textarea>
     `;
   } else {
     input = `
       <input
         id="f_${key}"
         type="${type}"
-        value="${esc(r[key] ?? '')}"
+        value="${esc(r[key])}"
         ${type === 'number' ? 'step="any"' : ''}
       >
     `;
@@ -1664,64 +1461,6 @@ function control(f, r) {
     </label>
   `;
 }
-
-/* =========================================================
-   VISUALIZAR / EDITAR REGISTRO DIARIO
-========================================================= */
-
-function viewDaily(id) {
-  const r = rows.find(x => String(x.id) === String(id));
-
-  if (!r) {
-    alert('No se encontró el registro diario.');
-    return;
-  }
-
-  const d = derive(r);
-
-  document.getElementById('content').innerHTML = `
-    <main>
-      <div class="titleRow">
-        <div>
-          <h1>Visualizar registro diario</h1>
-          <p>${esc(r.fecha)} · ${esc(r.turno)} · ${esc(r.producto || 'Sin producto')}</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button id="editDaily" class="primary" type="button" style="min-width:92px;">Editar</button>
-          <button id="backDailyView" type="button" style="min-width:92px;">Volver</button>
-        </div>
-      </div>
-
-      <section class="panel">
-        <h2>Datos del turno</h2>
-        <div class="tableWrap">
-          <table>
-            <tbody>
-              <tr><th>Fecha</th><td>${esc(r.fecha)}</td><th>Turno</th><td>${esc(r.turno)}</td></tr>
-              <tr><th>Producto</th><td>${esc(r.producto || '')}</td><th>Programada</th><td>${n(r.programada).toLocaleString()}</td></tr>
-              <tr><th>Producida</th><td>${n(r.producida).toLocaleString()}</td><th>Materia prima</th><td>${n(r.mp).toLocaleString()}</td></tr>
-              <tr><th>Merma</th><td>${pct(d.merma)}</td><th>Rechazo calidad</th><td>${pct(d.rechazo)}</td></tr>
-              <tr><th>Cumplimiento</th><td>${pct(d.cumplimiento)}</td><th>Yield</th><td>${pct(d.yieldRate)}</td></tr>
-              <tr><th>Disponibilidad</th><td>${pct(d.disponibilidad)}</td><th>OEE</th><td>${pct(d.oee)}</td></tr>
-              <tr><th>Asistencia</th><td>${pct(d.asistencia)}</td><th>OTIF</th><td>${pct(d.otif)}</td></tr>
-              <tr><th>Horas turno</th><td>${n(r.horas_turno).toFixed(2)}</td><th>Horas parada</th><td>${n(r.horas_paradas).toFixed(2)}</td></tr>
-              <tr><th>Personal programado</th><td>${n(r.personal_programado)}</td><th>Personal presente</th><td>${n(r.personal_presente)}</td></tr>
-              <tr><th>Costo producción</th><td>S/ ${n(r.costo_produccion).toLocaleString()}</td><th>Energía</th><td>${n(r.energia).toLocaleString()} kWh</td></tr>
-              <tr><th>Costo mantenimiento</th><td>S/ ${n(r.costo_mantenimiento).toLocaleString()}</td><th>Incidentes SSOMA</th><td>${n(r.incidentes)}</td></tr>
-              <tr><th>Pedidos programados</th><td>${n(r.pedidos_programados)}</td><th>Pedidos a tiempo</th><td>${n(r.pedidos_tiempo)}</td></tr>
-              <tr><th>Reproceso</th><td>${n(r.reproceso)}</td><th>No conformidades</th><td>${n(r.no_conformidades)}</td></tr>
-              <tr><th>Observaciones</th><td colspan="3">${esc(r.observaciones || '')}</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-  `;
-
-  document.getElementById('backDailyView').onclick = () => render();
-  document.getElementById('editDaily').onclick = () => renderForm(r);
-}
-
 
 /* =========================================================
    RESUMEN
@@ -2015,6 +1754,289 @@ function renderResumen() {
             <small>Incidentes SSOMA</small>
             <strong>${ssomaRows.length}</strong>
           </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+
+/* =========================================================
+   COSTOS Y ENERGÍA V1
+   No requiere SQL nuevo.
+   Usa daily_records y maintenance existentes.
+========================================================= */
+
+function costEnergyMetrics(data = rows) {
+  const d = (Array.isArray(data) ? data : []).map(derive);
+  const sum = key => d.reduce((t, r) => t + n(r[key]), 0);
+
+  const produccion = sum('producida');
+  const costoProduccion = sum('costo_produccion');
+  const costoMantenimientoDiario = sum('costo_mantenimiento');
+  const energia = sum('energia');
+
+  const costoMantenimientoTabla = Array.isArray(maintenanceRows)
+    ? maintenanceRows.reduce((t, r) => t + n(r.costo), 0)
+    : 0;
+
+  const costoMantenimiento = costoMantenimientoTabla > 0
+    ? costoMantenimientoTabla
+    : costoMantenimientoDiario;
+
+  const costoTotal = costoProduccion + costoMantenimiento;
+
+  return {
+    produccion,
+    costoProduccion,
+    costoMantenimiento,
+    costoTotal,
+    energia,
+    costoUnitario: produccion > 0 ? costoProduccion / produccion : null,
+    costoTotalUnitario: produccion > 0 ? costoTotal / produccion : null,
+    mantenimientoUnitario: produccion > 0 ? costoMantenimiento / produccion : null,
+    energiaUnit: produccion > 0 ? energia / produccion : null
+  };
+}
+
+function costEnergyByDate() {
+  const grouped = {};
+  const useMaintenanceTable = maintenanceRows.some(r => n(r.costo) > 0);
+
+  rows.forEach(r => {
+    const fecha = r.fecha || 'Sin fecha';
+    if (!grouped[fecha]) {
+      grouped[fecha] = {
+        fecha,
+        producida: 0,
+        costoProduccion: 0,
+        costoMantenimiento: 0,
+        energia: 0
+      };
+    }
+    grouped[fecha].producida += n(r.producida);
+    grouped[fecha].costoProduccion += n(r.costo_produccion);
+    grouped[fecha].energia += n(r.energia);
+    if (!useMaintenanceTable) {
+      grouped[fecha].costoMantenimiento += n(r.costo_mantenimiento);
+    }
+  });
+
+  if (useMaintenanceTable) {
+    maintenanceRows.forEach(r => {
+      const fecha = r.fecha || 'Sin fecha';
+      if (!grouped[fecha]) {
+        grouped[fecha] = {
+          fecha,
+          producida: 0,
+          costoProduccion: 0,
+          costoMantenimiento: 0,
+          energia: 0
+        };
+      }
+      grouped[fecha].costoMantenimiento += n(r.costo);
+    });
+  }
+
+  return Object.values(grouped)
+    .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+    .map(r => ({
+      ...r,
+      costoTotal: r.costoProduccion + r.costoMantenimiento,
+      costoUnitario: r.producida > 0 ? r.costoProduccion / r.producida : null,
+      costoTotalUnitario: r.producida > 0
+        ? (r.costoProduccion + r.costoMantenimiento) / r.producida
+        : null,
+      energiaUnit: r.producida > 0 ? r.energia / r.producida : null
+    }));
+}
+
+function costEnergyTrendClass(values, lowerIsBetter = false) {
+  const clean = values.filter(v => v !== null && Number.isFinite(v));
+  if (clean.length < 2) return { arrow: '→', label: 'SIN DATOS', cls: 'ok' };
+  const delta = clean[clean.length - 1] - clean[0];
+  if (Math.abs(delta) < 0.005) return { arrow: '→', label: 'ESTABLE', cls: 'ok' };
+  const better = lowerIsBetter ? delta < 0 : delta > 0;
+  return better
+    ? { arrow: '↑', label: 'MEJORANDO', cls: 'ok' }
+    : { arrow: '↓', label: 'EMPEORANDO', cls: 'warn' };
+}
+
+function renderCostEnergyTable(data) {
+  if (!data.length) {
+    return `<div class="empty">Todavía no hay datos de costos o energía.</div>`;
+  }
+
+  return `
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producción</th>
+            <th>Costo producción</th>
+            <th>Mantenimiento</th>
+            <th>Costo total</th>
+            <th>Costo/unidad</th>
+            <th>Energía</th>
+            <th>kWh/unidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.slice().reverse().map(r => `
+            <tr>
+              <td>${esc(r.fecha)}</td>
+              <td>${n(r.producida).toLocaleString()}</td>
+              <td>S/ ${n(r.costoProduccion).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+              <td>S/ ${n(r.costoMantenimiento).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+              <td><strong>S/ ${n(r.costoTotal).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>
+              <td>${r.costoTotalUnitario === null ? '—' : 'S/ ' + r.costoTotalUnitario.toFixed(3)}</td>
+              <td>${n(r.energia).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} kWh</td>
+              <td>${r.energiaUnit === null ? '—' : r.energiaUnit.toFixed(3) + ' kWh/unidad'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderCostEnergyChart(data) {
+  if (!data.length) {
+    return `<div class="empty">Ingresa registros diarios para visualizar la evolución.</div>`;
+  }
+
+  const W = 1000, H = 340, left = 70, right = 25, top = 25, bottom = 55;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const max = Math.max(...data.flatMap(r => [n(r.costoTotal), n(r.energia)]), 1);
+  const x = i => data.length === 1 ? left + plotW / 2 : left + i * plotW / (data.length - 1);
+  const y = v => top + plotH - (n(v) / max) * plotH;
+
+  const grid = [0, .25, .5, .75, 1].map(p => {
+    const yy = y(max * p);
+    return `<line x1="${left}" y1="${yy}" x2="${W-right}" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="${left-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="currentColor" opacity=".7">${(max*p).toFixed(0)}</text>`;
+  }).join('');
+
+  const path = key => data.map((r,i) => `${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+  const points = key => data.map((r,i) => `<circle cx="${x(i)}" cy="${y(r[key])}" r="4" fill="currentColor"/>`).join('');
+  const labels = data.map((r,i) => {
+    const show = data.length <= 8 || i === 0 || i === data.length-1 || i % Math.ceil(data.length/8) === 0;
+    return show ? `<text x="${x(i)}" y="${H-18}" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">${esc(r.fecha)}</text>` : '';
+  }).join('');
+
+  return `
+    <div class="trendLegend">
+      <span><i style="background:#5eead4"></i>Costo total</span>
+      <span><i style="background:#c084fc"></i>Energía</span>
+    </div>
+    <div style="width:100%;overflow-x:auto;">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución de costos y energía">
+        ${grid}
+        <g style="color:#5eead4"><polyline points="${path('costoTotal')}" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${points('costoTotal')}</g>
+        <g style="color:#c084fc"><polyline points="${path('energia')}" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${points('energia')}</g>
+        ${labels}
+      </svg>
+    </div>
+  `;
+}
+
+function renderCostosEnergia() {
+  const m = costEnergyMetrics();
+  const data = costEnergyByDate();
+  const last = data.length ? data[data.length - 1] : null;
+  const previous = data.length > 1 ? data[data.length - 2] : null;
+
+  const variation = (a,b) => a !== null && b !== null && b > 0 ? (a-b)/b : null;
+  const costoVar = last && previous ? variation(last.costoTotal, previous.costoTotal) : null;
+  const costoUnitVar = last && previous ? variation(last.costoTotalUnitario, previous.costoTotalUnitario) : null;
+  const energiaVar = last && previous ? variation(last.energia, previous.energia) : null;
+  const energiaUnitVar = last && previous ? variation(last.energiaUnit, previous.energiaUnit) : null;
+
+  const alerts = [];
+  if (costoVar !== null && costoVar > .15) alerts.push(['warn','Costo total','Aumentó más de 15% respecto al período anterior.']);
+  if (costoUnitVar !== null && costoUnitVar > .15) alerts.push(['critical','Costo por unidad','Aumentó más de 15% respecto al período anterior.']);
+  if (energiaVar !== null && energiaVar > .15) alerts.push(['warn','Energía total','Aumentó más de 15% respecto al período anterior.']);
+  if (energiaUnitVar !== null && energiaUnitVar > .15) alerts.push(['warn','kWh por unidad','Aumentó más de 15% respecto al período anterior.']);
+
+  document.getElementById('content').innerHTML = `
+    <main>
+      <div class="titleRow">
+        <div>
+          <h1>Costos y Energía</h1>
+          <p>Control económico y energético de la planta · V1</p>
+        </div>
+        <span class="online">● EN LÍNEA</span>
+      </div>
+
+      ${alerts.length ? `
+        <section class="panel">
+          <div class="titleRow"><div><h2>⚠️ Alertas de Costos y Energía</h2><p>Comparación automática contra el período anterior.</p></div><span class="badge warn">${alerts.length} REVISIÓN${alerts.length>1?'ES':''}</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${alerts.map(a => `<div style="padding:12px;border:1px solid #ddd;border-radius:10px;"><span class="badge ${a[0]}">${a[0]==='critical'?'PRIORIDAD':'REVISAR'}</span> <strong>${esc(a[1])}</strong><div><small>${esc(a[2])}</small></div></div>`).join('')}
+          </div>
+        </section>
+      ` : `
+        <section class="panel">
+          <div class="titleRow"><div><h2>Control económico y energético</h2><p>No se detectan aumentos superiores al 15% frente al período anterior.</p></div><span class="badge ok">OK</span></div>
+        </section>
+      `}
+
+      <section class="panel">
+        <h2>Resumen económico</h2>
+        <div class="cards">
+          <div class="card"><small>Producción acumulada</small><strong>${m.produccion.toLocaleString()}</strong><span>unidades</span></div>
+          <div class="card"><small>Costo producción</small><strong>S/ ${m.costoProduccion.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+          <div class="card"><small>Costo mantenimiento</small><strong>S/ ${m.costoMantenimiento.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+          <div class="card"><small>Costo total</small><strong>S/ ${m.costoTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+          <div class="card"><small>Costo producción / unidad</small><strong>${m.costoUnitario === null ? '—' : 'S/ '+m.costoUnitario.toFixed(3)}</strong></div>
+          <div class="card"><small>Costo total / unidad</small><strong>${m.costoTotalUnitario === null ? '—' : 'S/ '+m.costoTotalUnitario.toFixed(3)}</strong></div>
+          <div class="card"><small>Mantenimiento / unidad</small><strong>${m.mantenimientoUnitario === null ? '—' : 'S/ '+m.mantenimientoUnitario.toFixed(3)}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Consumo energético</h2>
+        <div class="cards">
+          <div class="card"><small>Energía total</small><strong>${m.energia.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong><span>kWh</span></div>
+          <div class="card"><small>Energía por unidad</small><strong>${m.energiaUnit === null ? '—' : m.energiaUnit.toFixed(3)}</strong><span>kWh/unidad</span></div>
+          <div class="card"><small>Mantenimientos registrados</small><strong>${maintenanceRows.length}</strong></div>
+          <div class="card"><small>Horas de parada</small><strong>${maintenanceRows.reduce((t,r)=>t+n(r.horas_parada),0).toFixed(2)}</strong><span>horas</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Evolución de costos y energía</h2>
+        <p>Comparación por fecha de los registros existentes.</p>
+        ${renderCostEnergyChart(data)}
+      </section>
+
+      ${last ? `
+        <section class="panel">
+          <h2>Último período registrado</h2>
+          <div class="cards">
+            <div class="card"><small>Fecha</small><strong>${esc(last.fecha)}</strong></div>
+            <div class="card"><small>Producción</small><strong>${n(last.producida).toLocaleString()}</strong></div>
+            <div class="card"><small>Costo total</small><strong>S/ ${n(last.costoTotal).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div class="card"><small>Costo total / unidad</small><strong>${last.costoTotalUnitario===null?'—':'S/ '+last.costoTotalUnitario.toFixed(3)}</strong></div>
+            <div class="card"><small>Energía</small><strong>${n(last.energia).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} kWh</strong></div>
+            <div class="card"><small>kWh / unidad</small><strong>${last.energiaUnit===null?'—':last.energiaUnit.toFixed(3)+' kWh/unidad'}</strong></div>
+          </div>
+        </section>
+      ` : ''}
+
+      <section class="panel">
+        <h2>Detalle histórico</h2>
+        <p>Consolidado de costos y energía por fecha.</p>
+        ${renderCostEnergyTable(data)}
+      </section>
+
+      <section class="panel">
+        <h2>Interpretación QUIMFLUX V1</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
+          <div style="border:1px solid #ddd;border-radius:10px;padding:14px;"><strong>Costo total / unidad</strong><p>Combina costo de producción y mantenimiento para conocer el costo económico acumulado por unidad producida.</p></div>
+          <div style="border:1px solid #ddd;border-radius:10px;padding:14px;"><strong>kWh / unidad</strong><p>Permite comparar el consumo energético independientemente del volumen producido.</p></div>
+          <div style="border:1px solid #ddd;border-radius:10px;padding:14px;"><strong>Variación &gt; 15%</strong><p>Genera una alerta de revisión frente al período inmediatamente anterior.</p></div>
+          <div style="border:1px solid #ddd;border-radius:10px;padding:14px;"><strong>Sin SQL nuevo</strong><p>Esta versión utiliza exclusivamente las columnas que ya maneja QUIMFLUX.</p></div>
         </div>
       </section>
     </main>
@@ -2541,26 +2563,14 @@ function renderInventory() {
       );
     }).length;
 
-  if (inventoryView === 'consulta') {
-    renderInventoryConsulta();
-    return;
-  }
-
   document.getElementById('content').innerHTML = `
     <main>
-      <div class="titleRow">
-        <div>
-          <h1>Control de Inventario</h1>
-          <p>
-            Registra entradas, salidas y stock
-            de materiales y productos.
-          </p>
-        </div>
+      <h1>Control de Inventario</h1>
 
-        <button id="openInventoryConsulta" type="button">
-          🔎 Consultar inventario
-        </button>
-      </div>
+      <p>
+        Registra entradas, salidas y stock
+        de materiales y productos.
+      </p>
 
       <div class="cards">
         <div class="card">
@@ -2571,6 +2581,7 @@ function renderInventory() {
         <div class="card">
           <small>Stock bajo</small>
           <strong>${lowStock}</strong>
+
           <span class="badge ${lowStock ? 'critical' : 'ok'}">
             ${lowStock ? 'REVISAR' : 'OK'}
           </span>
@@ -2695,16 +2706,7 @@ function renderInventory() {
       </section>
 
       <section class="panel">
-        <div class="titleRow">
-          <div>
-            <h2>Inventario registrado</h2>
-            <p>Vista rápida de los registros más recientes.</p>
-          </div>
-
-          <button id="openInventoryConsulta2" type="button">
-            Ver todo / Buscar
-          </button>
-        </div>
+        <h2>Inventario registrado</h2>
 
         ${
           inventoryRows.length
@@ -2729,7 +2731,7 @@ function renderInventory() {
                   </thead>
 
                   <tbody>
-                    ${inventoryRows.slice(0, 20).map(r => {
+                    ${inventoryRows.map(r => {
                       const stock =
                         n(r.stock_inicial) +
                         n(r.entradas) -
@@ -2758,12 +2760,12 @@ function renderInventory() {
                             </span>
                           </td>
 
-                          <td style="white-space:nowrap;">
-                            <button type="button" data-edit-inventory="${esc(r.id)}">
+                          <td>
+                            <button data-edit-inventory="${esc(r.id)}">
                               Editar
                             </button>
 
-                            <button type="button" data-delete-inventory="${esc(r.id)}">
+                            <button data-delete-inventory="${esc(r.id)}">
                               Eliminar
                             </button>
                           </td>
@@ -2802,22 +2804,6 @@ function renderInventory() {
   document.getElementById('inventoryForm').onsubmit =
     saveInventory;
 
-  document.getElementById('openInventoryConsulta')?.addEventListener(
-    'click',
-    () => {
-      inventoryView = 'consulta';
-      renderInventory();
-    }
-  );
-
-  document.getElementById('openInventoryConsulta2')?.addEventListener(
-    'click',
-    () => {
-      inventoryView = 'consulta';
-      renderInventory();
-    }
-  );
-
   document
     .querySelectorAll('[data-edit-inventory]')
     .forEach(button => {
@@ -2836,234 +2822,6 @@ function renderInventory() {
     ?.addEventListener('click', () => {
       editingInventoryId = null;
       renderInventory();
-    });
-}
-
-function renderInventoryConsulta() {
-  const query = String(inventorySearch || '').trim().toLowerCase();
-
-  const filtered = inventoryRows.filter(r => {
-    if (!query) return true;
-
-    const values = {
-      todos: [
-        r.codigo,
-        r.material,
-        r.categoria,
-        r.unidad,
-        r.fecha,
-        r.observaciones
-      ],
-      codigo: [r.codigo],
-      material: [r.material],
-      categoria: [r.categoria],
-      unidad: [r.unidad]
-    };
-
-    return (values[inventorySearchField] || values.todos)
-      .some(value =>
-        String(value ?? '').toLowerCase().includes(query)
-      );
-  });
-
-  document.getElementById('content').innerHTML = `
-    <main>
-      <div class="titleRow">
-        <div>
-          <h1>Consulta de Inventario</h1>
-          <p>
-            Consulta todos los ítems registrados sin afectar
-            el formulario de registro.
-          </p>
-        </div>
-
-        <button id="backInventoryRegister" type="button">
-          ← Volver a registrar
-        </button>
-      </div>
-
-      <section class="panel">
-        <h2>Buscar inventario</h2>
-
-        <div style="
-          display:grid;
-          grid-template-columns:minmax(180px, 220px) 1fr auto;
-          gap:10px;
-          align-items:end;
-        ">
-          <label>
-            Buscar por
-            <select id="inventorySearchField">
-              <option value="todos">Todos</option>
-              <option value="codigo">Código</option>
-              <option value="material">Material / Producto</option>
-              <option value="categoria">Categoría</option>
-              <option value="unidad">Unidad</option>
-            </select>
-          </label>
-
-          <label>
-            Texto de búsqueda
-            <input
-              id="inventorySearchInput"
-              type="search"
-              placeholder="Escribe para buscar..."
-              value="${esc(inventorySearch)}"
-              autocomplete="off"
-            >
-          </label>
-
-          <button id="clearInventorySearch" type="button">
-            Limpiar
-          </button>
-        </div>
-      </section>
-
-      <div class="cards">
-        <div class="card">
-          <small>Resultados</small>
-          <strong>${filtered.length}</strong>
-        </div>
-
-        <div class="card">
-          <small>Total registrado</small>
-          <strong>${inventoryRows.length}</strong>
-        </div>
-      </div>
-
-      <section class="panel">
-        <h2>Inventario completo</h2>
-
-        ${
-          filtered.length
-            ? `
-              <div class="tableWrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Código</th>
-                      <th>Material / Producto</th>
-                      <th>Categoría</th>
-                      <th>Unidad</th>
-                      <th>Inicial</th>
-                      <th>Entradas</th>
-                      <th>Salidas</th>
-                      <th>Stock actual</th>
-                      <th>Mínimo</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    ${filtered.map(r => {
-                      const stock =
-                        n(r.stock_inicial) +
-                        n(r.entradas) -
-                        n(r.salidas);
-
-                      const low =
-                        n(r.stock_minimo) > 0 &&
-                        stock <= n(r.stock_minimo);
-
-                      return `
-                        <tr>
-                          <td>${esc(r.fecha)}</td>
-                          <td>${esc(r.codigo || '')}</td>
-                          <td><strong>${esc(r.material)}</strong></td>
-                          <td>${esc(r.categoria || '')}</td>
-                          <td>${esc(r.unidad || '')}</td>
-                          <td>${n(r.stock_inicial)}</td>
-                          <td>${n(r.entradas)}</td>
-                          <td>${n(r.salidas)}</td>
-                          <td><strong>${stock}</strong></td>
-                          <td>${n(r.stock_minimo)}</td>
-                          <td>
-                            <span class="badge ${low ? 'critical' : 'ok'}">
-                              ${low ? 'STOCK BAJO' : 'OK'}
-                            </span>
-                          </td>
-                          <td style="white-space:nowrap;">
-                            <button type="button" data-edit-inventory="${esc(r.id)}">
-                              Editar
-                            </button>
-                            <button type="button" data-delete-inventory="${esc(r.id)}">
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `
-            : `
-              <div class="empty">
-                No se encontraron registros con los criterios seleccionados.
-              </div>
-            `
-        }
-      </section>
-    </main>
-  `;
-
-  document.getElementById('backInventoryRegister')?.addEventListener(
-    'click',
-    () => {
-      inventoryView = 'registro';
-      inventorySearch = '';
-      inventorySearchField = 'todos';
-      renderInventory();
-    }
-  );
-
-  const field = document.getElementById('inventorySearchField');
-  const input = document.getElementById('inventorySearchInput');
-
-  if (field) {
-    field.value = inventorySearchField;
-    field.addEventListener('change', () => {
-      inventorySearchField = field.value;
-      renderInventoryConsulta();
-    });
-  }
-
-  if (input) {
-    input.addEventListener('input', () => {
-      inventorySearch = input.value;
-      renderInventoryConsulta();
-    });
-
-    input.focus();
-    input.setSelectionRange(
-      input.value.length,
-      input.value.length
-    );
-  }
-
-  document.getElementById('clearInventorySearch')?.addEventListener(
-    'click',
-    () => {
-      inventorySearch = '';
-      inventorySearchField = 'todos';
-      renderInventoryConsulta();
-    }
-  );
-
-  document
-    .querySelectorAll('[data-edit-inventory]')
-    .forEach(button => {
-      button.onclick = () =>
-        editInventory(button.dataset.editInventory);
-    });
-
-  document
-    .querySelectorAll('[data-delete-inventory]')
-    .forEach(button => {
-      button.onclick = () =>
-        deleteInventory(button.dataset.deleteInventory);
     });
 }
 
@@ -3150,7 +2908,6 @@ async function saveInventory(e) {
   }
 
   editingInventoryId = null;
-  inventoryView = 'registro';
 
   await loadInventory();
   renderInventory();
@@ -3236,276 +2993,28 @@ async function deleteInventory(id) {
    PERSONAL
 ========================================================= */
 
-function renderPersonal() {
-  const activos =
-    personalRows.filter(
-      r => String(r.estado || '').toLowerCase() === 'activo'
-    ).length;
+function renderPersonal(){
+  const total=personalRows.length;
 
-  const inactivos = personalRows.length - activos;
+  const novedadesPorDni={};
+  novedadesRows.forEach(x=>{
+    if(!novedadesPorDni[x.dni]) novedadesPorDni[x.dni]=[];
+    novedadesPorDni[x.dni].push(x);
+  });
 
-  const areas =
-    new Set(
-      personalRows.map(r => r.area).filter(Boolean)
-    ).size;
-
-  const selected =
-    selectedPersonalDni !== 'TODOS'
-      ? personalRows.find(r => String(r.dni) === String(selectedPersonalDni))
-      : null;
-
-  const filteredNovedades = selected
-    ? novedadesRows.filter(x => String(x.dni) === String(selected.dni))
-    : novedadesRows;
-
-  const countType = tipo =>
-    filteredNovedades.filter(x => x.tipo === tipo).length;
-
-  const daysType = tipo =>
-    filteredNovedades
-      .filter(x => x.tipo === tipo)
-      .reduce((total, x) => total + noveltyDays(x.fecha_inicio, x.fecha_fin), 0);
-
-  const totalDays = filteredNovedades.reduce(
-    (total, x) => total + noveltyDays(x.fecha_inicio, x.fecha_fin),
-    0
-  );
-
-  const activeNovelty = selected
-    ? filteredNovedades.find(x =>
-        x.fecha_inicio <= today && x.fecha_fin >= today &&
-        x.estado !== 'RECHAZADO' && x.estado !== 'CERRADO'
-      )
-    : null;
-
-  const statusLabel = selected
-    ? (activeNovelty ? activeNovelty.tipo : 'SIN NOVEDAD VIGENTE')
-    : 'VISTA GENERAL';
-
-  document.getElementById('content').innerHTML = `
+  document.getElementById('content').innerHTML=`
     <main>
       <div class="titleRow">
         <div>
-          <h1>Gestión de Personal</h1>
-          <p>Registro y control del personal de la planta.</p>
+          <h1>Personal</h1>
+          <p>Trabajadores registrados: ${total}</p>
         </div>
-        <span class="online">● EN LÍNEA</span>
-      </div>
-
-      <div class="cards">
-        <div class="card">
-          <small>Personal registrado</small>
-          <strong>${personalRows.length}</strong>
-        </div>
-        <div class="card">
-          <small>Personal activo</small>
-          <strong>${activos}</strong>
-          <span class="badge ok">ACTIVO</span>
-        </div>
-        <div class="card">
-          <small>Personal inactivo</small>
-          <strong>${inactivos}</strong>
-        </div>
-        <div class="card">
-          <small>Áreas</small>
-          <strong>${areas}</strong>
-        </div>
+        <button id="newPersonal" class="primary">+ Nuevo trabajador</button>
       </div>
 
       <section class="panel">
-        <h2>
-          ${editingPersonalId ? 'Editar trabajador' : 'Registrar trabajador'}
-        </h2>
-
-        <form id="personalForm" class="formGrid">
-          <section>
-            <h2>Identificación</h2>
-
-            <label>
-              DNI
-              <input id="per_dni" type="text"
-                inputmode="numeric" maxlength="20"
-                placeholder="Ej. 12345678" required>
-            </label>
-
-            <label>
-              Nombre completo
-              <input id="per_nombre" type="text"
-                placeholder="Nombre y apellidos" required>
-            </label>
-
-            <label>
-              Fecha de ingreso
-              <input id="per_fecha_ingreso" type="date"
-                value="${today}" required>
-            </label>
-          </section>
-
-          <section>
-            <h2>Puesto</h2>
-
-            <label>
-              Cargo
-              <input id="per_cargo" type="text"
-                placeholder="Ej. Operador de planta" required>
-            </label>
-
-            <label>
-              Área
-              <input id="per_area" type="text"
-                placeholder="Ej. Producción" required>
-            </label>
-
-            <label>
-              Turno
-              <select id="per_turno">
-                <option>Mañana</option>
-                <option>Tarde</option>
-                <option>Noche</option>
-              </select>
-            </label>
-
-            <label>
-              Estado
-              <select id="per_estado">
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </label>
-          </section>
-
-          <section>
-            <h2>Observaciones</h2>
-
-            <label>
-              <textarea id="per_observaciones"
-                placeholder="Información adicional..."></textarea>
-            </label>
-          </section>
-
-          <div id="personalMsg" class="msg full"></div>
-
-          <div class="full" style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="primary" type="submit">
-              ${editingPersonalId ? 'Actualizar trabajador' : 'Guardar trabajador'}
-            </button>
-
-            ${
-              editingPersonalId
-                ? `<button id="cancelPersonal" type="button">
-                     Cancelar edición
-                   </button>`
-                : ''
-            }
-          </div>
-        </form>
-      </section>
-
-
-      <section class="panel">
-        <div class="titleRow">
-          <div>
-            <h2>Consulta por trabajador</h2>
-            <p>Selecciona un trabajador para consultar toda su actividad agrupada.</p>
-          </div>
-        </div>
-
-        <label>
-          Personal
-          <select id="personalFilter">
-            <option value="TODOS" ${selectedPersonalDni === 'TODOS' ? 'selected' : ''}>
-              Todos los trabajadores
-            </option>
-            ${personalRows.map(r => `
-              <option value="${esc(r.dni)}" ${String(selectedPersonalDni) === String(r.dni) ? 'selected' : ''}>
-                ${esc(r.nombre)} · DNI ${esc(r.dni)}
-              </option>
-            `).join('')}
-          </select>
-        </label>
-      </section>
-
-      ${selected ? `
-        <section class="panel">
-          <div class="titleRow">
-            <div>
-              <h2>${esc(selected.nombre)}</h2>
-              <p>${esc(selected.cargo)} · ${esc(selected.area)} · Turno ${esc(selected.turno)}</p>
-            </div>
-            <span class="badge ${selected.estado === 'Activo' ? 'ok' : 'warn'}">
-              ${esc(selected.estado)}
-            </span>
-          </div>
-
-          <div class="cards">
-            <div class="card"><small>DNI</small><strong>${esc(selected.dni)}</strong></div>
-            <div class="card"><small>Fecha de ingreso</small><strong>${esc(selected.fecha_ingreso || '—')}</strong></div>
-            <div class="card"><small>Estado actual</small><strong>${esc(statusLabel)}</strong></div>
-            <div class="card"><small>Total novedades</small><strong>${filteredNovedades.length}</strong></div>
-            <div class="card"><small>Permisos</small><strong>${countType('PERMISO')}</strong><span class="badge ok">${daysType('PERMISO')} día(s)</span></div>
-            <div class="card"><small>Vacaciones</small><strong>${countType('VACACIONES')}</strong><span class="badge ok">${daysType('VACACIONES')} día(s)</span></div>
-            <div class="card"><small>Faltas</small><strong>${countType('FALTA')}</strong><span class="badge ${countType('FALTA') ? 'warn' : 'ok'}">${daysType('FALTA')} día(s)</span></div>
-            <div class="card"><small>Otros eventos</small><strong>${filteredNovedades.filter(x => !['PERMISO','VACACIONES','FALTA'].includes(x.tipo)).length}</strong><span class="badge ok">${totalDays} día(s) total</span></div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="titleRow">
-            <div>
-              <h2>Historial de ${esc(selected.nombre)}</h2>
-              <p>Actividad registrada por permisos, vacaciones, faltas y otros eventos.</p>
-            </div>
-            <button type="button" class="primary" data-novedad-personal="${esc(selected.dni)}">+ Nueva novedad</button>
-          </div>
-
-          ${filteredNovedades.length ? `
-            <div class="tableWrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Días</th>
-                    <th>Tipo</th>
-                    <th>Motivo</th>
-                    <th>Estado</th>
-                    <th>Observaciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${filteredNovedades.map(x => `
-                    <tr>
-                      <td>${esc(x.fecha_inicio)}</td>
-                      <td>${esc(x.fecha_fin)}</td>
-                      <td><strong>${noveltyDays(x.fecha_inicio, x.fecha_fin)}</strong></td>
-                      <td>${esc(x.tipo)}</td>
-                      <td>${esc(x.motivo || '')}</td>
-                      <td><span class="badge ${x.estado === 'APROBADO' ? 'ok' : x.estado === 'RECHAZADO' ? 'critical' : 'warn'}">${esc(x.estado)}</span></td>
-                      <td>${esc(x.observaciones || '')}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : '<div class="empty">Este trabajador todavía no tiene novedades registradas.</div>'}
-        </section>
-      ` : `
-        <section class="panel">
-          <h2>Control de novedades</h2>
-          <p>Resumen general de permisos, vacaciones y faltas registrados.</p>
-          <div class="cards">
-            <div class="card"><small>Permisos</small><strong>${countType('PERMISO')}</strong><span class="badge ok">${daysType('PERMISO')} día(s)</span></div>
-            <div class="card"><small>Vacaciones</small><strong>${countType('VACACIONES')}</strong><span class="badge ok">${daysType('VACACIONES')} día(s)</span></div>
-            <div class="card"><small>Faltas</small><strong>${countType('FALTA')}</strong><span class="badge ${countType('FALTA') ? 'warn' : 'ok'}">${daysType('FALTA')} día(s)</span></div>
-            <div class="card"><small>Otros eventos</small><strong>${filteredNovedades.filter(x => !['PERMISO','VACACIONES','FALTA'].includes(x.tipo)).length}</strong><span class="badge ok">${totalDays} día(s) total</span></div>
-          </div>
-        </section>
-      `}
-
-      <section class="panel">
-        <h2>${selected ? 'Ficha maestra del trabajador' : 'Personal registrado'}</h2>
-
-        ${personalRows.length ? `
+        <h2>Control de personal</h2>
+        ${total?`
           <div class="tableWrap">
             <table>
               <thead>
@@ -3515,374 +3024,314 @@ function renderPersonal() {
                   <th>Cargo</th>
                   <th>Área</th>
                   <th>Turno</th>
-                  <th>Ingreso</th>
                   <th>Estado</th>
+                  <th>Permisos</th>
+                  <th>Vacaciones</th>
+                  <th>Faltas</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                ${personalRows.map(r => `
-                  <tr>
-                    <td>${esc(r.dni)}</td>
-                    <td><strong>${esc(r.nombre)}</strong></td>
-                    <td>${esc(r.cargo)}</td>
-                    <td>${esc(r.area)}</td>
-                    <td>${esc(r.turno)}</td>
-                    <td>${esc(r.fecha_ingreso)}</td>
-                    <td>
-                      <span class="badge ${r.estado === 'Activo' ? 'ok' : 'warn'}">${esc(r.estado)}</span>
-                    </td>
-                    <td>
-                      <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap;">
-                        <button type="button" class="link" data-select-personal="${esc(r.dni)}" style="padding:5px 8px;font-size:12px;">Ver ficha</button>
-                        <button type="button" class="link" data-novedad-personal="${esc(r.dni)}" style="padding:5px 8px;font-size:12px;">Novedad</button>
-                        <button type="button" data-edit-personal="${esc(r.id)}" style="padding:5px 8px;font-size:12px;">Editar</button>
-                        <button type="button" data-delete-personal="${esc(r.id)}" style="padding:5px 8px;font-size:12px;">Eliminar</button>
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
+                ${personalRows.map(p=>{
+                  const ns=novedadesPorDni[p.dni]||[];
+                  const permisos=ns.filter(x=>x.tipo==='PERMISO').length;
+                  const vacaciones=ns.filter(x=>x.tipo==='VACACIONES').length;
+                  const faltas=ns.filter(x=>x.tipo==='FALTA').length;
+
+                  return `
+                    <tr>
+                      <td>${esc(p.dni)}</td>
+                      <td>${esc(p.nombre||p.nombre_completo||'')}</td>
+                      <td>${esc(p.cargo||'')}</td>
+                      <td>${esc(p.area||'')}</td>
+                      <td>${esc(p.turno||'')}</td>
+                      <td>${esc(p.estado||'')}</td>
+                      <td>${permisos}</td>
+                      <td>${vacaciones}</td>
+                      <td>${faltas}</td>
+                      <td>
+                        <button class="link personalEdit" data-id="${esc(p.id)}">Editar</button>
+                        <button class="link personalNovelty" data-dni="${esc(p.dni)}">Novedad</button>
+                      </td>
+                    </tr>`;
+                }).join('')}
               </tbody>
             </table>
-          </div>
-        ` : '<div class="empty">Todavía no hay personal registrado.</div>'}
+          </div>`
+          :`<div class="empty">No hay trabajadores registrados todavía.</div>`}
       </section>
 
       <section class="panel">
-        <h2>${selected ? 'Observaciones del trabajador' : 'Novedades registradas'}</h2>
-        ${selected
-          ? `<p>${esc(selected.observaciones || 'Sin observaciones registradas.')}</p>`
-          : novedadesRows.length
-            ? `<div class="tableWrap"><table><thead><tr><th>DNI</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Estado</th><th>Motivo</th></tr></thead><tbody>${novedadesRows.map(x => `<tr><td>${esc(x.dni)}</td><td>${esc(x.tipo)}</td><td>${esc(x.fecha_inicio)}</td><td>${esc(x.fecha_fin)}</td><td>${noveltyDays(x.fecha_inicio,x.fecha_fin)}</td><td>${esc(x.estado)}</td><td>${esc(x.motivo || '')}</td></tr>`).join('')}</tbody></table></div>`
-            : '<div class="empty">Todavía no hay novedades registradas.</div>'}
+        <h2>Últimas novedades</h2>
+        ${novedadesRows.length?`
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>DNI</th><th>Tipo</th><th>Inicio</th><th>Fin</th>
+                  <th>Motivo</th><th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${novedadesRows.slice(0,30).map(x=>`
+                  <tr>
+                    <td>${esc(x.dni)}</td>
+                    <td>${esc(x.tipo)}</td>
+                    <td>${esc(x.fecha_inicio)}</td>
+                    <td>${esc(x.fecha_fin)}</td>
+                    <td>${esc(x.motivo||'')}</td>
+                    <td>${esc(x.estado||'')}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`
+          :'<div class="empty">Todavía no hay permisos, vacaciones o faltas registrados.</div>'}
       </section>
-    </main>
-  `;
 
-  document.getElementById('personalFilter')?.addEventListener('change', e => {
-    selectedPersonalDni = e.target.value;
-    renderPersonal();
+      <div id="personalMsg" class="msg"></div>
+    </main>`;
+
+  document.getElementById('newPersonal').onclick=()=>showPersonalForm();
+
+  document.querySelectorAll('.personalNovelty').forEach(b=>{
+    b.onclick=()=>showNovedadForm(b.dataset.dni);
   });
 
-  document.getElementById('personalForm').onsubmit = savePersonal;
-
-  document.querySelectorAll('[data-select-personal]').forEach(button => {
-    button.onclick = () => {
-      selectedPersonalDni = button.dataset.selectPersonal;
-      renderPersonal();
+  document.querySelectorAll('.personalEdit').forEach(b=>{
+    b.onclick=()=>{
+      const p=personalRows.find(x=>String(x.id)===String(b.dataset.id));
+      if(p) showPersonalForm(p);
     };
   });
-
-  document.querySelectorAll('[data-edit-personal]').forEach(button => {
-    button.onclick = () => editPersonal(button.dataset.editPersonal);
-  });
-
-  document.querySelectorAll('[data-novedad-personal]').forEach(button => {
-    button.onclick = () => showNovedadForm(button.dataset.novedadPersonal);
-  });
-
-  document.querySelectorAll('[data-delete-personal]').forEach(button => {
-    button.onclick = () => deletePersonal(button.dataset.deletePersonal);
-  });
-
-  document.getElementById('cancelPersonal')?.addEventListener('click', () => {
-    editingPersonalId = null;
-    renderPersonal();
-  });
 }
 
-function noveltyDays(inicio, fin) {
-  if (!inicio || !fin) return 0;
-  const a = new Date(`${inicio}T00:00:00`);
-  const b = new Date(`${fin}T00:00:00`);
-  const diff = Math.floor((b.getTime() - a.getTime()) / 86400000);
-  return diff >= 0 ? diff + 1 : 0;
-}
+function showPersonalForm(p=null){
+  const c=document.getElementById('content');
 
-async function savePersonal(e) {
-  e.preventDefault();
-
-  const payload = {
-    user_id: user.id,
-
-    dni:
-      document.getElementById('per_dni').value.trim(),
-
-    nombre:
-      document.getElementById('per_nombre').value.trim(),
-
-    fecha_ingreso:
-      document.getElementById('per_fecha_ingreso').value,
-
-    cargo:
-      document.getElementById('per_cargo').value.trim(),
-
-    area:
-      document.getElementById('per_area').value.trim(),
-
-    turno:
-      document.getElementById('per_turno').value,
-
-    estado:
-      document.getElementById('per_estado').value,
-
-    observaciones:
-      document.getElementById('per_observaciones').value.trim() || null
-  };
-
-  if (!payload.dni) {
-    msg('personalMsg', 'Debes ingresar el DNI.');
-    return;
-  }
-
-  if (!payload.nombre) {
-    msg('personalMsg', 'Debes ingresar el nombre completo.');
-    return;
-  }
-
-  if (!payload.cargo) {
-    msg('personalMsg', 'Debes ingresar el cargo.');
-    return;
-  }
-
-  if (!payload.area) {
-    msg('personalMsg', 'Debes ingresar el área.');
-    return;
-  }
-
-  if (!payload.fecha_ingreso) {
-    msg('personalMsg', 'Debes ingresar la fecha de ingreso.');
-    return;
-  }
-
-  msg('personalMsg', 'Guardando trabajador…');
-
-  let result;
-
-  if (editingPersonalId) {
-    result =
-      await supabase
-        .from('personal')
-        .update(payload)
-        .eq('id', editingPersonalId)
-        .eq('user_id', user.id);
-  } else {
-    result =
-      await supabase
-        .from('personal')
-        .insert(payload);
-  }
-
-  if (result.error) {
-    if (result.error.code === '23505') {
-      msg(
-        'personalMsg',
-        'Ya existe un trabajador con ese DNI.'
-      );
-    } else {
-      msg(
-        'personalMsg',
-        'Error: ' + result.error.message
-      );
-    }
-    return;
-  }
-
-  editingPersonalId = null;
-
-  await loadPersonal();
-  renderPersonal();
-}
-
-function editPersonal(id) {
-  const row =
-    personalRows.find(
-      r => String(r.id) === String(id)
-    );
-
-  if (!row) {
-    alert('No se encontró el trabajador.');
-    return;
-  }
-
-  editingPersonalId = row.id;
-
-  renderPersonal();
-
-  document.getElementById('per_dni').value =
-    row.dni || '';
-
-  document.getElementById('per_nombre').value =
-    row.nombre || '';
-
-  document.getElementById('per_fecha_ingreso').value =
-    row.fecha_ingreso || today;
-
-  document.getElementById('per_cargo').value =
-    row.cargo || '';
-
-  document.getElementById('per_area').value =
-    row.area || '';
-
-  document.getElementById('per_turno').value =
-    row.turno || 'Mañana';
-
-  document.getElementById('per_estado').value =
-    row.estado || 'Activo';
-
-  document.getElementById('per_observaciones').value =
-    row.observaciones || '';
-
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function deletePersonal(id) {
-  const row =
-    personalRows.find(
-      r => String(r.id) === String(id)
-    );
-
-  if (!row) return;
-
-  if (
-    !confirm(
-      `¿Eliminar a "${row.nombre}"?\n\n` +
-      `DNI: ${row.dni}\n` +
-      `Cargo: ${row.cargo}\n\n` +
-      `Esta acción no se puede deshacer.`
-    )
-  ) return;
-
-  const { error } =
-    await supabase
-      .from('personal')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
-
-  if (error) {
-    alert('No se pudo eliminar:\n' + error.message);
-    return;
-  }
-
-  await loadPersonal();
-  renderPersonal();
-}
-
-
-function showNovedadForm(dni) {
-  document.getElementById('content').innerHTML = `
+  c.innerHTML=`
     <main>
       <div class="titleRow">
         <div>
-          <h1>Nueva novedad</h1>
-          <p>Registro de permisos, vacaciones y faltas.</p>
+          <h1>${p?'Editar trabajador':'Nuevo trabajador'}</h1>
+          <p>Ficha maestra del trabajador.</p>
         </div>
-        <button id="backNovedad" class="link" type="button">← Volver</button>
+        <button id="backPersonal" class="link">← Volver</button>
       </div>
 
-      <section class="panel">
-        <form id="novedadForm" class="formGrid">
-          <section>
-            <h2>Registro</h2>
+      <form id="personalForm" class="formGrid">
+        <section>
+          <label>DNI
+            <input id="p_dni" required value="${esc(p?.dni||'')}">
+          </label>
 
-            <label>
-              DNI
-              <input id="n_dni" value="${esc(dni)}" readonly>
-            </label>
+          <label>Nombre completo
+            <input id="p_nombre" required value="${esc(p?.nombre||p?.nombre_completo||'')}">
+          </label>
 
-            <label>
-              Tipo
-              <select id="n_tipo">
-                <option>PERMISO</option>
-                <option>VACACIONES</option>
-                  <option>FALTA</option>
-                <option>DESCANSO_MEDICO</option>
-                <option>OTRO</option>
-              </select>
-            </label>
+          <label>Fecha de ingreso
+            <input id="p_fecha_ingreso" type="date" value="${esc(p?.fecha_ingreso||'')}">
+          </label>
 
-            <label>
-              Fecha inicio
-              <input id="n_inicio" type="date" required value="${today}">
-            </label>
+          <label>Cargo
+            <input id="p_cargo" value="${esc(p?.cargo||'')}">
+          </label>
+        </section>
 
-            <label>
-              Fecha fin
-              <input id="n_fin" type="date" required value="${today}">
-            </label>
-          </section>
+        <section>
+          <label>Área
+            <input id="p_area" value="${esc(p?.area||'')}">
+          </label>
 
-          <section>
-            <h2>Detalle</h2>
+          <label>Turno
+            <select id="p_turno">
+              <option ${p?.turno==='Mañana'?'selected':''}>Mañana</option>
+              <option ${p?.turno==='Tarde'?'selected':''}>Tarde</option>
+              <option ${p?.turno==='Noche'?'selected':''}>Noche</option>
+            </select>
+          </label>
 
-            <label>
-              Motivo
-              <input id="n_motivo" placeholder="Ej. ingreso tardío, permiso personal...">
-            </label>
+          <label>Estado
+            <select id="p_estado">
+              <option ${p?.estado==='ACTIVO'||!p?'selected':''}>ACTIVO</option>
+              <option ${p?.estado==='INACTIVO'?'selected':''}>INACTIVO</option>
+              <option ${p?.estado==='SUSPENDIDO'?'selected':''}>SUSPENDIDO</option>
+            </select>
+          </label>
 
-            <label>
-              Estado
-              <select id="n_estado">
-                <option>REGISTRADO</option>
-                <option>APROBADO</option>
-                <option>RECHAZADO</option>
-                <option>CERRADO</option>
-              </select>
-            </label>
+          <label>Observaciones
+            <textarea id="p_observaciones">${esc(p?.observaciones||'')}</textarea>
+          </label>
+        </section>
 
-            <label>
-              Observaciones
-              <textarea id="n_observaciones" placeholder="Información adicional..."></textarea>
-            </label>
-          </section>
+        <div id="personalFormMsg" class="msg full"></div>
+        <button class="primary full" type="submit">${p?'Guardar cambios':'Guardar trabajador'}</button>
+      </form>
+    </main>`;
 
-          <div id="novedadMsg" class="msg full"></div>
-          <button class="primary full" type="submit">Guardar novedad</button>
-        </form>
-      </section>
-    </main>
-  `;
+  document.getElementById('backPersonal').onclick=()=>renderPersonal();
 
-  document.getElementById('backNovedad').onclick = () => renderPersonal();
-
-  document.getElementById('novedadForm').onsubmit = async e => {
+  document.getElementById('personalForm').onsubmit=async e=>{
     e.preventDefault();
 
-    const msgEl = document.getElementById('novedadMsg');
-    msgEl.textContent = 'Guardando…';
+    const msg=document.getElementById('personalFormMsg');
+    msg.textContent='Guardando…';
 
-    const inicio = document.getElementById('n_inicio').value;
-    const fin = document.getElementById('n_fin').value;
-
-    if (fin < inicio) {
-      msgEl.textContent = 'La fecha fin no puede ser anterior a la fecha inicio.';
-      return;
-    }
-
-    const payload = {
-      user_id: user.id,
-      dni: document.getElementById('n_dni').value.trim(),
-      tipo: document.getElementById('n_tipo').value,
-      fecha_inicio: inicio,
-      fecha_fin: fin,
-      motivo: document.getElementById('n_motivo').value.trim(),
-      estado: document.getElementById('n_estado').value,
-      observaciones: document.getElementById('n_observaciones').value.trim()
+    const payload={
+      user_id:user.id,
+      dni:document.getElementById('p_dni').value.trim(),
+      nombre:document.getElementById('p_nombre').value.trim(),
+      fecha_ingreso:document.getElementById('p_fecha_ingreso').value||null,
+      cargo:document.getElementById('p_cargo').value.trim(),
+      area:document.getElementById('p_area').value.trim(),
+      turno:document.getElementById('p_turno').value,
+      estado:document.getElementById('p_estado').value,
+      observaciones:document.getElementById('p_observaciones').value.trim()
     };
 
-    const { error } = await supabase
-      .from('personal_novedades')
-      .insert(payload);
+    let result;
 
-    if (error) {
-      msgEl.textContent = error.message;
+    if(p){
+      result=await supabase.from('personal')
+        .update(payload)
+        .eq('id',p.id)
+        .eq('user_id',user.id);
+    }else{
+      result=await supabase.from('personal').insert(payload);
+    }
+
+    if(result.error){
+      msg.textContent=result.error.message;
       return;
     }
 
     await loadPersonal();
     renderPersonal();
   };
+}
+
+function showNovedadForm(dni){
+  document.getElementById('content').innerHTML=`
+    <main>
+      <div class="titleRow">
+        <div>
+          <h1>Nueva novedad</h1>
+          <p>Registro de permisos, vacaciones y faltas.</p>
+        </div>
+        <button id="backNovedad" class="link">← Volver</button>
+      </div>
+
+      <form id="novedadForm" class="formGrid">
+        <section>
+          <label>DNI
+            <input id="n_dni" value="${esc(dni)}" readonly>
+          </label>
+
+          <label>Tipo
+            <select id="n_tipo">
+              <option>PERMISO</option>
+              <option>VACACIONES</option>
+              <option>FALTA</option>
+              <option>DESCANSO_MEDICO</option>
+              <option>OTRO</option>
+            </select>
+          </label>
+
+          <label>Fecha inicio
+            <input id="n_inicio" type="date" required value="${today}">
+          </label>
+
+          <label>Fecha fin
+            <input id="n_fin" type="date" required value="${today}">
+          </label>
+        </section>
+
+        <section>
+          <label>Motivo
+            <input id="n_motivo">
+          </label>
+
+          <label>Estado
+            <select id="n_estado">
+              <option>REGISTRADO</option>
+              <option>APROBADO</option>
+              <option>RECHAZADO</option>
+              <option>CERRADO</option>
+            </select>
+          </label>
+
+          <label>Observaciones
+            <textarea id="n_observaciones"></textarea>
+          </label>
+        </section>
+
+        <div id="novedadMsg" class="msg full"></div>
+        <button class="primary full" type="submit">Guardar novedad</button>
+      </form>
+    </main>`;
+
+  document.getElementById('backNovedad').onclick=()=>renderPersonal();
+
+  document.getElementById('novedadForm').onsubmit=async e=>{
+    e.preventDefault();
+
+    const msg=document.getElementById('novedadMsg');
+    msg.textContent='Guardando…';
+
+    const inicio=document.getElementById('n_inicio').value;
+    const fin=document.getElementById('n_fin').value;
+
+    if(fin<inicio){
+      msg.textContent='La fecha fin no puede ser anterior a la fecha inicio.';
+      return;
+    }
+
+    const payload={
+      user_id:user.id,
+      dni:document.getElementById('n_dni').value.trim(),
+      tipo:document.getElementById('n_tipo').value,
+      fecha_inicio:inicio,
+      fecha_fin:fin,
+      motivo:document.getElementById('n_motivo').value.trim(),
+      estado:document.getElementById('n_estado').value,
+      observaciones:document.getElementById('n_observaciones').value.trim()
+    };
+
+    const {error}=await supabase.from('personal_novedades').insert(payload);
+
+    if(error){
+      msg.textContent=error.message;
+      return;
+    }
+
+    await loadPersonal();
+    renderPersonal();
+  };
+}
+
+async function loadPersonal(){
+  const p=await supabase.from('personal')
+    .select('*')
+    .eq('user_id',user.id)
+    .order('nombre',{ascending:true});
+
+  if(p.error){
+    personalRows=[];
+    console.error('Error tabla personal:',p.error);
+  }else{
+    personalRows=p.data||[];
+  }
+
+  const nov=await supabase.from('personal_novedades')
+    .select('*')
+    .eq('user_id',user.id)
+    .order('fecha_inicio',{ascending:false});
+
+  if(nov.error){
+    novedadesRows=[];
+    console.error('Error tabla personal_novedades:',nov.error);
+  }else{
+    novedadesRows=nov.data||[];
+  }
 }
 
 /* =========================================================
@@ -3899,22 +3348,36 @@ function renderSsoma() {
         Salud Ocupacional y Medio Ambiente.
       </p>
 
-      <div class="cards">
-        <div class="card">
-          <small>Incidentes registrados</small>
-          <strong>${ssomaRows.length}</strong>
-        </div>
+      ${(() => {
+        const stats = getSsomaStats();
+        const abiertos = ssomaRows.filter(
+          r => String(r.estado || '').toLowerCase() !== 'cerrado'
+        ).length;
 
-        <div class="card">
-          <small>Incidentes abiertos</small>
-          <strong>
-            ${ssomaRows.filter(
-              r =>
-                String(r.estado || '').toLowerCase() !== 'cerrado'
-            ).length}
-          </strong>
-        </div>
-      </div>
+        return `
+          <div class="cards">
+            <div class="card">
+              <small>Eventos SSOMA registrados</small>
+              <strong>${stats.totalEventos}</strong>
+            </div>
+            <div class="card">
+              <small>Accidentes/incidentes registrados</small>
+              <strong>${stats.totalAccidentesIncidentes}</strong>
+            </div>
+            <div class="card">
+              <small>Incidentes abiertos</small>
+              <strong>${abiertos}</strong>
+            </div>
+            <div class="card">
+              <small>Días sin accidente/incidente</small>
+              <strong>${stats.diasSinAccidenteIncidente === null ? 'SIN DATOS' : stats.diasSinAccidenteIncidente}</strong>
+              <span class="badge ${stats.diasSinAccidenteIncidente === null ? 'ok' : stats.diasSinAccidenteIncidente === 0 ? 'critical' : 'ok'}">
+                ${stats.diasSinAccidenteIncidente === null ? 'SIN REGISTROS' : stats.diasSinAccidenteIncidente === 0 ? 'EVENTO HOY' : 'EN CONTROL'}
+              </span>
+            </div>
+          </div>
+        `;
+      })()}
 
       <section class="panel">
         <h2>
@@ -4368,40 +3831,6 @@ async function loadSsoma() {
    PERSONAL - CARGA
 ========================================================= */
 
-async function loadPersonal() {
-  if (!user?.id) return;
-
-  const result =
-    await supabase
-      .from('personal')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('estado', { ascending: true })
-      .order('nombre', { ascending: true });
-
-  if (result.error) {
-    console.error('Error personal:', result.error);
-    personalRows = [];
-  } else {
-    personalRows = result.data || [];
-  }
-
-  const nov =
-    await supabase
-      .from('personal_novedades')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('fecha_inicio', { ascending: false })
-      .order('created_at', { ascending: false });
-
-  if (nov.error) {
-    console.error('Error personal_novedades:', nov.error);
-    novedadesRows = [];
-  } else {
-    novedadesRows = nov.data || [];
-  }
-}
-
 /* =========================================================
    MANTENIMIENTO - CARGA
 ========================================================= */
@@ -4509,6 +3938,7 @@ supabase.auth.onAuthStateChange(
       inventoryRows = [];
       ssomaRows = [];
       personalRows = [];
+      novedadesRows = [];
       maintenanceRows = [];
     }
 
