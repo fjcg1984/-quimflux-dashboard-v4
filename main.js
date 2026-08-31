@@ -7,109 +7,63 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   'sb_publishable_sULeDyfJ1l5xfuVhFgXRKA_bsim9qSe';
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const supabase =
+  createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
-const app = document.getElementById('app');
-
-
-/* =========================================================
-   CAMPOS DEL REGISTRO DIARIO
-   ========================================================= */
+const app =
+  document.getElementById('app');
 
 const fields = [
-
   ['fecha','Fecha','date'],
-
   ['turno','Turno','select'],
-
   ['producto','Producto','text'],
-
   ['programada','Cantidad programada','number'],
-
   ['producida','Cantidad producida','number'],
-
   ['mp','Materia prima consumida','number'],
-
   ['merma','Merma','number'],
-
   ['horas_turno','Horas de turno','number'],
-
   ['horas_paradas','Horas de parada','number'],
-
   ['personal_programado','Personal programado','number'],
-
   ['personal_presente','Personal presente','number'],
-
   ['rechazadas','Unidades rechazadas','number'],
-
   ['costo_produccion','Costo producción (S/)','number'],
-
   ['energia','Energía (kWh)','number'],
-
   ['costo_mantenimiento','Costo mantenimiento (S/)','number'],
-
   ['incidentes','Incidentes SSOMA','number'],
-
   ['pedidos_programados','Pedidos programados','number'],
-
   ['pedidos_tiempo','Pedidos a tiempo','number'],
-
   ['reproceso','Reproceso','number'],
-
   ['no_conformidades','No conformidades','number'],
-
   ['observaciones','Observaciones','textarea']
-
 ];
 
-
-const numeric = fields
-  .filter(x => x[2] === 'number')
-  .map(x => x[0]);
-
-
 const today =
-  new Date().toISOString().slice(0,10);
-
+  new Date()
+    .toISOString()
+    .slice(0,10);
 
 let user = null;
-
 let rows = [];
-
 let tab = 'dashboard';
 
-
-/* =========================================================
-   METAS
-   ========================================================= */
-
 let metas = {
-
   cumplimiento: 0.95,
-
   merma: 0.02,
-
   yield: 0.95,
-
   disponibilidad: 0.90,
-
   asistencia: 0.95,
-
   rechazo: 0.03,
-
   otif: 0.95,
-
   incidentes: 0
-
 };
 
 
-/* =========================================================
-   FUNCIONES GENERALES
-   ========================================================= */
+/* =====================================================
+   UTILIDADES
+===================================================== */
 
 function esc(v = '') {
 
@@ -147,40 +101,18 @@ function pct(v) {
 }
 
 
-function avg(a,k) {
-
-  return a.length
-
-    ? a.reduce(
-        (s,r) => s + n(r[k]),
-        0
-      ) / a.length
-
-    : 0;
-
-}
-
-
-/* =========================================================
-   CÁLCULO DE KPI
-   ========================================================= */
+/* =====================================================
+   KPI
+===================================================== */
 
 function derive(r) {
 
-  const p =
-    n(r.programada);
+  const p = n(r.programada);
+  const q = n(r.producida);
+  const mp = n(r.mp);
 
-  const q =
-    n(r.producida);
-
-  const mp =
-    n(r.mp);
-
-  const h =
-    n(r.horas_turno);
-
-  const stop =
-    n(r.horas_paradas);
+  const h = n(r.horas_turno);
+  const stop = n(r.horas_paradas);
 
   const pp =
     n(r.personal_programado);
@@ -197,18 +129,11 @@ function derive(r) {
   const at =
     n(r.pedidos_tiempo);
 
-
   const merma =
-    mp
-      ? n(r.merma) / mp
-      : 0;
-
+    mp ? n(r.merma) / mp : 0;
 
   const yieldRate =
-    mp
-      ? q / mp
-      : 0;
-
+    mp ? q / mp : 0;
 
   const disponibilidad =
     h
@@ -218,27 +143,18 @@ function derive(r) {
         )
       : 0;
 
-
   const asistencia =
-    pp
-      ? pa / pp
-      : 0;
-
+    pp ? pa / pp : 0;
 
   const rechazo =
-    q
-      ? rej / q
-      : 0;
-
+    q ? rej / q : 0;
 
   return {
 
     ...r,
 
     cumplimiento:
-      p
-        ? q / p
-        : 0,
+      p ? q / p : 0,
 
     merma,
 
@@ -278,52 +194,42 @@ function derive(r) {
 }
 
 
-/* =========================================================
+/* =====================================================
    REGISTRO VACÍO
-   ========================================================= */
+===================================================== */
 
 function empty() {
 
   return {
 
     fecha: today,
-
     turno: 'Mañana',
-
     producto: '',
 
     programada: 0,
-
     producida: 0,
 
     mp: 0,
-
     merma: 0,
 
     horas_turno: 8,
-
     horas_paradas: 0,
 
     personal_programado: 0,
-
     personal_presente: 0,
 
     rechazadas: 0,
 
     costo_produccion: 0,
-
     energia: 0,
-
     costo_mantenimiento: 0,
 
     incidentes: 0,
 
     pedidos_programados: 0,
-
     pedidos_tiempo: 0,
 
     reproceso: 0,
-
     no_conformidades: 0,
 
     observaciones: ''
@@ -333,11 +239,11 @@ function empty() {
 }
 
 
-/* =========================================================
-   LOGIN
-   ========================================================= */
+/* =====================================================
+   PANTALLA DE LOGIN
+===================================================== */
 
-function renderAuth() {
+function renderAuth(message = '') {
 
   app.innerHTML = `
 
@@ -357,12 +263,19 @@ function renderAuth() {
           Inicia sesión para acceder al dashboard.
         </p>
 
+        ${
+          message
+            ? `
+              <div class="msg">
+                ${esc(message)}
+              </div>
+            `
+            : ''
+        }
 
         <form id="authForm">
 
-
           <label>
-
             Correo
 
             <input
@@ -371,12 +284,10 @@ function renderAuth() {
               required
               autocomplete="email"
             >
-
           </label>
 
 
           <label>
-
             Contraseña
 
             <input
@@ -386,7 +297,6 @@ function renderAuth() {
               required
               autocomplete="current-password"
             >
-
           </label>
 
 
@@ -414,7 +324,6 @@ function renderAuth() {
 
           </button>
 
-
         </form>
 
       </div>
@@ -424,144 +333,173 @@ function renderAuth() {
   `;
 
 
-  document
-    .getElementById('authForm')
-    .onsubmit = async e => {
+  const form =
+    document.getElementById(
+      'authForm'
+    );
+
+
+  form.onsubmit =
+    async e => {
 
       e.preventDefault();
-
 
       const msg =
         document.getElementById(
           'authMsg'
         );
 
-
       const email =
         document.getElementById(
           'email'
         ).value.trim();
-
 
       const password =
         document.getElementById(
           'password'
         ).value;
 
-
       msg.textContent =
-        'Procesando…';
+        'Conectando con Supabase…';
 
 
-      const {
-        data,
-        error
-      } =
-        await supabase.auth.signInWithPassword({
+      try {
 
-          email,
+        const {
+          data,
+          error
+        } =
+          await supabase.auth
+            .signInWithPassword({
+              email,
+              password
+            });
 
-          password
 
-        });
+        if (error) {
+
+          msg.textContent =
+            'Supabase: ' +
+            error.message;
+
+          return;
+
+        }
 
 
-      if (error) {
+        user =
+          data.user;
 
-        msg.textContent =
-          error.message;
+        await load();
 
-        return;
+        render();
 
       }
 
+      catch (error) {
 
-      user =
-        data.user;
+        msg.textContent =
+          'Error de conexión: ' +
+          error.message;
 
-
-      await load();
-
-      render();
+      }
 
     };
 
 
   document
     .getElementById('signup')
-    .onclick = async () => {
+    .onclick =
+      async () => {
+
+        const msg =
+          document.getElementById(
+            'authMsg'
+          );
+
+        const email =
+          document.getElementById(
+            'email'
+          ).value.trim();
+
+        const password =
+          document.getElementById(
+            'password'
+          ).value;
 
 
-      const msg =
-        document.getElementById(
-          'authMsg'
-        );
+        if (!email || !password) {
 
+          msg.textContent =
+            'Ingresa correo y contraseña.';
 
-      const email =
-        document.getElementById(
-          'email'
-        ).value.trim();
+          return;
 
+        }
 
-      const password =
-        document.getElementById(
-          'password'
-        ).value;
-
-
-      if (!email || !password) {
 
         msg.textContent =
-          'Ingresa correo y contraseña.';
-
-        return;
-
-      }
+          'Creando cuenta…';
 
 
-      msg.textContent =
-        'Creando cuenta…';
+        try {
+
+          const {
+            data,
+            error
+          } =
+            await supabase.auth
+              .signUp({
+                email,
+                password
+              });
 
 
-      const {
-        data,
-        error
-      } =
-        await supabase.auth.signUp({
+          if (error) {
 
-          email,
+            msg.textContent =
+              error.message;
 
-          password
+            return;
 
-        });
+          }
 
 
-      if (error) {
+          if (data.session) {
 
-        msg.textContent =
-          error.message;
+            user =
+              data.user;
 
-        return;
+            await load();
 
-      }
+            render();
 
+          }
 
-      msg.textContent =
-        data.session
+          else {
 
-          ? 'Cuenta creada correctamente.'
+            msg.textContent =
+              'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.';
 
-          : 'Cuenta creada. Si Supabase solicita confirmación, revisa tu correo.';
+          }
 
-    };
+        }
+
+        catch (error) {
+
+          msg.textContent =
+            error.message;
+
+        }
+
+      };
 
 }
 
 
-/* =========================================================
-   RENDER PRINCIPAL
-   ========================================================= */
+/* =====================================================
+   APP PRINCIPAL
+===================================================== */
 
 function render() {
 
@@ -577,19 +515,12 @@ function render() {
   const nav = [
 
     ['dashboard','Dashboard'],
-
     ['registro','Registro Diario'],
-
     ['resumen','Resumen Ejecutivo'],
-
     ['costos','Costos'],
-
     ['mantenimiento','Mantenimiento'],
-
     ['inventario','Inventario'],
-
     ['personal','Personal'],
-
     ['ssoma','SSOMA']
 
   ];
@@ -648,34 +579,39 @@ function render() {
 
 
   document
-    .querySelectorAll('nav button')
-    .forEach(b => {
+    .querySelectorAll(
+      'nav button'
+    )
+    .forEach(button => {
 
-      b.onclick = () => {
+      button.onclick =
+        () => {
 
-        tab =
-          b.dataset.tab;
+          tab =
+            button.dataset.tab;
 
-        render();
+          render();
 
-      };
+        };
 
     });
 
 
   document
     .getElementById('logout')
-    .onclick = async () => {
+    .onclick =
+      async () => {
 
-      await supabase.auth.signOut();
+        await supabase.auth
+          .signOut();
 
-      user = null;
+        user = null;
+        rows = [];
+        tab = 'dashboard';
 
-      rows = [];
+        render();
 
-      render();
-
-    };
+      };
 
 
   if (tab === 'dashboard') {
@@ -693,12 +629,10 @@ function render() {
   else {
 
     renderPlaceholder(
-
       nav.find(
         x => x[0] === tab
       )?.[1] ||
       'QUIMFLUX'
-
     );
 
   }
@@ -706,9 +640,9 @@ function render() {
 }
 
 
-/* =========================================================
+/* =====================================================
    DASHBOARD
-   ========================================================= */
+===================================================== */
 
 function renderDashboard() {
 
@@ -716,216 +650,195 @@ function renderDashboard() {
     rows.map(derive);
 
 
-  const sums = key =>
-
-    d.reduce(
-      (s,r) =>
-        s + n(r[key]),
-      0
-    );
-
-
-  const k = {
-
-    prod:
-      sums('producida'),
-
-    programada:
-      sums('programada'),
-
-    mp:
-      sums('mp'),
-
-    mermaKg:
-      sums('merma'),
-
-    stop:
-      sums('horas_paradas'),
-
-    hours:
-      sums('horas_turno'),
-
-    pp:
-      sums('personal_programado'),
-
-    pa:
-      sums('personal_presente'),
-
-    rejKg:
-      sums('rechazadas'),
-
-    pedidos:
-      sums('pedidos_programados'),
-
-    aTiempo:
-      sums('pedidos_tiempo'),
-
-    reproceso:
-      sums('reproceso'),
-
-    nc:
-      sums('no_conformidades'),
-
-    cum:
-      sums('programada')
-        ? sums('producida') /
-          sums('programada')
-        : 0,
-
-    yield:
-      sums('mp')
-        ? sums('producida') /
-          sums('mp')
-        : 0,
-
-    merma:
-      sums('mp')
-        ? sums('merma') /
-          sums('mp')
-        : 0,
-
-    disp:
-      sums('horas_turno')
-        ? Math.max(
-            0,
-            (
-              sums('horas_turno') -
-              sums('horas_paradas')
-            ) /
-            sums('horas_turno')
-          )
-        : 0,
-
-    asis:
-      sums('personal_programado')
-        ? sums('personal_presente') /
-          sums('personal_programado')
-        : 0,
-
-    rech:
-      sums('producida')
-        ? sums('rechazadas') /
-          sums('producida')
-        : 0,
-
-    otif:
-      sums('pedidos_programados')
-        ? sums('pedidos_tiempo') /
-          sums('pedidos_programados')
-        : 0,
-
-    costo:
-      sums('costo_produccion'),
-
-    mnt:
-      sums('costo_mantenimiento'),
-
-    unit:
-      sums('producida')
-        ? sums('costo_produccion') /
-          sums('producida')
-        : 0,
-
-    energy:
-      sums('producida')
-        ? sums('energia') /
-          sums('producida')
-        : 0,
-
-    inc:
-      sums('incidentes')
-
-  };
+  const sums =
+    key =>
+      d.reduce(
+        (s,r) =>
+          s + n(r[key]),
+        0
+      );
 
 
-  k.oee =
-    k.disp *
-    k.yield *
+  const programada =
+    sums('programada');
+
+  const producida =
+    sums('producida');
+
+  const mp =
+    sums('mp');
+
+  const horas =
+    sums('horas_turno');
+
+  const paradas =
+    sums('horas_paradas');
+
+  const personalProgramado =
+    sums('personal_programado');
+
+  const personalPresente =
+    sums('personal_presente');
+
+  const rechazadas =
+    sums('rechazadas');
+
+  const pedidos =
+    sums('pedidos_programados');
+
+  const pedidosTiempo =
+    sums('pedidos_tiempo');
+
+
+  const cum =
+    programada
+      ? producida / programada
+      : 0;
+
+
+  const yieldRate =
+    mp
+      ? producida / mp
+      : 0;
+
+
+  const merma =
+    mp
+      ? sums('merma') / mp
+      : 0;
+
+
+  const disponibilidad =
+    horas
+      ? Math.max(
+          0,
+          (horas - paradas) / horas
+        )
+      : 0;
+
+
+  const asistencia =
+    personalProgramado
+      ? personalPresente /
+        personalProgramado
+      : 0;
+
+
+  const rechazo =
+    producida
+      ? rechazadas / producida
+      : 0;
+
+
+  const otif =
+    pedidos
+      ? pedidosTiempo / pedidos
+      : 0;
+
+
+  const oee =
+    disponibilidad *
+    yieldRate *
     Math.max(
       0,
-      1 - k.rech
+      1 - rechazo
     );
 
 
-  const status =
-    (
-      value,
-      target,
-      invert = false
-    ) => {
+  const costo =
+    sums('costo_produccion');
 
 
-      const ok =
-        invert
-
-          ? value <= target
-
-          : value >= target;
+  const mantenimiento =
+    sums('costo_mantenimiento');
 
 
-      const critical =
-        invert
-
-          ? value > target * 1.5
-
-          : value < target * 0.85;
+  const unitario =
+    producida
+      ? costo / producida
+      : 0;
 
 
-      return {
+  const energia =
+    producida
+      ? sums('energia') /
+        producida
+      : 0;
 
-        ok,
 
-        critical,
+  const incidentes =
+    sums('incidentes');
 
-        label:
-          critical
-            ? 'CRÍTICO'
-            : ok
-              ? 'OK'
-              : 'REVISAR',
 
-        cls:
-          critical
-            ? 'critical'
-            : ok
-              ? 'ok'
-              : 'warn'
+  function status(
+    value,
+    target,
+    invert = false
+  ) {
 
-      };
+    const ok =
+      invert
+        ? value <= target
+        : value >= target;
+
+
+    const critical =
+      invert
+        ? value > target * 1.5
+        : value < target * 0.85;
+
+
+    return {
+
+      label:
+        critical
+          ? 'CRÍTICO'
+          : ok
+            ? 'OK'
+            : 'REVISAR',
+
+      cls:
+        critical
+          ? 'critical'
+          : ok
+            ? 'ok'
+            : 'warn'
 
     };
+
+  }
 
 
   const cards = [
 
     [
       'Producción total',
-      k.prod.toLocaleString()
+      producida.toLocaleString()
     ],
 
     [
       'Cumplimiento',
-      pct(k.cum),
+      pct(cum),
       status(
-        k.cum,
+        cum,
         metas.cumplimiento
       )
     ],
 
     [
       'Yield',
-      pct(k.yield),
+      pct(yieldRate),
       status(
-        k.yield,
+        yieldRate,
         metas.yield
       )
     ],
 
     [
       'Merma',
-      pct(k.merma),
+      pct(merma),
       status(
-        k.merma,
+        merma,
         metas.merma,
         true
       )
@@ -933,27 +846,27 @@ function renderDashboard() {
 
     [
       'Disponibilidad',
-      pct(k.disp),
+      pct(disponibilidad),
       status(
-        k.disp,
+        disponibilidad,
         metas.disponibilidad
       )
     ],
 
     [
       'Asistencia',
-      pct(k.asis),
+      pct(asistencia),
       status(
-        k.asis,
+        asistencia,
         metas.asistencia
       )
     ],
 
     [
       'Rechazo calidad',
-      pct(k.rech),
+      pct(rechazo),
       status(
-        k.rech,
+        rechazo,
         metas.rechazo,
         true
       )
@@ -961,51 +874,51 @@ function renderDashboard() {
 
     [
       'OEE',
-      pct(k.oee),
+      pct(oee),
       status(
-        k.oee,
-        .80
+        oee,
+        0.80
       )
     ],
 
     [
       'Costo producción',
       'S/ ' +
-      k.costo.toLocaleString()
+      costo.toLocaleString()
     ],
 
     [
       'Costo unitario',
       'S/ ' +
-      k.unit.toFixed(3)
+      unitario.toFixed(3)
     ],
 
     [
       'Mantenimiento',
       'S/ ' +
-      k.mnt.toLocaleString()
+      mantenimiento.toLocaleString()
     ],
 
     [
       'Energía',
-      k.energy.toFixed(3) +
+      energia.toFixed(3) +
       ' kWh/kg'
     ],
 
     [
       'Entregas a tiempo',
-      pct(k.otif),
+      pct(otif),
       status(
-        k.otif,
+        otif,
         metas.otif
       )
     ],
 
     [
       'Incidentes SSOMA',
-      String(k.inc),
+      String(incidentes),
       status(
-        k.inc,
+        incidentes,
         metas.incidentes,
         true
       )
@@ -1019,7 +932,6 @@ function renderDashboard() {
     .innerHTML = `
 
       <main>
-
 
         <div class="titleRow">
 
@@ -1062,18 +974,18 @@ function renderDashboard() {
               ${
                 c.length > 2
 
-                ? `
+                  ? `
 
-                  <span
-                    class="badge ${c[2].cls}">
+                    <span
+                      class="badge ${c[2].cls}">
 
-                    ${c[2].label}
+                      ${c[2].label}
 
-                  </span>
+                    </span>
 
-                `
+                  `
 
-                : ''
+                  : ''
 
               }
 
@@ -1086,7 +998,6 @@ function renderDashboard() {
 
         <section class="panel">
 
-
           <div class="titleRow">
 
             <div>
@@ -1096,7 +1007,7 @@ function renderDashboard() {
               </h2>
 
               <p>
-                Desde aquí puedes eliminar registros de prueba o registros reales.
+                Puedes eliminar registros desde aquí.
               </p>
 
             </div>
@@ -1107,128 +1018,119 @@ function renderDashboard() {
           ${
             d.length
 
-            ? `
+              ? `
 
-              <div class="tableWrap">
+                <div class="tableWrap">
 
-                <table>
+                  <table>
 
-                  <thead>
+                    <thead>
 
-                    <tr>
+                      <tr>
 
-                      <th>Fecha</th>
+                        <th>Fecha</th>
+                        <th>Turno</th>
+                        <th>Producto</th>
+                        <th>Programada</th>
+                        <th>Producida</th>
+                        <th>Merma</th>
+                        <th>OEE</th>
+                        <th>Acción</th>
 
-                      <th>Turno</th>
+                      </tr>
 
-                      <th>Producto</th>
-
-                      <th>Programada</th>
-
-                      <th>Producida</th>
-
-                      <th>Merma</th>
-
-                      <th>OEE</th>
-
-                      <th>Acción</th>
-
-                    </tr>
-
-                  </thead>
+                    </thead>
 
 
-                  <tbody>
+                    <tbody>
 
-                    ${
-                      d
-                        .slice(-20)
-                        .reverse()
-                        .map(r => `
+                      ${
+                        d
+                          .slice(-20)
+                          .reverse()
+                          .map(r => `
 
-                          <tr>
+                            <tr>
 
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
+                              <td>
+                                ${esc(r.fecha)}
+                              </td>
 
-                            <td>
-                              ${esc(r.turno)}
-                            </td>
+                              <td>
+                                ${esc(r.turno)}
+                              </td>
 
-                            <td>
-                              ${esc(r.producto)}
-                            </td>
+                              <td>
+                                ${esc(r.producto)}
+                              </td>
 
-                            <td>
-                              ${n(r.programada)}
-                            </td>
+                              <td>
+                                ${n(r.programada)}
+                              </td>
 
-                            <td>
-                              ${n(r.producida)}
-                            </td>
+                              <td>
+                                ${n(r.producida)}
+                              </td>
 
-                            <td>
-                              ${n(r.merma)}
-                            </td>
+                              <td>
+                                ${n(r.merma)}
+                              </td>
 
-                            <td>
-                              ${pct(r.oee)}
-                            </td>
+                              <td>
+                                ${pct(r.oee)}
+                              </td>
 
+                              <td>
 
-                            <td>
+                                <button
+                                  type="button"
+                                  data-delete-id="${esc(r.id)}"
+                                  style="
+                                    background:#7f1d1d;
+                                    color:#fff;
+                                    border:0;
+                                    border-radius:8px;
+                                    padding:7px 10px;
+                                    font-weight:600;
+                                    cursor:pointer;
+                                  ">
 
-                              <button
-                                type="button"
-                                data-delete-id="${esc(r.id)}"
-                                style="
-                                  background:#7f1d1d;
-                                  color:#fff;
-                                  border:0;
-                                  border-radius:8px;
-                                  padding:7px 10px;
-                                  font-weight:600;
-                                  cursor:pointer;
-                                ">
+                                  Eliminar
 
-                                Eliminar
+                                </button>
 
-                              </button>
+                              </td>
 
-                            </td>
+                            </tr>
 
-                          </tr>
+                          `)
+                          .join('')
+                      }
 
-                        `).join('')
-                    }
+                    </tbody>
 
-                  </tbody>
+                  </table>
 
-                </table>
+                </div>
 
-              </div>
+              `
 
-            `
+              : `
 
-            : `
+                <div class="empty">
 
-              <div class="empty">
+                  Todavía no hay registros.
 
-                Todavía no hay registros.
+                  Ve a
+                  <b>Registro Diario</b>
+                  para ingresar el primero.
 
-                Ve a
-                <b>Registro Diario</b>
-                para ingresar el primero.
+                </div>
 
-              </div>
-
-            `
+              `
           }
 
-
         </section>
-
 
       </main>
 
@@ -1241,22 +1143,23 @@ function renderDashboard() {
     )
     .forEach(button => {
 
-      button.onclick = () => {
+      button.onclick =
+        () => {
 
-        deleteRecord(
-          button.dataset.deleteId
-        );
+          deleteRecord(
+            button.dataset.deleteId
+          );
 
-      };
+        };
 
     });
 
 }
 
 
-/* =========================================================
-   ELIMINAR REGISTRO
-   ========================================================= */
+/* =====================================================
+   ELIMINAR
+===================================================== */
 
 async function deleteRecord(id) {
 
@@ -1290,16 +1193,12 @@ async function deleteRecord(id) {
       : 'este registro';
 
 
-  const confirmed =
-    confirm(
-
+  if (
+    !confirm(
       `¿Eliminar ${detail}?\n\n` +
       `Esta acción no se puede deshacer.`
-
-    );
-
-
-  if (!confirmed) {
+    )
+  ) {
 
     return;
 
@@ -1326,10 +1225,8 @@ async function deleteRecord(id) {
   if (error) {
 
     alert(
-
-      'No se pudo eliminar el registro:\n' +
+      'No se pudo eliminar:\n\n' +
       error.message
-
     );
 
     return;
@@ -1344,9 +1241,9 @@ async function deleteRecord(id) {
 }
 
 
-/* =========================================================
-   FORMULARIO REGISTRO DIARIO
-   ========================================================= */
+/* =====================================================
+   FORMULARIO
+===================================================== */
 
 function renderForm() {
 
@@ -1366,7 +1263,6 @@ function renderForm() {
 
         <p>
           Ingresa los datos del turno.
-          Los KPI se calculan automáticamente.
         </p>
 
 
@@ -1384,8 +1280,7 @@ function renderForm() {
             ${fields
               .slice(0,7)
               .map(
-                f =>
-                  control(f,r)
+                f => control(f,r)
               )
               .join('')}
 
@@ -1401,8 +1296,7 @@ function renderForm() {
             ${fields
               .slice(7,12)
               .map(
-                f =>
-                  control(f,r)
+                f => control(f,r)
               )
               .join('')}
 
@@ -1418,8 +1312,7 @@ function renderForm() {
             ${fields
               .slice(12,15)
               .map(
-                f =>
-                  control(f,r)
+                f => control(f,r)
               )
               .join('')}
 
@@ -1435,8 +1328,7 @@ function renderForm() {
             ${fields
               .slice(15)
               .map(
-                f =>
-                  control(f,r)
+                f => control(f,r)
               )
               .join('')}
 
@@ -1460,7 +1352,6 @@ function renderForm() {
 
         </form>
 
-
       </main>
 
     `;
@@ -1468,94 +1359,94 @@ function renderForm() {
 
   document
     .getElementById('daily')
-    .onsubmit = async e => {
+    .onsubmit =
+      async e => {
 
-      e.preventDefault();
+        e.preventDefault();
 
 
-      const msg =
-        document.getElementById(
-          'saveMsg'
+        const msg =
+          document.getElementById(
+            'saveMsg'
+          );
+
+
+        const payload = {
+
+          user_id:
+            user.id
+
+        };
+
+
+        fields.forEach(
+          ([key,,type]) => {
+
+            const el =
+              document.getElementById(
+                'f_' + key
+              );
+
+
+            payload[key] =
+              type === 'number'
+
+                ? (
+                    el.value === ''
+                      ? null
+                      : n(el.value)
+                  )
+
+                : el.value;
+
+          }
         );
 
 
-      const payload = {
-
-        user_id:
-          user.id
-
-      };
+        msg.textContent =
+          'Guardando…';
 
 
-      fields.forEach(
-        ([key,,type]) => {
+        const {
+          error
+        } =
+          await supabase
 
-          const el =
-            document.getElementById(
-              'f_' + key
-            );
+            .from('daily_records')
+
+            .insert(payload);
 
 
-          payload[key] =
+        if (error) {
 
-            type === 'number'
+          msg.textContent =
+            error.message;
 
-              ? (
-                  el.value === ''
-                    ? null
-                    : n(el.value)
-                )
-
-              : el.value;
+          return;
 
         }
-      );
 
-
-      msg.textContent =
-        'Guardando…';
-
-
-      const {
-        error
-      } =
-        await supabase
-
-          .from('daily_records')
-
-          .insert(payload);
-
-
-      if (error) {
 
         msg.textContent =
-          error.message;
-
-        return;
-
-      }
+          'Registro guardado correctamente.';
 
 
-      msg.textContent =
-        'Registro guardado correctamente.';
+        await load();
 
 
-      await load();
+        setTimeout(
+          () => render(),
+          400
+        );
 
-
-      setTimeout(
-        () => render(),
-        400
-      );
-
-    };
+      };
 
 }
 
 
-/* =========================================================
-   CONTROLES DEL FORMULARIO
-   ========================================================= */
+/* =====================================================
+   CONTROLES
+===================================================== */
 
 function control(f,r) {
 
@@ -1576,17 +1467,9 @@ function control(f,r) {
       <select
         id="f_${key}">
 
-        <option>
-          Mañana
-        </option>
-
-        <option>
-          Tarde
-        </option>
-
-        <option>
-          Noche
-        </option>
+        <option>Mañana</option>
+        <option>Tarde</option>
+        <option>Noche</option>
 
       </select>
 
@@ -1641,9 +1524,9 @@ function control(f,r) {
 }
 
 
-/* =========================================================
-   MÓDULOS FUTUROS
-   ========================================================= */
+/* =====================================================
+   MÓDULOS
+===================================================== */
 
 function renderPlaceholder(title) {
 
@@ -1661,22 +1544,17 @@ function renderPlaceholder(title) {
         <section class="panel">
 
           <p>
-
-            Este módulo está preparado para
-            enlazarse con su tabla correspondiente
-            de Supabase en la siguiente fase.
-
+            Este módulo está preparado
+            para enlazarse con Supabase
+            en la siguiente fase.
           </p>
 
 
           <span class="badge ok">
-
             Módulo preparado
-
           </span>
 
         </section>
-
 
       </main>
 
@@ -1685,14 +1563,22 @@ function renderPlaceholder(title) {
 }
 
 
-/* =========================================================
-   CARGAR DATOS DESDE SUPABASE
-   ========================================================= */
+/* =====================================================
+   CARGAR DATOS
+===================================================== */
 
 async function load() {
 
+  if (!user) {
 
-  const r =
+    rows = [];
+
+    return;
+
+  }
+
+
+  const result =
     await supabase
 
       .from('daily_records')
@@ -1702,29 +1588,29 @@ async function load() {
       .order(
         'fecha',
         {
-          ascending:true
+          ascending: true
         }
       );
 
 
-  if (!r.error) {
+  if (result.error) {
 
-    rows =
-      r.data || [];
+    console.error(
+      'daily_records:',
+      result.error
+    );
 
   }
 
   else {
 
-    console.error(
-      'Error cargando registros:',
-      r.error
-    );
+    rows =
+      result.data || [];
 
   }
 
 
-  const s =
+  const settings =
     await supabase
 
       .from('app_settings')
@@ -1736,65 +1622,57 @@ async function load() {
       .maybeSingle();
 
 
-  if (s.data) {
+  if (settings.data) {
 
     metas = {
 
       ...metas,
 
-
       cumplimiento:
         n(
-          s.data.meta_cumplimiento
+          settings.data.meta_cumplimiento
         ) ||
         metas.cumplimiento,
 
-
       merma:
         n(
-          s.data.meta_merma
+          settings.data.meta_merma
         ) ||
         metas.merma,
 
-
       yield:
         n(
-          s.data.meta_yield
+          settings.data.meta_yield
         ) ||
         metas.yield,
 
-
       disponibilidad:
         n(
-          s.data.meta_disponibilidad
+          settings.data.meta_disponibilidad
         ) ||
         metas.disponibilidad,
 
-
       asistencia:
         n(
-          s.data.meta_asistencia
+          settings.data.meta_asistencia
         ) ||
         metas.asistencia,
 
-
       rechazo:
         n(
-          s.data.meta_rechazo
+          settings.data.meta_rechazo
         ) ||
         metas.rechazo,
 
-
       otif:
         n(
-          s.data.meta_entregas
+          settings.data.meta_entregas
         ) ||
         metas.otif,
 
-
       incidentes:
         n(
-          s.data.meta_incidentes
+          settings.data.meta_incidentes
         )
 
     };
@@ -1804,36 +1682,68 @@ async function load() {
 }
 
 
-/* =========================================================
-   SESIÓN INICIAL
-   ========================================================= */
+/* =====================================================
+   INICIO
+===================================================== */
 
-supabase.auth
-  .getSession()
-  .then(
-    async ({data}) => {
+async function init() {
 
-      user =
-        data.session?.user ||
-        null;
+  try {
 
-
-      if (user) {
-
-        await load();
-
-      }
+    const {
+      data,
+      error
+    } =
+      await supabase.auth
+        .getSession();
 
 
-      render();
+    if (error) {
+
+      renderAuth(
+        'Supabase: ' +
+        error.message
+      );
+
+      return;
 
     }
-  );
 
 
-/* =========================================================
-   CAMBIOS DE AUTENTICACIÓN
-   ========================================================= */
+    user =
+      data.session?.user ||
+      null;
+
+
+    if (user) {
+
+      await load();
+
+    }
+
+
+    render();
+
+  }
+
+  catch (error) {
+
+    renderAuth(
+      'Error conectando con Supabase: ' +
+      error.message
+    );
+
+  }
+
+}
+
+
+init();
+
+
+/* =====================================================
+   CAMBIOS DE SESIÓN
+===================================================== */
 
 supabase.auth
   .onAuthStateChange(
