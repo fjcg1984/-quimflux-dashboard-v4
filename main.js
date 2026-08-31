@@ -34,25 +34,45 @@ const app =
 const fields = [
 
   ['fecha','Fecha','date'],
+
   ['turno','Turno','select'],
+
   ['producto','Producto','text'],
+
   ['programada','Cantidad programada','number'],
+
   ['producida','Cantidad producida','number'],
+
   ['mp','Materia prima consumida','number'],
+
   ['merma','Merma','number'],
+
   ['horas_turno','Horas de turno','number'],
+
   ['horas_paradas','Horas de parada','number'],
+
   ['personal_programado','Personal programado','number'],
+
   ['personal_presente','Personal presente','number'],
+
   ['rechazadas','Unidades rechazadas','number'],
+
   ['costo_produccion','Costo producción (S/)','number'],
+
   ['energia','Energía (kWh)','number'],
+
   ['costo_mantenimiento','Costo mantenimiento (S/)','number'],
+
   ['incidentes','Incidentes SSOMA','number'],
+
   ['pedidos_programados','Pedidos programados','number'],
+
   ['pedidos_tiempo','Pedidos a tiempo','number'],
+
   ['reproceso','Reproceso','number'],
+
   ['no_conformidades','No conformidades','number'],
+
   ['observaciones','Observaciones','textarea']
 
 ];
@@ -82,12 +102,19 @@ let viewingId = null;
 let metas = {
 
   cumplimiento:0.95,
+
   merma:0.02,
+
   yield:0.95,
+
   disponibilidad:0.90,
+
   asistencia:0.95,
+
   rechazo:0.03,
+
   otif:0.95,
+
   incidentes:0
 
 };
@@ -123,32 +150,47 @@ function ensureExtraStyles(){
     .rowActions{
 
       display:flex;
+
       gap:6px;
+
       align-items:center;
+
       justify-content:center;
+
       white-space:nowrap;
 
     }
 
+
     .actionBtn{
 
       border:1px solid rgba(255,255,255,.18);
+
       background:rgba(255,255,255,.08);
+
       color:white;
+
       border-radius:7px;
+
       padding:6px 8px;
+
       cursor:pointer;
+
       font-size:14px;
+
       transition:.15s;
 
     }
 
+
     .actionBtn:hover{
 
       background:rgba(255,255,255,.18);
+
       transform:translateY(-1px);
 
     }
+
 
     .actionBtn.danger{
 
@@ -156,43 +198,67 @@ function ensureExtraStyles(){
 
     }
 
+
     .modalOverlay{
 
       position:fixed;
+
       inset:0;
+
       z-index:9999;
+
       background:rgba(0,0,0,.72);
+
       display:flex;
+
       align-items:center;
+
       justify-content:center;
+
       padding:20px;
+
       overflow:auto;
 
     }
+
 
     .modalCard{
 
       width:min(1000px,95vw);
+
       max-height:90vh;
+
       overflow:auto;
+
       background:#172238;
+
       color:white;
+
       border:1px solid rgba(255,255,255,.18);
+
       border-radius:16px;
+
       padding:22px;
+
       box-shadow:0 20px 60px rgba(0,0,0,.45);
 
     }
 
+
     .modalHeader{
 
       display:flex;
+
       justify-content:space-between;
+
       align-items:flex-start;
+
       gap:20px;
+
       margin-bottom:20px;
 
     }
+
 
     .modalHeader h2{
 
@@ -200,62 +266,85 @@ function ensureExtraStyles(){
 
     }
 
+
     .modalClose{
 
       border:0;
+
       background:rgba(255,255,255,.1);
+
       color:white;
+
       border-radius:8px;
+
       font-size:24px;
+
       width:40px;
+
       height:40px;
+
       cursor:pointer;
 
     }
 
+
     .detailGrid{
 
       display:grid;
-      grid-template-columns:repeat(
-        auto-fit,
-        minmax(210px,1fr)
-      );
+
+      grid-template-columns:
+        repeat(auto-fit,minmax(210px,1fr));
+
       gap:10px;
 
     }
+
 
     .detailItem{
 
       background:rgba(255,255,255,.06);
+
       border:1px solid rgba(255,255,255,.1);
+
       border-radius:10px;
+
       padding:12px;
 
     }
 
+
     .detailItem small{
 
       display:block;
+
       opacity:.7;
+
       margin-bottom:5px;
 
     }
 
+
     .detailItem strong{
 
       display:block;
+
       word-break:break-word;
 
     }
 
+
     .modalActions{
 
       display:flex;
+
       gap:10px;
+
       flex-wrap:wrap;
+
       margin-top:20px;
 
     }
+
 
     .modalActions button{
 
@@ -263,29 +352,41 @@ function ensureExtraStyles(){
 
     }
 
+
     .danger{
 
       background:rgba(220,60,60,.18);
+
       border:1px solid rgba(255,90,90,.35);
+
       color:white;
+
       border-radius:8px;
+
       padding:9px 14px;
 
     }
+
 
     .secondary{
 
       background:rgba(255,255,255,.1);
+
       border:1px solid rgba(255,255,255,.18);
+
       color:white;
+
       border-radius:8px;
+
       padding:9px 14px;
 
     }
 
+
     .badge.na{
 
       background:rgba(160,160,160,.2);
+
       color:rgba(255,255,255,.75);
 
     }
@@ -314,9 +415,13 @@ function esc(v=''){
     c => ({
 
       '&':'&amp;',
+
       '<':'&lt;',
+
       '>':'&gt;',
+
       '"':'&quot;',
+
       "'":'&#039;'
 
     }[c])
@@ -357,15 +462,12 @@ function status(
   invert=false
 ){
 
-  const v =
-    Number(value);
+  const v = n(value);
 
-  const t =
-    Number(target);
+  const t = n(target);
 
 
-  const epsilon =
-    0.000001;
+  const epsilon = 0.000001;
 
 
   if(
@@ -376,8 +478,11 @@ function status(
     return {
 
       ok:false,
+
       critical:false,
+
       label:'N/A',
+
       cls:'na'
 
     };
@@ -385,7 +490,9 @@ function status(
   }
 
 
-  /* MENOS ES MEJOR */
+  /*
+     MENOS ES MEJOR
+  */
 
   if(invert){
 
@@ -396,8 +503,11 @@ function status(
       return {
 
         ok:true,
+
         critical:false,
+
         label:'OK',
+
         cls:'ok'
 
       };
@@ -410,11 +520,14 @@ function status(
       return {
 
         ok:false,
+
         critical:v > 0,
+
         label:
           v > 0
             ? 'CRÍTICO'
             : 'OK',
+
         cls:
           v > 0
             ? 'critical'
@@ -426,17 +539,21 @@ function status(
 
 
     const critical =
-      v > t * 1.5;
+      v >
+      t * 1.5;
 
 
     return {
 
       ok:false,
+
       critical,
+
       label:
         critical
           ? 'CRÍTICO'
           : 'REVISAR',
+
       cls:
         critical
           ? 'critical'
@@ -447,7 +564,9 @@ function status(
   }
 
 
-  /* MÁS ES MEJOR */
+  /*
+     MÁS ES MEJOR
+  */
 
   if(
     v >= t - epsilon
@@ -456,8 +575,11 @@ function status(
     return {
 
       ok:true,
+
       critical:false,
+
       label:'OK',
+
       cls:'ok'
 
     };
@@ -466,17 +588,21 @@ function status(
 
 
   const critical =
-    v < t * 0.85;
+    v <
+    t * 0.85;
 
 
   return {
 
     ok:false,
+
     critical,
+
     label:
       critical
         ? 'CRÍTICO'
         : 'REVISAR',
+
     cls:
       critical
         ? 'critical'
@@ -496,25 +622,45 @@ function empty(){
   return {
 
     fecha:today,
+
     turno:'Mañana',
+
     producto:'',
+
     programada:0,
+
     producida:0,
+
     mp:0,
+
     merma:0,
+
     horas_turno:8,
+
     horas_paradas:0,
+
     personal_programado:0,
+
     personal_presente:0,
+
     rechazadas:0,
+
     costo_produccion:0,
+
     energia:0,
+
     costo_mantenimiento:0,
+
     incidentes:0,
+
     pedidos_programados:0,
+
     pedidos_tiempo:0,
+
     reproceso:0,
+
     no_conformidades:0,
+
     observaciones:''
 
   };
@@ -559,11 +705,19 @@ function derive(r){
     n(r.pedidos_tiempo);
 
 
+  /*
+     Cumplimiento
+  */
+
   const cumplimiento =
     p > 0
       ? q / p
       : 0;
 
+
+  /*
+     Merma
+  */
 
   const merma =
     mp > 0
@@ -572,8 +726,7 @@ function derive(r){
 
 
   /*
-     YIELD MANTENIDO SEGÚN LA
-     CORRECCIÓN QUE YA HICIMOS
+     Yield
   */
 
   const yieldRate =
@@ -582,14 +735,28 @@ function derive(r){
       : 0;
 
 
+  /*
+     Disponibilidad
+  */
+
   const disponibilidad =
     h > 0
-      ? Math.max(
-          0,
-          (h - stop) / h
-        )
-      : 0;
 
+      ?
+
+      Math.max(
+        0,
+        (h-stop)/h
+      )
+
+      :
+
+      0;
+
+
+  /*
+     Asistencia
+  */
 
   const asistencia =
     pp > 0
@@ -597,11 +764,19 @@ function derive(r){
       : 0;
 
 
+  /*
+     Rechazo
+  */
+
   const rechazo =
     q > 0
       ? rej / q
       : 0;
 
+
+  /*
+     OTIF
+  */
 
   const otif =
     pedidos > 0
@@ -618,7 +793,7 @@ function derive(r){
     yieldRate *
     Math.max(
       0,
-      1 - rechazo
+      1-rechazo
     );
 
 
@@ -644,12 +819,12 @@ function derive(r){
 
     costoUnitario:
       q > 0
-        ? n(r.costo_produccion) / q
+        ? n(r.costo_produccion)/q
         : 0,
 
     energiaUnit:
       q > 0
-        ? n(r.energia) / q
+        ? n(r.energia)/q
         : 0
 
   };
@@ -666,7 +841,8 @@ function indicador(
   rawValue,
   target,
   invert=false,
-  customStatus=null
+  customStatus=null,
+  displayType='percent'
 ){
 
   const s =
@@ -681,29 +857,79 @@ function indicador(
   let displayValue;
 
 
+  /*
+     PORCENTAJE
+  */
+
   if(
-    rawValue === null ||
-    rawValue === undefined
+    displayType === 'percent'
   ){
 
-    displayValue =
-      'N/A';
+    if(
+      rawValue === null ||
+      rawValue === undefined
+    ){
+
+      displayValue =
+        'N/A';
+
+    }else{
+
+      displayValue =
+        pct(rawValue);
+
+    }
 
   }
+
+
+  /*
+     NÚMERO
+  */
 
   else if(
-    typeof rawValue === 'number'
+    displayType === 'number'
   ){
 
     displayValue =
-      pct(rawValue);
+      n(rawValue)
+        .toLocaleString();
 
   }
+
+
+  /*
+     MONEDA
+  */
+
+  else if(
+    displayType === 'currency'
+  ){
+
+    displayValue =
+      'S/ ' +
+      n(rawValue)
+        .toLocaleString(
+          undefined,
+          {
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+          }
+        );
+
+  }
+
+
+  /*
+     TEXTO
+  */
 
   else{
 
     displayValue =
-      esc(rawValue);
+      esc(
+        rawValue ?? ''
+      );
 
   }
 
@@ -720,11 +946,26 @@ function indicador(
         ${displayValue}
       </strong>
 
-      <span
-        class="badge ${s.cls}"
-      >
-        ${s.label}
-      </span>
+      ${
+        displayType === 'number' ||
+        displayType === 'currency'
+
+          ?
+
+          ''
+
+          :
+
+          `
+
+            <span
+              class="badge ${s.cls}"
+            >
+              ${s.label}
+            </span>
+
+          `
+      }
 
     </div>
 
@@ -749,6 +990,7 @@ function tendencia(
     return {
 
       label:'SIN DATOS',
+
       cls:'na'
 
     };
@@ -776,6 +1018,7 @@ function tendencia(
     return {
 
       label:'SIN DATOS',
+
       cls:'na'
 
     };
@@ -789,13 +1032,13 @@ function tendencia(
   const ultimo =
     n(
       ultimos[
-        ultimos.length - 1
+        ultimos.length-1
       ]
     );
 
 
   const diferencia =
-    ultimo - primero;
+    ultimo-primero;
 
 
   if(
@@ -805,6 +1048,7 @@ function tendencia(
     return {
 
       label:'→ ESTABLE',
+
       cls:'ok'
 
     };
@@ -823,22 +1067,28 @@ function tendencia(
     ?
 
     {
+
       label:'↑ MEJORANDO',
+
       cls:'ok'
+
     }
 
     :
 
     {
+
       label:'↓ EMPEORANDO',
+
       cls:'warn'
+
     };
 
 }
 
 
 /* ==========================================================
-   GRÁFICO DE TENDENCIA
+   GRÁFICO SVG
    ========================================================== */
 
 function graficoTendencia(
@@ -873,36 +1123,50 @@ function graficoTendencia(
   const series = [
 
     {
+
       name:'Cumplimiento',
+
       key:'cumplimiento'
+
     },
 
     {
+
       name:'Yield',
+
       key:'yieldRate'
+
     },
 
     {
+
       name:'OEE',
+
       key:'oee'
+
     }
 
   ];
 
 
   const width = 900;
+
   const height = 360;
+
   const left = 55;
+
   const right = 25;
+
   const top = 30;
+
   const bottom = 50;
 
 
   const plotWidth =
-    width - left - right;
+    width-left-right;
 
   const plotHeight =
-    height - top - bottom;
+    height-top-bottom;
 
 
   const x = i => {
@@ -922,7 +1186,7 @@ function graficoTendencia(
 
       (
         i /
-        (data.length - 1)
+        (data.length-1)
       ) *
 
       plotWidth
@@ -951,7 +1215,7 @@ function graficoTendencia(
       plotHeight -
 
       (
-        v / 1.6
+        v/1.6
       ) *
 
       plotHeight
@@ -972,6 +1236,7 @@ function graficoTendencia(
       "
 
       width="100%"
+
       height="360"
 
       preserveAspectRatio="none"
@@ -985,6 +1250,10 @@ function graficoTendencia(
 
   `;
 
+
+  /*
+     LÍNEAS HORIZONTALES
+  */
 
   [
     0,
@@ -1005,12 +1274,15 @@ function graficoTendencia(
         <line
 
           x1="${left}"
+
           y1="${yy}"
 
           x2="${width-right}"
+
           y2="${yy}"
 
           stroke="rgba(255,255,255,.12)"
+
           stroke-width="1"
 
         />
@@ -1018,14 +1290,16 @@ function graficoTendencia(
         <text
 
           x="8"
+
           y="${yy+5}"
 
           fill="rgba(255,255,255,.65)"
+
           font-size="13"
 
         >
 
-          ${(value * 100).toFixed(0)}%
+          ${(value*100).toFixed(0)}%
 
         </text>
 
@@ -1034,6 +1308,10 @@ function graficoTendencia(
     }
   );
 
+
+  /*
+     META
+  */
 
   const metaY =
     y(
@@ -1046,9 +1324,11 @@ function graficoTendencia(
     <line
 
       x1="${left}"
+
       y1="${metaY}"
 
       x2="${width-right}"
+
       y2="${metaY}"
 
       stroke="rgba(255,180,0,.8)"
@@ -1062,6 +1342,7 @@ function graficoTendencia(
     <text
 
       x="${width-right-80}"
+
       y="${metaY-7}"
 
       fill="rgba(255,190,0,.9)"
@@ -1077,15 +1358,28 @@ function graficoTendencia(
   `;
 
 
+  /*
+     SERIES
+  */
+
   series.forEach(
     (serie,index) => {
 
       const points =
         data.map(
           (r,i) =>
+
             `${x(i)},${y(r[serie.key])}`
-        )
-        .join(' ');
+
+        ).join(' ');
+
+
+      const color =
+        `hsl(
+          ${index*70+190},
+          80%,
+          60%
+        )`;
 
 
       svg += `
@@ -1096,13 +1390,7 @@ function graficoTendencia(
 
           fill="none"
 
-          stroke="
-            hsl(
-              ${index*70+190},
-              80%,
-              60%
-            )
-          "
+          stroke="${color}"
 
           stroke-width="4"
 
@@ -1123,17 +1411,12 @@ function graficoTendencia(
             <circle
 
               cx="${x(i)}"
+
               cy="${y(r[serie.key])}"
 
               r="5"
 
-              fill="
-                hsl(
-                  ${index*70+190},
-                  80%,
-                  60%
-                )
-              "
+              fill="${color}"
 
             />
 
@@ -1146,11 +1429,15 @@ function graficoTendencia(
   );
 
 
+  /*
+     FECHAS
+  */
+
   const paso =
     Math.max(
       1,
       Math.ceil(
-        data.length / 8
+        data.length/8
       )
     );
 
@@ -1160,7 +1447,7 @@ function graficoTendencia(
 
       if(
         i % paso !== 0 &&
-        i !== data.length - 1
+        i !== data.length-1
       ){
 
         return;
@@ -1173,6 +1460,7 @@ function graficoTendencia(
         <text
 
           x="${x(i)}"
+
           y="${height-15}"
 
           text-anchor="middle"
@@ -1303,7 +1591,9 @@ function renderAuth(){
             class="primary"
             type="submit"
           >
+
             Entrar
+
           </button>
 
           <button
@@ -1311,7 +1601,9 @@ function renderAuth(){
             id="signup"
             type="button"
           >
+
             Crear una cuenta
+
           </button>
 
         </form>
@@ -1351,15 +1643,13 @@ function renderAuth(){
               document
                 .getElementById(
                   'email'
-                )
-                .value,
+                ).value,
 
             password:
               document
                 .getElementById(
                   'password'
-                )
-                .value
+                ).value
 
           });
 
@@ -1399,16 +1689,14 @@ function renderAuth(){
         document
           .getElementById(
             'email'
-          )
-          .value;
+          ).value;
 
 
       const password =
         document
           .getElementById(
             'password'
-          )
-          .value;
+          ).value;
 
 
       msg.textContent =
@@ -1423,6 +1711,7 @@ function renderAuth(){
           .signUp({
 
             email,
+
             password
 
           });
@@ -1474,12 +1763,19 @@ function render(){
   const nav = [
 
     ['dashboard','Dashboard'],
+
     ['registro','Registro Diario'],
+
     ['resumen','Resumen Ejecutivo'],
+
     ['costos','Costos'],
+
     ['mantenimiento','Mantenimiento'],
+
     ['inventario','Inventario'],
+
     ['personal','Personal'],
+
     ['ssoma','SSOMA']
 
   ];
@@ -1522,7 +1818,7 @@ function render(){
               data-tab="${x[0]}"
 
               class="
-                ${tab === x[0]
+                ${tab===x[0]
                   ? 'active'
                   : ''
                 }
@@ -1558,6 +1854,29 @@ function render(){
           tab =
             button.dataset.tab;
 
+
+          /*
+             Si el usuario entra manualmente
+             a Registro Diario, no debe
+             quedar una edición pendiente.
+          */
+
+          if(
+            tab === 'registro'
+          ){
+
+            /*
+               Conservamos editingId solamente
+               si ya veníamos editando.
+            */
+
+          }else{
+
+            editingId = null;
+
+          }
+
+
           render();
 
         };
@@ -1589,9 +1908,9 @@ function render(){
   ){
 
     /*
-       SI HAY editingId,
-       BUSCAMOS EL REGISTRO REAL
-       Y LO ENVIAMOS AL FORMULARIO.
+       CORRECCIÓN IMPORTANTE:
+       Si editingId existe, buscamos
+       el registro y lo pasamos al formulario.
     */
 
     const registroEditar =
@@ -1601,8 +1920,8 @@ function render(){
 
         rows.find(
           r =>
-            String(r.id).trim() ===
-            String(editingId).trim()
+            String(r.id) ===
+            String(editingId)
         )
 
         :
@@ -1611,7 +1930,7 @@ function render(){
 
 
     renderForm(
-      registroEditar || null
+      registroEditar
     );
 
   }
@@ -1659,7 +1978,8 @@ function renderDashboard(){
     d.reduce(
 
       (s,r) =>
-        s + n(r[key]),
+
+        s+n(r[key]),
 
       0
 
@@ -1717,67 +2037,130 @@ function renderDashboard(){
 
 
   k.cumplimiento =
+
     k.programada > 0
-      ? k.prod / k.programada
-      : 0;
+
+      ?
+
+      k.prod /
+      k.programada
+
+      :
+
+      0;
 
 
   k.yield =
+
     k.mp > 0
-      ? k.prod / k.mp
-      : 0;
+
+      ?
+
+      k.prod /
+      k.mp
+
+      :
+
+      0;
 
 
   k.mermaRate =
+
     k.mp > 0
-      ? k.merma / k.mp
-      : 0;
+
+      ?
+
+      k.merma /
+      k.mp
+
+      :
+
+      0;
 
 
   k.disponibilidad =
+
     k.hours > 0
-      ? Math.max(
-          0,
-          (
-            k.hours -
-            k.stop
-          ) /
-          k.hours
-        )
-      : 0;
+
+      ?
+
+      Math.max(
+        0,
+        (
+          k.hours -
+          k.stop
+        ) /
+        k.hours
+      )
+
+      :
+
+      0;
 
 
   k.asistencia =
+
     k.pp > 0
-      ? k.pa / k.pp
-      : 0;
+
+      ?
+
+      k.pa /
+      k.pp
+
+      :
+
+      0;
 
 
   k.rechazo =
+
     k.prod > 0
-      ? k.rej / k.prod
-      : 0;
+
+      ?
+
+      k.rej /
+      k.prod
+
+      :
+
+      0;
 
 
   k.otif =
+
     k.pedidos > 0
-      ? k.tiempo / k.pedidos
-      : null;
+
+      ?
+
+      k.tiempo /
+      k.pedidos
+
+      :
+
+      null;
 
 
   k.oee =
+
     k.disponibilidad *
     k.yield *
     Math.max(
       0,
-      1 - k.rechazo
+      1-k.rechazo
     );
 
 
   const last =
+
     d.length
-      ? d[d.length - 1]
-      : null;
+
+      ?
+
+      d[d.length-1]
+
+      :
+
+      null;
 
 
   /* ========================================================
@@ -1961,9 +2344,17 @@ function renderDashboard(){
                       >
 
                         ${
-                          a.tipo === 'critical'
-                            ? 'CRÍTICO'
-                            : 'REVISAR'
+                          a.tipo ===
+                          'critical'
+
+                            ?
+
+                            'CRÍTICO'
+
+                            :
+
+                            'REVISAR'
+
                         }
 
                       </span>
@@ -1975,7 +2366,9 @@ function renderDashboard(){
                       <small>
 
                         ${a.valor}
+
                         · Meta
+
                         ${a.meta}
 
                       </small>
@@ -1997,7 +2390,9 @@ function renderDashboard(){
             <span
               class="badge ok"
             >
+
               0 CRÍTICAS
+
             </span>
 
           `
@@ -2048,18 +2443,32 @@ function renderDashboard(){
         <p>
 
           ${esc(last.fecha)}
+
           ·
+
           ${esc(last.turno)}
 
           ${
             last.producto
-              ? ' · ' + esc(last.producto)
-              : ''
+
+              ?
+
+              ' · ' +
+              esc(
+                last.producto
+              )
+
+              :
+
+              ''
+
           }
 
         </p>
 
-        <span class="badge ok">
+        <span
+          class="badge ok"
+        >
           REGISTRO MÁS RECIENTE
         </span>
 
@@ -2192,10 +2601,19 @@ function renderDashboard(){
 
       <div class="cards">
 
+        /*
+           CORRECCIÓN:
+           Producción total es una cantidad,
+           NO un porcentaje.
+        */
+
         ${indicador(
           'Producción total',
           k.prod,
-          0
+          0,
+          false,
+          null,
+          'number'
         )}
 
         ${indicador(
@@ -2294,11 +2712,17 @@ function renderDashboard(){
             S/
             ${
               k.prod
-                ? (
-                    k.costo /
-                    k.prod
-                  ).toFixed(3)
-                : '0.000'
+
+                ?
+
+                (
+                  k.costo /
+                  k.prod
+                ).toFixed(3)
+
+                :
+
+                '0.000'
             }
           </strong>
 
@@ -2315,11 +2739,18 @@ function renderDashboard(){
 
             ${
               k.prod
-                ? (
-                    k.energia /
-                    k.prod
-                  ).toFixed(3)
-                : '0.000'
+
+                ?
+
+                (
+                  k.energia /
+                  k.prod
+                ).toFixed(3)
+
+                :
+
+                '0.000'
+
             }
 
             kWh/unidad
@@ -2383,6 +2814,7 @@ function renderDashboard(){
             n(actual) -
             n(historico)
           ) * 100
+
         ).toFixed(1)
 
         + ' pp'
@@ -2876,7 +3308,7 @@ function renderDashboard(){
       'S/' +
       (
         k.prod
-          ? k.costo / k.prod
+          ? k.costo/k.prod
           : 0
       ).toFixed(3)
     ],
@@ -2885,7 +3317,7 @@ function renderDashboard(){
       'Energía',
       (
         k.prod
-          ? k.energia / k.prod
+          ? k.energia/k.prod
           : 0
       ).toFixed(3) +
       ' kWh/unidad'
@@ -2989,114 +3421,108 @@ function renderDashboard(){
                   .slice(-20)
                   .reverse()
                   .map(
-                    r => {
+                    r => `
 
-                      /*
-                         NORMALIZAMOS EL ID AQUÍ.
-                         ESTA ES LA CORRECCIÓN CLAVE.
-                      */
+                      <tr>
 
-                      const rowId =
-                        String(
-                          r.id ?? ''
-                        ).trim();
+                        <td>
+                          ${esc(r.fecha)}
+                        </td>
 
+                        <td>
+                          ${esc(r.turno)}
+                        </td>
 
-                      return `
+                        <td>
+                          ${esc(r.producto)}
+                        </td>
 
-                        <tr>
+                        <td>
+                          ${n(
+                            r.programada
+                          ).toLocaleString()}
+                        </td>
 
-                          <td>
-                            ${esc(r.fecha)}
-                          </td>
+                        <td>
+                          ${n(
+                            r.producida
+                          ).toLocaleString()}
+                        </td>
 
-                          <td>
-                            ${esc(r.turno)}
-                          </td>
+                        <td>
+                          ${n(r.merma)}
+                        </td>
 
-                          <td>
-                            ${esc(r.producto)}
-                          </td>
+                        <td>
+                          ${pct(r.oee)}
+                        </td>
 
-                          <td>
-                            ${n(
-                              r.programada
-                            ).toLocaleString()}
-                          </td>
+                        <td>
 
-                          <td>
-                            ${n(
-                              r.producida
-                            ).toLocaleString()}
-                          </td>
+                          <div
+                            class="rowActions"
+                          >
 
-                          <td>
-                            ${n(r.merma)}
-                          </td>
+                            <button
 
-                          <td>
-                            ${pct(r.oee)}
-                          </td>
+                              class="actionBtn"
 
-                          <td>
+                              data-view="
+                                ${esc(r.id)}
+                              "
 
-                            <div
-                              class="rowActions"
+                              title="
+                                Ver registro
+                              "
+
                             >
-
-                              <button
-
-                                type="button"
-
-                                class="actionBtn"
-
-                                data-view="${esc(rowId)}"
-
-                                title="Ver registro"
-
-                              >
-                                👁️
-                              </button>
+                              👁️
+                            </button>
 
 
-                              <button
+                            <button
 
-                                type="button"
+                              class="actionBtn"
 
-                                class="actionBtn"
+                              data-edit="
+                                ${esc(r.id)}
+                              "
 
-                                data-edit="${esc(rowId)}"
+                              title="
+                                Editar registro
+                              "
 
-                                title="Editar registro"
-
-                              >
-                                ✏️
-                              </button>
+                            >
+                              ✏️
+                            </button>
 
 
-                              <button
+                            <button
 
-                                type="button"
+                              class="
+                                actionBtn
+                                danger
+                              "
 
-                                class="actionBtn danger"
+                              data-delete="
+                                ${esc(r.id)}
+                              "
 
-                                data-delete="${esc(rowId)}"
+                              title="
+                                Eliminar registro
+                              "
 
-                                title="Eliminar registro"
+                            >
+                              🗑️
+                            </button>
 
-                              >
-                                🗑️
-                              </button>
+                          </div>
 
-                            </div>
+                        </td>
 
-                          </td>
+                      </tr>
 
-                        </tr>
-
-                      `;
-
-                    }
+                    `
                   )
                   .join('')
               }
@@ -3171,11 +3597,15 @@ function renderDashboard(){
 
         ${alertsHTML}
 
+
         ${ultimoHTML}
+
 
         ${historicoHTML}
 
+
         ${comparativaHTML}
+
 
         ${tendenciasHTML}
 
@@ -3255,7 +3685,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACCIÓN VER
+     ACTIVAR BOTÓN VER
      ======================================================== */
 
   document
@@ -3267,13 +3697,9 @@ function renderDashboard(){
 
         button.onclick = () => {
 
-          const id =
-            String(
-              button.dataset.view || ''
-            ).trim();
-
-
-          verRegistro(id);
+          verRegistro(
+            button.dataset.view
+          );
 
         };
 
@@ -3282,7 +3708,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACCIÓN EDITAR
+     ACTIVAR BOTÓN EDITAR
      ======================================================== */
 
   document
@@ -3294,13 +3720,9 @@ function renderDashboard(){
 
         button.onclick = () => {
 
-          const id =
-            String(
-              button.dataset.edit || ''
-            ).trim();
-
-
-          editarRegistro(id);
+          editarRegistro(
+            button.dataset.edit
+          );
 
         };
 
@@ -3309,7 +3731,7 @@ function renderDashboard(){
 
 
   /* ========================================================
-     ACCIÓN ELIMINAR
+     ACTIVAR BOTÓN ELIMINAR
      ======================================================== */
 
   document
@@ -3321,13 +3743,9 @@ function renderDashboard(){
 
         button.onclick = async () => {
 
-          const id =
-            String(
-              button.dataset.delete || ''
-            ).trim();
-
-
-          await eliminarRegistro(id);
+          await eliminarRegistro(
+            button.dataset.delete
+          );
 
         };
 
@@ -3338,20 +3756,16 @@ function renderDashboard(){
 
 
 /* ==========================================================
-   VER REGISTRO
+   VER REGISTRO COMPLETO
    ========================================================== */
 
 function verRegistro(id){
 
-  const cleanId =
-    String(id || '').trim();
-
-
   const r =
     rows.find(
       x =>
-        String(x.id || '').trim() ===
-        cleanId
+        String(x.id) ===
+        String(id)
     );
 
 
@@ -3361,26 +3775,12 @@ function verRegistro(id){
       'No se encontró el registro.'
     );
 
-    console.error(
-      'ID buscado:',
-      cleanId
-    );
-
-    console.log(
-      'IDs disponibles:',
-      rows.map(
-        x =>
-          String(x.id || '').trim()
-      )
-    );
-
     return;
 
   }
 
 
-  viewingId =
-    cleanId;
+  viewingId = id;
 
 
   const d =
@@ -3388,9 +3788,6 @@ function verRegistro(id){
 
 
   const contenido = {
-
-    'ID':
-      cleanId,
 
     'Fecha':
       r.fecha,
@@ -3462,7 +3859,8 @@ function verRegistro(id){
       n(r.no_conformidades),
 
     'Observaciones':
-      r.observaciones || '—',
+      r.observaciones ||
+      '—',
 
     'Cumplimiento':
       pct(d.cumplimiento),
@@ -3518,13 +3916,23 @@ function verRegistro(id){
           <small>
 
             ${esc(r.fecha)}
+
             ·
+
             ${esc(r.turno)}
 
             ${
               r.producto
-                ? ' · ' + esc(r.producto)
-                : ''
+
+                ?
+
+                ' · ' +
+                esc(r.producto)
+
+                :
+
+                ''
+
             }
 
           </small>
@@ -3535,9 +3943,10 @@ function verRegistro(id){
         <button
           class="modalClose"
           id="closeModal"
-          type="button"
         >
+
           ×
+
         </button>
 
       </div>
@@ -3579,27 +3988,30 @@ function verRegistro(id){
         <button
           class="primary"
           id="modalEdit"
-          type="button"
         >
+
           ✏️ Editar
+
         </button>
 
 
         <button
           class="danger"
           id="modalDelete"
-          type="button"
         >
+
           🗑️ Eliminar
+
         </button>
 
 
         <button
           class="secondary"
           id="modalClose2"
-          type="button"
         >
+
           Cerrar
+
         </button>
 
       </div>
@@ -3645,9 +4057,7 @@ function verRegistro(id){
 
       cerrar();
 
-      editarRegistro(
-        cleanId
-      );
+      editarRegistro(id);
 
     };
 
@@ -3661,7 +4071,7 @@ function verRegistro(id){
       cerrar();
 
       await eliminarRegistro(
-        cleanId
+        id
       );
 
     };
@@ -3675,15 +4085,11 @@ function verRegistro(id){
 
 function editarRegistro(id){
 
-  const cleanId =
-    String(id || '').trim();
-
-
   const r =
     rows.find(
       x =>
-        String(x.id || '').trim() ===
-        cleanId
+        String(x.id) ===
+        String(id)
     );
 
 
@@ -3693,29 +4099,31 @@ function editarRegistro(id){
       'No se encontró el registro.'
     );
 
-    console.error(
-      'ID recibido para editar:',
-      cleanId
-    );
-
-    console.log(
-      'IDs disponibles:',
-      rows.map(
-        x =>
-          String(x.id || '').trim()
-      )
-    );
-
     return;
 
   }
 
 
+  /*
+     Guardamos el ID que se va a editar.
+  */
+
   editingId =
-    cleanId;
+    id;
+
+
+  /*
+     Cambiamos al formulario.
+  */
 
   tab =
     'registro';
+
+
+  /*
+     render() buscará editingId
+     y cargará el registro completo.
+  */
 
   render();
 
@@ -3728,15 +4136,11 @@ function editarRegistro(id){
 
 async function eliminarRegistro(id){
 
-  const cleanId =
-    String(id || '').trim();
-
-
   const registro =
     rows.find(
       r =>
-        String(r.id || '').trim() ===
-        cleanId
+        String(r.id) ===
+        String(id)
     );
 
 
@@ -3744,19 +4148,6 @@ async function eliminarRegistro(id){
 
     alert(
       'No se encontró el registro.'
-    );
-
-    console.error(
-      'ID recibido para eliminar:',
-      cleanId
-    );
-
-    console.log(
-      'IDs disponibles:',
-      rows.map(
-        r =>
-          String(r.id || '').trim()
-      )
     );
 
     return;
@@ -3789,7 +4180,6 @@ Esta acción no se puede deshacer.`
 
 
   const {
-    data,
     error
   } =
     await supabase
@@ -3799,9 +4189,8 @@ Esta acción no se puede deshacer.`
       .delete()
       .eq(
         'id',
-        cleanId
-      )
-      .select('id');
+        id
+      );
 
 
   if(error){
@@ -3813,45 +4202,12 @@ Esta acción no se puede deshacer.`
 
     );
 
-    console.error(
-      'Error Supabase:',
-      error
-    );
-
     return;
 
   }
 
 
-  /*
-     VERIFICAMOS QUE SUPABASE
-     REALMENTE HAYA ELIMINADO.
-  */
-
-  if(
-    !data ||
-    data.length === 0
-  ){
-
-    alert(
-
-      'Supabase no eliminó ningún registro.\n\n' +
-      'El registro existe en pantalla, pero la operación DELETE no afectó ninguna fila.\n\n' +
-      'Esto normalmente indica una política RLS/permisos en Supabase.'
-
-    );
-
-    return;
-
-  }
-
-
-  rows =
-    rows.filter(
-      r =>
-        String(r.id || '').trim() !==
-        cleanId
-    );
+  await load();
 
 
   editingId = null;
@@ -3859,7 +4215,6 @@ Esta acción no se puede deshacer.`
   viewingId = null;
 
   tab = 'dashboard';
-
 
   render();
 
@@ -3898,8 +4253,15 @@ function renderForm(
 
               ${
                 editando
-                  ? 'Editar registro diario'
-                  : 'Registro Diario'
+
+                  ?
+
+                  'Editar registro diario'
+
+                  :
+
+                  'Registro Diario'
+
               }
 
             </h1>
@@ -3934,7 +4296,6 @@ function renderForm(
                 <button
                   class="secondary"
                   id="cancelEdit"
-                  type="button"
                 >
 
                   Cancelar edición
@@ -4135,8 +4496,15 @@ function renderForm(
 
               (
                 el.value === ''
-                  ? null
-                  : n(el.value)
+
+                  ?
+
+                  null
+
+                  :
+
+                  n(el.value)
+
               )
 
               :
@@ -4165,13 +4533,8 @@ function renderForm(
 
       if(editando){
 
-        const cleanId =
-          String(
-            editingId || ''
-          ).trim();
-
-
         response =
+
           await supabase
             .from(
               'daily_records'
@@ -4181,24 +4544,22 @@ function renderForm(
             )
             .eq(
               'id',
-              cleanId
-            )
-            .select();
-
+              editingId
+            );
 
       }
 
       else{
 
         response =
+
           await supabase
             .from(
               'daily_records'
             )
             .insert(
               payload
-            )
-            .select();
+            );
 
       }
 
@@ -4207,27 +4568,6 @@ function renderForm(
 
         msg.textContent =
           response.error.message;
-
-        console.error(
-          'Error Supabase:',
-          response.error
-        );
-
-        return;
-
-      }
-
-
-      if(
-        editando &&
-        (
-          !response.data ||
-          response.data.length === 0
-        )
-      ){
-
-        msg.textContent =
-          'No se modificó ningún registro. Verifica permisos RLS de Supabase.';
 
         return;
 
@@ -4270,7 +4610,7 @@ function renderForm(
 
 
 /* ==========================================================
-   CONTROLES DEL FORMULARIO
+   CONTROLES FORMULARIO
    ========================================================== */
 
 function control(
@@ -4409,8 +4749,7 @@ function renderCostos(){
   const totalProduccion =
     d.reduce(
       (s,r) =>
-        s +
-        n(
+        s+n(
           r.costo_produccion
         ),
       0
@@ -4420,8 +4759,7 @@ function renderCostos(){
   const totalMantenimiento =
     d.reduce(
       (s,r) =>
-        s +
-        n(
+        s+n(
           r.costo_mantenimiento
         ),
       0
@@ -4431,8 +4769,7 @@ function renderCostos(){
   const totalEnergia =
     d.reduce(
       (s,r) =>
-        s +
-        n(r.energia),
+        s+n(r.energia),
       0
     );
 
@@ -4440,8 +4777,7 @@ function renderCostos(){
   const totalProduccionUnidades =
     d.reduce(
       (s,r) =>
-        s +
-        n(r.producida),
+        s+n(r.producida),
       0
     );
 
@@ -4505,7 +4841,7 @@ function renderCostos(){
 
   const last =
     d.length
-      ? d[d.length - 1]
+      ? d[d.length-1]
       : null;
 
 
@@ -4658,7 +4994,6 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${
                   totalProduccion > 0
 
@@ -4673,9 +5008,7 @@ function renderCostos(){
                     :
 
                     '0.0'
-
                 }%
-
               </strong>
 
             </div>
@@ -4764,9 +5097,7 @@ function renderCostos(){
                     </small>
 
                     <strong>
-
                       S/
-
                       ${
                         last.producida > 0
 
@@ -4784,9 +5115,7 @@ function renderCostos(){
                           :
 
                           '0.000'
-
                       }
-
                     </strong>
 
                   </div>
@@ -4799,13 +5128,10 @@ function renderCostos(){
                     </small>
 
                     <strong>
-
                       ${n(
                         last.energia
                       ).toFixed(2)}
-
                       kWh
-
                     </strong>
 
                   </div>
@@ -4818,13 +5144,10 @@ function renderCostos(){
                     </small>
 
                     <strong>
-
                       ${n(
                         last.energiaUnit
                       ).toFixed(3)}
-
                       kWh/unidad
-
                     </strong>
 
                   </div>
@@ -4837,13 +5160,10 @@ function renderCostos(){
                     </small>
 
                     <strong>
-
                       ${n(
                         last.horas_paradas
                       ).toFixed(2)}
-
                       h
-
                     </strong>
 
                   </div>
@@ -4870,8 +5190,7 @@ function renderCostos(){
         <section class="panel">
 
           <h2>
-            Comparativa:
-            último turno vs histórico anterior
+            Comparativa: último turno vs histórico anterior
           </h2>
 
           <p>
@@ -4887,8 +5206,7 @@ function renderCostos(){
               (() => {
 
                 const anterior =
-                  d[d.length - 2];
-
+                  d[d.length-2];
 
                 const diff = (
                   a,
@@ -4896,10 +5214,8 @@ function renderCostos(){
                 ) =>
 
                   (
-                    n(a) -
-                    n(b)
+                    n(a)-n(b)
                   ).toFixed(3);
-
 
                 return `
 
@@ -4972,7 +5288,6 @@ function renderCostos(){
 
                           <td>
                             S/
-
                             ${
                               last.producida > 0
 
@@ -4990,14 +5305,11 @@ function renderCostos(){
                                 :
 
                                 '0.000'
-
                             }
-
                           </td>
 
                           <td>
                             S/
-
                             ${
                               anterior.producida > 0
 
@@ -5015,9 +5327,7 @@ function renderCostos(){
                                 :
 
                                 '0.000'
-
                             }
-
                           </td>
 
                           <td>
@@ -5034,32 +5344,24 @@ function renderCostos(){
                           </td>
 
                           <td>
-
                             ${n(
                               last.energiaUnit
                             ).toFixed(3)}
-
                             kWh/unidad
-
                           </td>
 
                           <td>
-
                             ${n(
                               anterior.energiaUnit
                             ).toFixed(3)}
-
                             kWh/unidad
-
                           </td>
 
                           <td>
-
                             ${diff(
                               last.energiaUnit,
                               anterior.energiaUnit
                             )}
-
                           </td>
 
                         </tr>
@@ -5079,10 +5381,8 @@ function renderCostos(){
               `
 
                 <div class="empty">
-
                   Se necesitan al menos
                   2 registros para comparar.
-
                 </div>
 
               `
@@ -5125,10 +5425,8 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${energiaUnit.toFixed(3)}
                 kWh/unidad
-
               </strong>
 
             </div>
@@ -5171,10 +5469,8 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${totalEnergia.toFixed(2)}
                 kWh
-
               </strong>
 
             </div>
@@ -5187,10 +5483,8 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${energiaUnit.toFixed(3)}
                 kWh/unidad
-
               </strong>
 
             </div>
@@ -5203,12 +5497,9 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${totalProduccionUnidades
                   .toLocaleString()}
-
                 unidades
-
               </strong>
 
             </div>
@@ -5289,59 +5580,52 @@ function renderCostos(){
                               <tr>
 
                                 <td>
-                                  ${esc(r.fecha)}
+                                  ${esc(
+                                    r.fecha
+                                  )}
                                 </td>
 
                                 <td>
-                                  ${esc(r.turno)}
+                                  ${esc(
+                                    r.turno
+                                  )}
                                 </td>
 
                                 <td>
-                                  ${esc(r.producto)}
+                                  ${esc(
+                                    r.producto
+                                  )}
                                 </td>
 
                                 <td>
-
                                   S/
-
                                   ${n(
                                     r.costo_produccion
                                   ).toFixed(2)}
-
                                 </td>
 
                                 <td>
-
                                   S/
-
                                   ${n(
                                     r.costo_mantenimiento
                                   ).toFixed(2)}
-
                                 </td>
 
                                 <td>
-
                                   S/
-
                                   ${n(
                                     r.costoUnitario
                                   ).toFixed(3)}
-
                                 </td>
 
                                 <td>
-
                                   ${n(
                                     r.energiaUnit
                                   ).toFixed(3)}
-
                                 </td>
 
                                 <td>
-
                                   S/
-
                                   ${
                                     r.producida > 0
 
@@ -5364,9 +5648,7 @@ function renderCostos(){
                                       :
 
                                       '0.000'
-
                                   }
-
                                 </td>
 
                               </tr>
@@ -5442,10 +5724,8 @@ function renderCostos(){
               </small>
 
               <strong>
-
                 ${energiaUnit.toFixed(3)}
                 kWh/unidad
-
               </strong>
 
             </div>
@@ -5536,15 +5816,6 @@ async function load(){
 
     rows =
       r.data || [];
-
-  }
-
-  else{
-
-    console.error(
-      'Error cargando daily_records:',
-      r.error
-    );
 
   }
 
