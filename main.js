@@ -74,15 +74,49 @@ function esc(v=''){
 
 
 function n(v){
+
+  /*
+   * CORRECCIÓN:
+   * Permite trabajar tanto con números normales
+   * como con porcentajes escritos como "92.0%".
+   */
+
+  if(
+    typeof v === 'string' &&
+    v.trim().endsWith('%')
+  ){
+
+    const x =
+      parseFloat(
+        v.replace('%','')
+      );
+
+    return Number.isFinite(x)
+      ? x / 100
+      : 0;
+  }
+
+
   const x = Number(v);
-  return Number.isFinite(x) ? x : 0;
+
+  return Number.isFinite(x)
+    ? x
+    : 0;
 }
 
 
 function pct(v){
-  return (n(v) * 100).toFixed(1) + '%';
+
+  return (
+    n(v) * 100
+  ).toFixed(1) + '%';
+
 }
 
+
+/* ==========================================================
+   SEMÁFORO
+   ========================================================== */
 
 function status(
   value,
@@ -90,17 +124,32 @@ function status(
   invert=false
 ){
 
+  /*
+   * CORRECCIÓN:
+   * status siempre convierte el valor y la meta
+   * a números antes de comparar.
+   */
+
+  const numericValue = n(value);
+  const numericTarget = n(target);
+
+
   const ok = invert
-    ? value <= target
-    : value >= target;
+    ? numericValue <= numericTarget
+    : numericValue >= numericTarget;
+
 
   const critical = invert
-    ? value > target * 1.5
-    : value < target * 0.85;
+    ? numericValue > numericTarget * 1.5
+    : numericValue < numericTarget * 0.85;
+
 
   return {
+
     ok,
+
     critical,
+
     label:
       critical
         ? 'CRÍTICO'
@@ -114,9 +163,114 @@ function status(
         : ok
           ? 'ok'
           : 'warn'
+
   };
+
 }
 
+
+/* ==========================================================
+   TARJETA KPI
+   ========================================================== */
+
+function indicador(
+  label,
+  value,
+  target,
+  invert=false
+){
+
+  /*
+   * CORRECCIÓN PRINCIPAL:
+   *
+   * El valor puede venir como:
+   *
+   *   0.92
+   *
+   * o como:
+   *
+   *   "92.0%"
+   *
+   * El semáforo siempre utiliza el valor numérico real.
+   */
+
+
+  const numericValue =
+    n(value);
+
+
+  const s =
+    status(
+      numericValue,
+      target,
+      invert
+    );
+
+
+  let displayValue;
+
+
+  /*
+   * Si el valor original ya era un porcentaje
+   * o el valor es decimal entre 0 y 1,
+   * lo mostramos como porcentaje.
+   */
+
+  if(
+    typeof value === 'string' &&
+    value.trim().endsWith('%')
+  ){
+
+    displayValue = value;
+
+  }
+
+  else if(
+    Math.abs(numericValue) <= 1 &&
+    target !== 0
+  ){
+
+    displayValue =
+      pct(numericValue);
+
+  }
+
+  else{
+
+    displayValue =
+      String(value);
+
+  }
+
+
+  return `
+
+    <div class="card">
+
+      <small>
+        ${esc(label)}
+      </small>
+
+      <strong>
+        ${esc(displayValue)}
+      </strong>
+
+      <span
+        class="badge ${s.cls}"
+      >
+        ${s.label}
+      </span>
+
+    </div>
+
+  `;
+
+}
+
+
+/* ==========================================================
+   REGISTRO VACÍO
+   ========================================================== */
 
 function empty(){
 
@@ -163,7 +317,9 @@ function empty(){
     no_conformidades:0,
 
     observaciones:''
+
   };
+
 }
 
 
@@ -195,15 +351,21 @@ function derive(r){
 
 
   const cumplimiento =
-    p ? q / p : 0;
+    p
+      ? q / p
+      : 0;
 
 
   const merma =
-    mp ? n(r.merma) / mp : 0;
+    mp
+      ? n(r.merma) / mp
+      : 0;
 
 
   const yieldRate =
-    mp ? q / mp : 0;
+    mp
+      ? q / mp
+      : 0;
 
 
   const disponibilidad =
@@ -216,21 +378,30 @@ function derive(r){
 
 
   const asistencia =
-    pp ? pa / pp : 0;
+    pp
+      ? pa / pp
+      : 0;
 
 
   const rechazo =
-    q ? rej / q : 0;
+    q
+      ? rej / q
+      : 0;
 
 
   const otif =
-    pedidos ? at / pedidos : 0;
+    pedidos
+      ? at / pedidos
+      : 0;
 
 
   const oee =
     disponibilidad *
     yieldRate *
-    Math.max(0,1-rechazo);
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
 
   return {
@@ -262,7 +433,9 @@ function derive(r){
       q
         ? n(r.energia) / q
         : 0
+
   };
+
 }
 
 
@@ -342,6 +515,7 @@ function renderAuth(){
       </div>
 
     </div>
+
   `;
 
 
@@ -351,8 +525,10 @@ function renderAuth(){
 
       e.preventDefault();
 
+
       const msg =
         document.getElementById('authMsg');
+
 
       msg.textContent =
         'Procesando…';
@@ -369,6 +545,7 @@ function renderAuth(){
 
           password:
             document.getElementById('password').value
+
         });
 
 
@@ -378,14 +555,18 @@ function renderAuth(){
           error.message;
 
         return;
+
       }
 
 
-      user = data.user;
+      user =
+        data.user;
+
 
       await load();
 
       render();
+
     };
 
 
@@ -399,6 +580,7 @@ function renderAuth(){
 
       const email =
         document.getElementById('email').value;
+
 
       const password =
         document.getElementById('password').value;
@@ -427,7 +609,9 @@ function renderAuth(){
               ? 'Cuenta creada.'
               : 'Cuenta creada. Revisa tu correo si Supabase solicita confirmación.'
           );
+
     };
+
 }
 
 
@@ -442,6 +626,7 @@ function render(){
     renderAuth();
 
     return;
+
   }
 
 
@@ -511,6 +696,7 @@ function render(){
 
 
     <div id="content"></div>
+
   `;
 
 
@@ -524,6 +710,7 @@ function render(){
           button.dataset.tab;
 
         render();
+
       };
 
     });
@@ -539,11 +726,15 @@ function render(){
 
     renderDashboard();
 
-  }else if(tab === 'registro'){
+  }
+
+  else if(tab === 'registro'){
 
     renderForm();
 
-  }else{
+  }
+
+  else{
 
     renderPlaceholder(
       nav.find(
@@ -552,48 +743,7 @@ function render(){
     );
 
   }
-}
 
-
-/* ==========================================================
-   TARJETA KPI
-   ========================================================== */
-
-function indicador(
-  label,
-  value,
-  target,
-  invert=false
-){
-
-  const s =
-    status(
-      value,
-      target,
-      invert
-    );
-
-
-  return `
-
-    <div class="card">
-
-      <small>
-        ${label}
-      </small>
-
-      <strong>
-        ${value}
-      </strong>
-
-      <span
-        class="badge ${s.cls}"
-      >
-        ${s.label}
-      </span>
-
-    </div>
-  `;
 }
 
 
@@ -611,6 +761,7 @@ function tendencia(
       label:'SIN DATOS',
       cls:'ok'
     };
+
   }
 
 
@@ -621,8 +772,11 @@ function tendencia(
   const primero =
     ultimos[0];
 
+
   const ultimo =
-    ultimos[ultimos.length-1];
+    ultimos[
+      ultimos.length - 1
+    ];
 
 
   const diferencia =
@@ -637,6 +791,7 @@ function tendencia(
       label:'→ ESTABLE',
       cls:'ok'
     };
+
   }
 
 
@@ -651,6 +806,7 @@ function tendencia(
         label:'↓ EMPEORANDO',
         cls:'warn'
       };
+
 }
 
 
@@ -675,6 +831,7 @@ function graficoTendencia(
       </div>
 
     `;
+
   }
 
 
@@ -718,23 +875,32 @@ function graficoTendencia(
 
 
   const plotWidth =
-    width-left-right;
+    width -
+    left -
+    right;
+
 
   const plotHeight =
-    height-top-bottom;
+    height -
+    top -
+    bottom;
 
 
   const x = i => {
 
-    if(data.length===1)
+    if(data.length === 1)
       return left;
+
 
     return (
       left +
       (
-        i/(data.length-1)
-      ) * plotWidth
+        i /
+        (data.length - 1)
+      ) *
+      plotWidth
     );
+
   };
 
 
@@ -745,17 +911,20 @@ function graficoTendencia(
         0,
         Math.min(
           1.6,
-          value
+          n(value)
         )
       );
+
 
     return (
       top +
       plotHeight -
       (
-        v/1.6
-      ) * plotHeight
+        v / 1.6
+      ) *
+      plotHeight
     );
+
   };
 
 
@@ -800,6 +969,7 @@ function graficoTendencia(
         </text>
 
       `;
+
     });
 
 
@@ -866,6 +1036,7 @@ function graficoTendencia(
         />
 
       `;
+
     });
 
   });
@@ -874,7 +1045,9 @@ function graficoTendencia(
   const paso =
     Math.max(
       1,
-      Math.ceil(data.length/8)
+      Math.ceil(
+        data.length / 8
+      )
     );
 
 
@@ -900,6 +1073,7 @@ function graficoTendencia(
       </text>
 
     `;
+
   });
 
 
@@ -945,356 +1119,12 @@ function graficoTendencia(
     </div>
 
   `;
+
 }
 
 
 /* ==========================================================
-   ANÁLISIS DE DESVIACIONES
-   ========================================================== */
-
-function analisisDesviacion(
-  label,
-  actual,
-  meta,
-  invert=false
-){
-
-  const valor = n(actual);
-
-  const objetivo = n(meta);
-
-  const s =
-    status(
-      valor,
-      objetivo,
-      invert
-    );
-
-
-  const diferencia =
-    invert
-      ? objetivo - valor
-      : valor - objetivo;
-
-
-  const diferenciaPP =
-    (diferencia * 100).toFixed(1);
-
-
-  let situacion = '';
-
-  let accion = '';
-
-
-  if(s.critical){
-
-    situacion =
-      invert
-        ? `${label} está ${Math.abs(diferenciaPP)} pp por encima del máximo permitido.`
-        : `${label} está ${Math.abs(diferenciaPP)} pp por debajo de la meta.`;
-
-    accion =
-      'Requiere atención inmediata y revisión de la causa de la desviación.';
-
-  }else if(s.ok){
-
-    situacion =
-      invert
-        ? `${label} se encuentra dentro del límite establecido.`
-        : `${label} cumple o supera la meta establecida.`;
-
-    accion =
-      'Mantener el comportamiento y continuar monitoreando.';
-
-  }else{
-
-    situacion =
-      invert
-        ? `${label} presenta una desviación respecto al límite permitido.`
-        : `${label} se encuentra por debajo de la meta establecida.`;
-
-    accion =
-      'Revisar la causa y aplicar una acción correctiva si la desviación persiste.';
-
-  }
-
-
-  return {
-
-    label,
-
-    valor:pct(valor),
-
-    meta:
-      invert
-        ? 'Máx. '+pct(objetivo)
-        : 'Meta '+pct(objetivo),
-
-    diferencia:
-      (diferencia >= 0 ? '+' : '') +
-      diferenciaPP +
-      ' pp',
-
-    situacion,
-
-    accion,
-
-    cls:s.cls,
-
-    estado:s.label
-  };
-}
-
-
-function renderAnalisisDesviaciones(
-  last
-){
-
-  if(!last){
-
-    return `
-
-      <section class="panel">
-
-        <h2>
-          🔎 Análisis de desviaciones
-        </h2>
-
-        <div class="empty">
-
-          Se necesita al menos un registro
-          diario para realizar el análisis.
-
-        </div>
-
-      </section>
-
-    `;
-  }
-
-
-  const analisis = [
-
-    analisisDesviacion(
-      'Cumplimiento',
-      last.cumplimiento,
-      metas.cumplimiento
-    ),
-
-    analisisDesviacion(
-      'Yield',
-      last.yieldRate,
-      metas.yield
-    ),
-
-    analisisDesviacion(
-      'Merma',
-      last.merma,
-      metas.merma,
-      true
-    ),
-
-    analisisDesviacion(
-      'Disponibilidad',
-      last.disponibilidad,
-      metas.disponibilidad
-    ),
-
-    analisisDesviacion(
-      'Asistencia',
-      last.asistencia,
-      metas.asistencia
-    ),
-
-    analisisDesviacion(
-      'Rechazo',
-      last.rechazo,
-      metas.rechazo,
-      true
-    ),
-
-    analisisDesviacion(
-      'OEE',
-      last.oee,
-      .80
-    ),
-
-    analisisDesviacion(
-      'Entregas a tiempo',
-      last.otif,
-      metas.otif
-    )
-
-  ];
-
-
-  const desviaciones =
-    analisis.filter(
-      a => a.estado !== 'OK'
-    );
-
-
-  return `
-
-    <section class="panel">
-
-      <h2>
-        🔎 Análisis de desviaciones
-      </h2>
-
-      <p>
-        Análisis automático del último turno
-        frente a las metas operativas.
-      </p>
-
-
-      ${
-        desviaciones.length
-          ?
-
-          `
-
-            <div class="card">
-
-              <small>
-                DESVIACIONES DETECTADAS
-              </small>
-
-              <strong>
-                ${desviaciones.length}
-              </strong>
-
-              <span class="badge warn">
-                REQUIEREN ATENCIÓN
-              </span>
-
-            </div>
-
-          `
-
-          :
-
-          `
-
-            <div class="card">
-
-              <strong>
-                No se detectan desviaciones.
-              </strong>
-
-              <span class="badge ok">
-                OPERACIÓN DENTRO DE META
-              </span>
-
-            </div>
-
-          `
-      }
-
-
-      <div class="tableWrap">
-
-        <table>
-
-          <thead>
-
-            <tr>
-
-              <th>
-                Indicador
-              </th>
-
-              <th>
-                Último turno
-              </th>
-
-              <th>
-                Meta
-              </th>
-
-              <th>
-                Diferencia
-              </th>
-
-              <th>
-                Estado
-              </th>
-
-              <th>
-                Interpretación
-              </th>
-
-              <th>
-                Acción sugerida
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody>
-
-            ${
-              analisis.map(a=>`
-
-                <tr>
-
-                  <td>
-                    <strong>
-                      ${a.label}
-                    </strong>
-                  </td>
-
-                  <td>
-                    ${a.valor}
-                  </td>
-
-                  <td>
-                    ${a.meta}
-                  </td>
-
-                  <td>
-                    ${a.diferencia}
-                  </td>
-
-                  <td>
-
-                    <span
-                      class="badge ${a.cls}"
-                    >
-                      ${a.estado}
-                    </span>
-
-                  </td>
-
-                  <td>
-                    ${a.situacion}
-                  </td>
-
-                  <td>
-                    ${a.accion}
-                  </td>
-
-                </tr>
-
-              `).join('')
-            }
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  `;
-}
-
-
-/* ==========================================================
-   RENDER DASHBOARD
+   DASHBOARD
    ========================================================== */
 
 function renderDashboard(){
@@ -1308,7 +1138,7 @@ function renderDashboard(){
   const sums = key =>
     d.reduce(
       (s,r) =>
-        s+n(r[key]),
+        s + n(r[key]),
       0
     );
 
@@ -1542,6 +1372,7 @@ function renderDashboard(){
 
       ${
         alerts.length
+
           ?
 
           `
@@ -1634,51 +1465,51 @@ function renderDashboard(){
 
           ${indicador(
             'Cumplimiento',
-            pct(last.cumplimiento),
+            last.cumplimiento,
             metas.cumplimiento
           )}
 
           ${indicador(
             'Yield',
-            pct(last.yieldRate),
+            last.yieldRate,
             metas.yield
           )}
 
           ${indicador(
             'Merma',
-            pct(last.merma),
+            last.merma,
             metas.merma,
             true
           )}
 
           ${indicador(
             'Disponibilidad',
-            pct(last.disponibilidad),
+            last.disponibilidad,
             metas.disponibilidad
           )}
 
           ${indicador(
             'Asistencia',
-            pct(last.asistencia),
+            last.asistencia,
             metas.asistencia
           )}
 
           ${indicador(
             'Rechazo',
-            pct(last.rechazo),
+            last.rechazo,
             metas.rechazo,
             true
           )}
 
           ${indicador(
             'OEE',
-            pct(last.oee),
+            last.oee,
             .80
           )}
 
           ${indicador(
             'OTIF',
-            pct(last.otif),
+            last.otif,
             metas.otif
           )}
 
@@ -1732,51 +1563,51 @@ function renderDashboard(){
 
         ${indicador(
           'Producción total',
-          k.prod.toLocaleString(),
+          k.prod,
           0
         )}
 
         ${indicador(
           'Cumplimiento',
-          pct(k.cumplimiento),
+          k.cumplimiento,
           metas.cumplimiento
         )}
 
         ${indicador(
           'Yield',
-          pct(k.yield),
+          k.yield,
           metas.yield
         )}
 
         ${indicador(
           'Merma',
-          pct(k.mermaRate),
+          k.mermaRate,
           metas.merma,
           true
         )}
 
         ${indicador(
           'Disponibilidad',
-          pct(k.disponibilidad),
+          k.disponibilidad,
           metas.disponibilidad
         )}
 
         ${indicador(
           'Asistencia',
-          pct(k.asistencia),
+          k.asistencia,
           metas.asistencia
         )}
 
         ${indicador(
           'Rechazo calidad',
-          pct(k.rechazo),
+          k.rechazo,
           metas.rechazo,
           true
         )}
 
         ${indicador(
           'OEE',
-          pct(k.oee),
+          k.oee,
           .80
         )}
 
@@ -1792,6 +1623,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1804,6 +1636,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1815,6 +1648,7 @@ function renderDashboard(){
           </strong>
 
         </div>
+
 
         <div class="card">
 
@@ -1836,6 +1670,7 @@ function renderDashboard(){
 
         </div>
 
+
         <div class="card">
 
           <small>
@@ -1856,15 +1691,17 @@ function renderDashboard(){
 
         </div>
 
+
         ${indicador(
           'Entregas a tiempo',
-          pct(k.otif),
+          k.otif,
           metas.otif
         )}
 
+
         ${indicador(
           'Incidentes SSOMA',
-          String(k.incidentes),
+          k.incidentes,
           metas.incidentes,
           true
         )}
@@ -1998,6 +1835,7 @@ function renderDashboard(){
       </section>
 
     `;
+
   }
 
 
@@ -2010,10 +1848,12 @@ function renderDashboard(){
       r => r.cumplimiento
     );
 
+
   const yieldValores =
     d.map(
       r => r.yieldRate
     );
+
 
   const oeeValores =
     d.map(
@@ -2026,10 +1866,12 @@ function renderDashboard(){
       cumplimientoValores
     );
 
+
   const tYield =
     tendencia(
       yieldValores
     );
+
 
   const tOee =
     tendencia(
@@ -2099,16 +1941,6 @@ function renderDashboard(){
     </section>
 
   `;
-
-
-  /* ========================================================
-     ANÁLISIS DE DESVIACIONES
-     ======================================================== */
-
-  const analisisHTML =
-    renderAnalisisDesviaciones(
-      last
-    );
 
 
   /* ========================================================
@@ -2204,7 +2036,7 @@ function renderDashboard(){
 
     [
       'Costo unitario',
-      'S/ '+
+      'S/' +
       (
         k.prod
           ? k.costo/k.prod
@@ -2398,9 +2230,6 @@ function renderDashboard(){
         ${tendenciasHTML}
 
 
-        ${analisisHTML}
-
-
         <section class="panel">
 
           <h2>
@@ -2461,7 +2290,9 @@ function renderDashboard(){
         </section>
 
       </main>
+
   `;
+
 }
 
 
@@ -2584,6 +2415,7 @@ function renderForm(){
         </form>
 
       </main>
+
   `;
 
 
@@ -2629,6 +2461,7 @@ function renderForm(){
               :
 
               el.value;
+
         }
       );
 
@@ -2651,6 +2484,7 @@ function renderForm(){
           error.message;
 
         return;
+
       }
 
 
@@ -2667,6 +2501,7 @@ function renderForm(){
       );
 
     };
+
 }
 
 
@@ -2715,6 +2550,7 @@ function control(
 
   }
 
+
   else if(type === 'textarea'){
 
     input = `
@@ -2726,6 +2562,7 @@ function control(
     `;
 
   }
+
 
   else{
 
@@ -2743,6 +2580,7 @@ function control(
       >
 
     `;
+
   }
 
 
@@ -2757,6 +2595,7 @@ function control(
     </label>
 
   `;
+
 }
 
 
@@ -2793,6 +2632,7 @@ function renderPlaceholder(title){
       </main>
 
     `;
+
 }
 
 
