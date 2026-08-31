@@ -49,7 +49,6 @@ let editingMaintenanceId = null;
 ========================================================= */
 
 let metas = {
-
   cumplimiento: 0.95,
   merma: 0.02,
   yield: 0.95,
@@ -58,7 +57,6 @@ let metas = {
   rechazo: 0.03,
   otif: 0.95,
   incidentes: 0
-
 };
 
 /* =========================================================
@@ -66,7 +64,6 @@ let metas = {
 ========================================================= */
 
 function esc(v = '') {
-
   return String(v).replace(
     /[&<>"']/g,
     c => ({
@@ -77,38 +74,34 @@ function esc(v = '') {
       "'": '&#039;'
     }[c])
   );
-
 }
 
 function n(v) {
-
   const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : 0;
-
+  return Number.isFinite(x) ? x : 0;
 }
 
 function pct(v) {
+  if (
+    v === null ||
+    v === undefined ||
+    !Number.isFinite(Number(v))
+  ) {
+    return '—';
+  }
 
   return (
-    n(v) * 100
+    Number(v) * 100
   ).toFixed(1) + '%';
-
 }
 
 function msg(id, text) {
-
   const el =
     document.getElementById(id);
 
   if (el) {
-
     el.textContent = text;
-
   }
-
 }
 
 /* =========================================================
@@ -155,60 +148,63 @@ function derive(r) {
   const at = n(r.pedidos_tiempo);
 
   const merma =
-    mp
+    mp > 0
       ? n(r.merma) / mp
-      : 0;
+      : null;
 
   const yieldRate =
-    mp
+    mp > 0
       ? q / mp
-      : 0;
+      : null;
 
   const disponibilidad =
-    h
+    h > 0
       ? Math.max(
           0,
           (h - stop) / h
         )
-      : 0;
+      : null;
 
   const asistencia =
-    pp
+    pp > 0
       ? pa / pp
-      : 0;
+      : null;
 
   const rechazo =
-    q
+    q > 0
       ? rej / q
-      : 0;
+      : null;
 
   const cumplimiento =
-    p
+    p > 0
       ? q / p
-      : 0;
+      : null;
 
   const otif =
-    pedidos
+    pedidos > 0
       ? at / pedidos
-      : 0;
+      : null;
 
   const oee =
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
+    disponibilidad !== null &&
+    cumplimiento !== null &&
+    rechazo !== null
+      ? disponibilidadeSegura(
+          disponibilidad,
+          cumplimiento,
+          rechazo
+        )
+      : null;
 
   const costoUnitario =
-    q
+    q > 0
       ? n(r.costo_produccion) / q
-      : 0;
+      : null;
 
   const energiaUnit =
-    q
+    q > 0
       ? n(r.energia) / q
-      : 0;
+      : null;
 
   return {
 
@@ -226,7 +222,6 @@ function derive(r) {
     energiaUnit
 
   };
-
 }
 
 function empty() {
@@ -264,6 +259,13 @@ function empty() {
 ========================================================= */
 
 function renderAuth() {
+
+  if (!app) {
+    console.error(
+      'QUIMFLUX: no existe #app en index.html'
+    );
+    return;
+  }
 
   app.innerHTML = `
 
@@ -452,6 +454,16 @@ function renderAuth() {
 
 function render() {
 
+  if (!app) {
+
+    console.error(
+      'QUIMFLUX: #app no existe.'
+    );
+
+    return;
+
+  }
+
   if (!user) {
 
     renderAuth();
@@ -548,43 +560,99 @@ function render() {
 
   };
 
-  if (tab === 'dashboard') {
+  try {
 
-    renderDashboard();
+    if (tab === 'dashboard') {
 
-  } else if (tab === 'registro') {
+      renderDashboard();
 
-    renderForm();
+    } else if (tab === 'registro') {
 
-  } else if (tab === 'resumen') {
+      renderForm();
 
-    renderResumen();
+    } else if (tab === 'resumen') {
 
-  } else if (tab === 'inventario') {
+      renderResumen();
 
-    renderInventory();
+    } else if (tab === 'inventario') {
 
-  } else if (tab === 'personal') {
+      renderInventory();
 
-    renderPersonal();
+    } else if (tab === 'personal') {
 
-  } else if (tab === 'ssoma') {
+      renderPersonal();
 
-    renderSsoma();
+    } else if (tab === 'ssoma') {
 
-  } else if (tab === 'mantenimiento') {
+      renderSsoma();
 
-    renderMaintenance();
+    } else if (tab === 'mantenimiento') {
 
-  } else {
+      renderMaintenance();
 
-    renderPlaceholder(
-      nav.find(
-        x =>
-          x[0] === tab
-      )?.[1]
-      || 'QUIMFLUX'
+    } else {
+
+      renderPlaceholder(
+        nav.find(
+          x =>
+            x[0] === tab
+        )?.[1]
+        || 'QUIMFLUX'
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      'Error renderizando QUIMFLUX:',
+      error
     );
+
+    const content =
+      document.getElementById(
+        'content'
+      );
+
+    if (content) {
+
+      content.innerHTML = `
+
+        <main>
+
+          <section class="panel">
+
+            <h1>
+              Error al cargar el módulo
+            </h1>
+
+            <p>
+              Se produjo un error al renderizar QUIMFLUX.
+            </p>
+
+            <pre
+              style="
+                white-space:pre-wrap;
+              "
+            >${esc(
+              error?.message ||
+              error
+            )}</pre>
+
+            <button
+              type="button"
+              onclick="location.reload()"
+            >
+              Recargar
+            </button>
+
+          </section>
+
+        </main>
+
+      `;
+
+    }
 
   }
 
@@ -600,15 +668,44 @@ function status(
   invert = false
 ) {
 
+  if (
+    value === null ||
+    value === undefined ||
+    !Number.isFinite(
+      Number(value)
+    ) ||
+    !Number.isFinite(
+      Number(target)
+    )
+  ) {
+
+    return {
+
+      label:
+        'SIN DATOS',
+
+      cls:
+        'ok'
+
+    };
+
+  }
+
+  const v =
+    Number(value);
+
+  const t =
+    Number(target);
+
   const ok =
     invert
-      ? value <= target
-      : value >= target;
+      ? v <= t
+      : v >= t;
 
   const critical =
     invert
-      ? value > target * 1.5
-      : value < target * 0.85;
+      ? v > t * 1.5
+      : v < t * 0.85;
 
   return {
 
@@ -631,12 +728,43 @@ function status(
 }
 
 /* =========================================================
-   ALERTAS QUIMFLUX
+   CÁLCULO OEE SEGURO
 ========================================================= */
 
-function getAlerts() {
+function disponibilidadeSegura(
+  disponibilidad,
+  cumplimiento,
+  rechazo
+) {
 
-  const alerts = [];
+  if (
+    disponibilidad === null ||
+    cumplimiento === null ||
+    rechazo === null
+  ) {
+
+    return null;
+
+  }
+
+  return (
+
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    )
+
+  );
+
+}
+
+/* =========================================================
+   OBTENER KPI CONSOLIDADOS
+========================================================= */
+
+function getOperationalKPIs() {
 
   const d =
     rows.map(derive);
@@ -682,26 +810,31 @@ function getAlerts() {
     sum('pedidos_tiempo');
 
   const cumplimiento =
-    programada
+    programada > 0
       ? producida / programada
-      : 0;
+      : null;
 
   const yieldRate =
-    mp
+    mp > 0
       ? producida / mp
-      : 0;
+      : null;
 
   const mermaRate =
-    mp
+    mp > 0
       ? merma / mp
-      : 0;
+      : null;
 
   const horasParadaMantenimiento =
-    maintenanceRows.reduce(
-      (total, r) =>
-        total + n(r.horas_parada),
-      0
-    );
+    Array.isArray(
+      maintenanceRows
+    )
+      ? maintenanceRows.reduce(
+          (total, r) =>
+            total +
+            n(r.horas_parada),
+          0
+        )
+      : 0;
 
   const paradas =
     horasParadaMantenimiento > 0
@@ -709,324 +842,504 @@ function getAlerts() {
       : paradasDiarias;
 
   const disponibilidad =
-    horas
+    horas > 0
       ? Math.max(
           0,
-          (horas - paradas) / horas
+          (horas - paradas) /
+            horas
         )
-      : 0;
+      : null;
 
   const asistencia =
-    personalProgramado
+    personalProgramado > 0
       ? personalPresente /
         personalProgramado
-      : 0;
+      : null;
 
   const rechazo =
-    producida
-      ? rechazadas / producida
-      : 0;
+    producida > 0
+      ? rechazadas /
+        producida
+      : null;
 
   const otif =
-    pedidos
-      ? pedidosTiempo / pedidos
-      : 0;
+    pedidos > 0
+      ? pedidosTiempo /
+        pedidos
+      : null;
 
   const oee =
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
+    disponibilidad !== null &&
+    cumplimiento !== null &&
+    rechazo !== null
+      ? disponibilidadeSegura(
+          disponibilidad,
+          cumplimiento,
+          rechazo
+        )
+      : null;
+
+  return {
+
+    programada,
+    producida,
+    mp,
+    merma,
+    horas,
+    paradasDiarias,
+    paradas,
+    personalProgramado,
+    personalPresente,
+    rechazadas,
+    pedidos,
+    pedidosTiempo,
+    cumplimiento,
+    yieldRate,
+    mermaRate,
+    disponibilidad,
+    asistencia,
+    rechazo,
+    otif,
+    oee
+
+  };
+
+}
+
+/* =========================================================
+   ALERTAS
+   CORRECCIÓN PRINCIPAL:
+   FILAS VACÍAS NO SON 0%
+========================================================= */
+
+function getAlerts() {
+
+  const alerts = [];
+
+  /*
+     Si no existen registros diarios,
+     no crear alertas de KPI.
+  */
+
+  const k =
+    getOperationalKPIs();
+
+  const existeDatoOperativo =
+       k.programada > 0
+    || k.producida > 0
+    || k.mp > 0
+    || k.merma > 0
+    || k.horas > 0
+    || k.paradasDiarias > 0
+    || k.personalProgramado > 0
+    || k.personalPresente > 0
+    || k.rechazadas > 0
+    || k.pedidos > 0
+    || k.pedidosTiempo > 0;
+
+  /*
+     KPI SOLO se evalúan si realmente
+     existe información operacional.
+  */
+
+  if (existeDatoOperativo) {
+
+    const kpis = [
+
+      {
+        nombre:
+          'Cumplimiento',
+
+        valor:
+          k.cumplimiento,
+
+        meta:
+          metas.cumplimiento
+      },
+
+      {
+        nombre:
+          'Yield',
+
+        valor:
+          k.yieldRate,
+
+        meta:
+          metas.yield
+      },
+
+      {
+        nombre:
+          'Disponibilidad',
+
+        valor:
+          k.disponibilidad,
+
+        meta:
+          metas.disponibilidad
+      },
+
+      {
+        nombre:
+          'Asistencia',
+
+        valor:
+          k.asistencia,
+
+        meta:
+          metas.asistencia
+      },
+
+      {
+        nombre:
+          'OTIF',
+
+        valor:
+          k.otif,
+
+        meta:
+          metas.otif
+      },
+
+      {
+        nombre:
+          'OEE',
+
+        valor:
+          k.oee,
+
+        meta:
+          0.80
+      }
+
+    ];
+
+    kpis.forEach(
+      kpi => {
+
+        if (
+          kpi.valor === null ||
+          !Number.isFinite(
+            Number(kpi.valor)
+          )
+        ) {
+
+          return;
+
+        }
+
+        const s =
+          status(
+            kpi.valor,
+            kpi.meta
+          );
+
+        if (
+          s.label ===
+          'CRÍTICO'
+        ) {
+
+          alerts.push({
+
+            nivel:
+              'critical',
+
+            titulo:
+              `${kpi.nombre} en nivel crítico`,
+
+            detalle:
+              `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
+
+          });
+
+        } else if (
+          s.label ===
+          'REVISAR'
+        ) {
+
+          alerts.push({
+
+            nivel:
+              'warn',
+
+            titulo:
+              `${kpi.nombre} requiere revisión`,
+
+            detalle:
+              `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
+
+          });
+
+        }
+
+      }
     );
 
-  /* KPI: MAYOR ES MEJOR */
-
-  const kpis = [
-
-    {
-      nombre: 'Cumplimiento',
-      valor: cumplimiento,
-      meta: metas.cumplimiento
-    },
-
-    {
-      nombre: 'Yield',
-      valor: yieldRate,
-      meta: metas.yield
-    },
-
-    {
-      nombre: 'Disponibilidad',
-      valor: disponibilidad,
-      meta: metas.disponibilidad
-    },
-
-    {
-      nombre: 'Asistencia',
-      valor: asistencia,
-      meta: metas.asistencia
-    },
-
-    {
-      nombre: 'OTIF',
-      valor: otif,
-      meta: metas.otif
-    },
-
-    {
-      nombre: 'OEE',
-      valor: oee,
-      meta: 0.80
-    }
-
-  ];
-
-  kpis.forEach(kpi => {
+    /*
+       MERMA
+    */
 
     if (
-      kpi.valor <
-      kpi.meta * 0.85
+      k.mermaRate !== null
     ) {
 
-      alerts.push({
+      if (
+        k.mermaRate >
+        metas.merma * 1.5
+      ) {
 
-        nivel: 'critical',
+        alerts.push({
 
-        titulo:
-          `${kpi.nombre} en nivel crítico`,
+          nivel:
+            'critical',
 
-        detalle:
-          `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
+          titulo:
+            'Merma en nivel crítico',
 
-      });
+          detalle:
+            `${pct(k.mermaRate)} · Meta máxima ${pct(metas.merma)}`
 
-    } else if (
-      kpi.valor <
-      kpi.meta
-    ) {
+        });
 
-      alerts.push({
+      } else if (
+        k.mermaRate >
+        metas.merma
+      ) {
 
-        nivel: 'warn',
+        alerts.push({
 
-        titulo:
-          `${kpi.nombre} requiere revisión`,
+          nivel:
+            'warn',
 
-        detalle:
-          `${pct(kpi.valor)} · Meta ${pct(kpi.meta)}`
+          titulo:
+            'Merma por encima de la meta',
 
-      });
+          detalle:
+            `${pct(k.mermaRate)} · Meta máxima ${pct(metas.merma)}`
+
+        });
+
+      }
 
     }
 
-  });
+    /*
+       RECHAZO
+    */
 
-  /* MERMA */
+    if (
+      k.rechazo !== null
+    ) {
 
-  if (
-    mermaRate >
-    metas.merma * 1.5
-  ) {
+      if (
+        k.rechazo >
+        metas.rechazo * 1.5
+      ) {
 
-    alerts.push({
+        alerts.push({
 
-      nivel: 'critical',
+          nivel:
+            'critical',
 
-      titulo:
-        'Merma en nivel crítico',
+          titulo:
+            'Rechazo de calidad crítico',
 
-      detalle:
-        `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
+          detalle:
+            `${pct(k.rechazo)} · Meta máxima ${pct(metas.rechazo)}`
 
-    });
+        });
 
-  } else if (
-    mermaRate >
-    metas.merma
-  ) {
+      } else if (
+        k.rechazo >
+        metas.rechazo
+      ) {
 
-    alerts.push({
+        alerts.push({
 
-      nivel: 'warn',
+          nivel:
+            'warn',
 
-      titulo:
-        'Merma por encima de la meta',
+          titulo:
+            'Rechazo de calidad elevado',
 
-      detalle:
-        `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
+          detalle:
+            `${pct(k.rechazo)} · Meta máxima ${pct(metas.rechazo)}`
 
-    });
+        });
+
+      }
+
+    }
 
   }
 
-  /* RECHAZO */
+  /*
+     INVENTARIO
+  */
 
-  if (
-    rechazo >
-    metas.rechazo * 1.5
-  ) {
+  inventoryRows.forEach(
+    r => {
 
-    alerts.push({
+      const stock =
+        n(r.stock_inicial) +
+        n(r.entradas) -
+        n(r.salidas);
 
-      nivel: 'critical',
+      const minimo =
+        n(r.stock_minimo);
 
-      titulo:
-        'Rechazo de calidad crítico',
+      if (
+        minimo > 0 &&
+        stock <= minimo
+      ) {
 
-      detalle:
-        `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
+        alerts.push({
 
-    });
+          nivel:
+            'critical',
 
-  } else if (
-    rechazo >
-    metas.rechazo
-  ) {
+          titulo:
+            `Stock bajo: ${r.material}`,
 
-    alerts.push({
+          detalle:
+            `Stock actual ${stock} ${
+              r.unidad || ''
+            } · Mínimo ${minimo} ${
+              r.unidad || ''
+            }`
 
-      nivel: 'warn',
+        });
 
-      titulo:
-        'Rechazo de calidad elevado',
-
-      detalle:
-        `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
-
-    });
-
-  }
-
-  /* INVENTARIO */
-
-  inventoryRows.forEach(r => {
-
-    const stock =
-      n(r.stock_inicial) +
-      n(r.entradas) -
-      n(r.salidas);
-
-    const minimo =
-      n(r.stock_minimo);
-
-    if (
-      minimo > 0 &&
-      stock <= minimo
-    ) {
-
-      alerts.push({
-
-        nivel: 'critical',
-
-        titulo:
-          `Stock bajo: ${r.material}`,
-
-        detalle:
-          `Stock actual ${stock} ${r.unidad || ''} · Mínimo ${minimo} ${r.unidad || ''}`
-
-      });
+      }
 
     }
+  );
 
-  });
+  /*
+     MANTENIMIENTO
+  */
 
-  /* MANTENIMIENTO */
+  maintenanceRows.forEach(
+    r => {
 
-  maintenanceRows.forEach(r => {
-
-    const estado =
-      String(
-        r.estado || ''
-      ).toLowerCase();
-
-    if (
-      estado === 'abierto' ||
-      estado === 'en proceso'
-    ) {
-
-      alerts.push({
-
-        nivel: 'warn',
-
-        titulo:
-          `Mantenimiento pendiente: ${r.equipo}`,
-
-        detalle:
-          `${r.estado} · ${r.fecha || 'Sin fecha'}`
-
-      });
-
-    }
-
-    if (
-      estado === 'programado' &&
-      r.fecha_programada &&
-      r.fecha_programada < today
-    ) {
-
-      alerts.push({
-
-        nivel: 'critical',
-
-        titulo:
-          `Mantenimiento vencido: ${r.equipo}`,
-
-        detalle:
-          `Programado para ${r.fecha_programada}`
-
-      });
-
-    }
-
-  });
-
-  /* SSOMA */
-
-  ssomaRows.forEach(r => {
-
-    const estado =
-      String(
-        r.estado || ''
-      ).toLowerCase();
-
-    if (
-      estado !== 'cerrado'
-    ) {
-
-      const gravedad =
+      const estado =
         String(
-          r.gravedad || ''
+          r.estado || ''
         ).toLowerCase();
 
-      const nivel =
-        (
-          gravedad === 'grave' ||
-          gravedad === 'crítica'
-        )
-          ? 'critical'
-          : 'warn';
+      if (
+        estado === 'abierto' ||
+        estado === 'en proceso'
+      ) {
 
-      alerts.push({
+        alerts.push({
 
-        nivel,
+          nivel:
+            'warn',
 
-        titulo:
-          'Incidente SSOMA abierto',
+          titulo:
+            `Mantenimiento pendiente: ${r.equipo}`,
 
-        detalle:
-          `${r.tipo || 'Incidente'} · ${r.gravedad || 'Sin gravedad'} · ${r.fecha || ''}`
+          detalle:
+            `${r.estado} · ${
+              r.fecha ||
+              'Sin fecha'
+            }`
 
-      });
+        });
+
+      }
+
+      if (
+        estado === 'programado' &&
+        r.fecha_programada &&
+        r.fecha_programada <
+          today
+      ) {
+
+        alerts.push({
+
+          nivel:
+            'critical',
+
+          titulo:
+            `Mantenimiento vencido: ${r.equipo}`,
+
+          detalle:
+            `Programado para ${r.fecha_programada}`
+
+        });
+
+      }
 
     }
+  );
 
-  });
+  /*
+     SSOMA
+  */
 
-  /* INCIDENTES DEL REGISTRO DIARIO */
+  ssomaRows.forEach(
+    r => {
+
+      const estado =
+        String(
+          r.estado || ''
+        ).toLowerCase();
+
+      if (
+        estado !== 'cerrado'
+      ) {
+
+        const gravedad =
+          String(
+            r.gravedad || ''
+          ).toLowerCase();
+
+        const nivel =
+          (
+            gravedad ===
+              'grave' ||
+            gravedad ===
+              'crítica'
+          )
+            ? 'critical'
+            : 'warn';
+
+        alerts.push({
+
+          nivel,
+
+          titulo:
+            'Incidente SSOMA abierto',
+
+          detalle:
+            `${r.tipo || 'Incidente'} · ${
+              r.gravedad ||
+              'Sin gravedad'
+            } · ${
+              r.fecha ||
+              ''
+            }`
+
+        });
+
+      }
+
+    }
+  );
+
+  /*
+     INCIDENTES DEL REGISTRO DIARIO
+  */
 
   const incidentes =
-    sum('incidentes');
+    rows.reduce(
+      (total, r) =>
+        total +
+        n(r.incidentes),
+      0
+    );
 
   if (
     incidentes >
@@ -1050,7 +1363,9 @@ function getAlerts() {
 
   }
 
-  /* ORDEN */
+  /*
+     ORDEN
+  */
 
   alerts.sort(
     (a, b) => {
@@ -1084,6 +1399,93 @@ function renderAlerts() {
   const alerts =
     getAlerts();
 
+  /*
+     SIN DATOS:
+     NO MOSTRAR 0% COMO SI FUERA UN KPI REAL.
+  */
+
+  const k =
+    getOperationalKPIs();
+
+  const existeDatoOperativo =
+       k.programada > 0
+    || k.producida > 0
+    || k.mp > 0
+    || k.merma > 0
+    || k.horas > 0
+    || k.paradasDiarias > 0
+    || k.personalProgramado > 0
+    || k.personalPresente > 0
+    || k.rechazadas > 0
+    || k.pedidos > 0
+    || k.pedidosTiempo > 0;
+
+  if (!existeDatoOperativo) {
+
+    return `
+
+      <section class="panel">
+
+        <div class="titleRow">
+
+          <div>
+
+            <h2>
+              🚨 Alertas QUIMFLUX
+            </h2>
+
+            <p>
+              Todavía no existen datos
+              operativos suficientes para
+              evaluar las alertas.
+            </p>
+
+          </div>
+
+          <span class="badge ok">
+            0 CRÍTICAS
+          </span>
+
+        </div>
+
+        <div
+          style="
+            padding:25px;
+            text-align:center;
+          "
+        >
+
+          <div
+            style="
+              font-size:42px;
+              margin-bottom:10px;
+            "
+          >
+            ℹ️
+          </div>
+
+          <h2>
+            SIN DATOS OPERATIVOS
+          </h2>
+
+          <p>
+            Ingresa un registro diario
+            con datos reales para comenzar
+            a evaluar los KPI.
+          </p>
+
+          <span class="badge ok">
+            SIN DATOS
+          </span>
+
+        </div>
+
+      </section>
+
+    `;
+
+  }
+
   if (!alerts.length) {
 
     return `
@@ -1095,7 +1497,7 @@ function renderAlerts() {
           <div>
 
             <h2>
-              Alertas QUIMFLUX
+              🚨 Alertas QUIMFLUX
             </h2>
 
             <p>
@@ -1120,13 +1522,15 @@ function renderAlerts() {
   const critical =
     alerts.filter(
       a =>
-        a.nivel === 'critical'
+        a.nivel ===
+        'critical'
     ).length;
 
   const warnings =
     alerts.filter(
       a =>
-        a.nivel === 'warn'
+        a.nivel ===
+        'warn'
     ).length;
 
   return `
@@ -1159,9 +1563,18 @@ function renderAlerts() {
           ${
             critical
               ? `
+
                 <span class="badge critical">
-                  ${critical} CRÍTICA${critical > 1 ? 'S' : ''}
+
+                  ${critical}
+                  CRÍTICA${
+                    critical > 1
+                      ? 'S'
+                      : ''
+                  }
+
                 </span>
+
               `
               : ''
           }
@@ -1169,9 +1582,18 @@ function renderAlerts() {
           ${
             warnings
               ? `
+
                 <span class="badge warn">
-                  ${warnings} REVISIÓN${warnings > 1 ? 'ES' : ''}
+
+                  ${warnings}
+                  REVISIÓN${
+                    warnings > 1
+                      ? 'ES'
+                      : ''
+                  }
+
                 </span>
+
               `
               : ''
           }
@@ -1188,52 +1610,129 @@ function renderAlerts() {
         "
       >
 
-        ${alerts.map(a => `
+        ${alerts.map(
+          a => `
 
-          <div
-            style="
-              display:flex;
-              gap:12px;
-              align-items:flex-start;
-              padding:12px;
-              border:1px solid #ddd;
-              border-radius:10px;
-            "
-          >
-
-            <span
-              class="badge ${a.nivel}"
+            <div
+              style="
+                display:flex;
+                gap:12px;
+                align-items:flex-start;
+                padding:12px;
+                border:1px solid #ddd;
+                border-radius:10px;
+              "
             >
 
-              ${
-                a.nivel === 'critical'
-                  ? 'CRÍTICO'
-                  : 'REVISAR'
-              }
+              <span
+                class="badge ${a.nivel}"
+              >
 
-            </span>
+                ${
+                  a.nivel ===
+                  'critical'
+                    ? 'CRÍTICO'
+                    : 'REVISAR'
+                }
 
-            <div>
-
-              <strong>
-                ${esc(a.titulo)}
-              </strong>
+              </span>
 
               <div>
-                <small>
-                  ${esc(a.detalle)}
-                </small>
+
+                <strong>
+                  ${esc(a.titulo)}
+                </strong>
+
+                <div>
+
+                  <small>
+                    ${esc(a.detalle)}
+                  </small>
+
+                </div>
+
               </div>
 
             </div>
 
-          </div>
-
-        `).join('')}
+          `
+        ).join('')}
 
       </div>
 
     </section>
+
+  `;
+
+}
+
+/* =========================================================
+   TARJETA KPI
+========================================================= */
+
+function alertCard(
+  nombre,
+  valor,
+  meta,
+  invert = false
+) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    !Number.isFinite(
+      Number(valor)
+    )
+  ) {
+
+    return `
+
+      <div class="card">
+
+        <small>
+          ${esc(nombre)}
+        </small>
+
+        <strong>
+          —
+        </strong>
+
+        <span class="badge ok">
+          SIN DATOS
+        </span>
+
+      </div>
+
+    `;
+
+  }
+
+  const s =
+    status(
+      valor,
+      meta,
+      invert
+    );
+
+  return `
+
+    <div class="card">
+
+      <small>
+        ${esc(nombre)}
+      </small>
+
+      <strong>
+        ${pct(valor)}
+      </strong>
+
+      <span
+        class="badge ${s.cls}"
+      >
+        ${s.label}
+      </span>
+
+    </div>
 
   `;
 
@@ -1289,24 +1788,28 @@ function renderDashboard() {
     sum('pedidos_tiempo');
 
   const cumplimiento =
-    programada
-      ? producida / programada
-      : 0;
+    programada > 0
+      ? producida /
+        programada
+      : null;
 
   const yieldRate =
-    mp
-      ? producida / mp
-      : 0;
+    mp > 0
+      ? producida /
+        mp
+      : null;
 
   const mermaRate =
-    mp
-      ? merma / mp
-      : 0;
+    mp > 0
+      ? merma /
+        mp
+      : null;
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.horas_parada),
+        total +
+        n(r.horas_parada),
       0
     );
 
@@ -1316,36 +1819,42 @@ function renderDashboard() {
       : paradasDiarias;
 
   const disponibilidad =
-    horas
+    horas > 0
       ? Math.max(
           0,
-          (horas - paradas) / horas
+          (horas - paradas) /
+            horas
         )
-      : 0;
+      : null;
 
   const asistencia =
-    personalProgramado
+    personalProgramado > 0
       ? personalPresente /
         personalProgramado
-      : 0;
+      : null;
 
   const rechazo =
-    producida
-      ? rechazadas / producida
-      : 0;
+    producida > 0
+      ? rechazadas /
+        producida
+      : null;
 
   const otif =
-    pedidos
-      ? pedidosTiempo / pedidos
-      : 0;
+    pedidos > 0
+      ? pedidosTiempo /
+        pedidos
+      : null;
 
   const oee =
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
+    disponibilidad !== null &&
+    cumplimiento !== null &&
+    rechazo !== null
+      ? disponibilidadeSegura(
+          disponibilidad,
+          cumplimiento,
+          rechazo
+        )
+      : null;
 
   const costo =
     sum('costo_produccion');
@@ -1356,7 +1865,8 @@ function renderDashboard() {
   const mantenimientoSupabase =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.costo),
+        total +
+        n(r.costo),
       0
     );
 
@@ -1366,14 +1876,19 @@ function renderDashboard() {
       : mantenimientoDiario;
 
   const costoUnitario =
-    producida
-      ? costo / producida
-      : 0;
+    producida > 0
+      ? costo /
+        producida
+      : null;
+
+  const energiaTotal =
+    sum('energia');
 
   const energia =
-    producida
-      ? sum('energia') / producida
-      : 0;
+    producida > 0
+      ? energiaTotal /
+        producida
+      : null;
 
   const incidentes =
     sum('incidentes');
@@ -1381,8 +1896,9 @@ function renderDashboard() {
   const mantenimientosProgramados =
     maintenanceRows.filter(
       r =>
-        String(r.estado || '')
-          .toLowerCase() ===
+        String(
+          r.estado || ''
+        ).toLowerCase() ===
         'programado'
     ).length;
 
@@ -1391,8 +1907,9 @@ function renderDashboard() {
       r => {
 
         const estado =
-          String(r.estado || '')
-            .toLowerCase();
+          String(
+            r.estado || ''
+          ).toLowerCase();
 
         return (
           estado === 'abierto' ||
@@ -1405,8 +1922,9 @@ function renderDashboard() {
   const mantenimientosCerrados =
     maintenanceRows.filter(
       r =>
-        String(r.estado || '')
-          .toLowerCase() ===
+        String(
+          r.estado || ''
+        ).toLowerCase() ===
         'cerrado'
     ).length;
 
@@ -1543,14 +2061,18 @@ function renderDashboard() {
 
     [
       'Costo unitario',
-      'S/ ' +
-      costoUnitario.toFixed(3)
+      costoUnitario === null
+        ? '—'
+        : 'S/ ' +
+          costoUnitario.toFixed(3)
     ],
 
     [
       'Energía',
-      energia.toFixed(3) +
-      ' kWh/unidad'
+      energia === null
+        ? '—'
+        : energia.toFixed(3) +
+          ' kWh/unidad'
     ],
 
     [
@@ -1590,7 +2112,8 @@ function renderDashboard() {
 
           <p>
             Datos sincronizados con Supabase ·
-            ${rows.length} registros diarios ·
+            ${rows.length}
+            registros diarios ·
             ${maintenanceRows.length}
             mantenimientos
           </p>
@@ -1607,33 +2130,37 @@ function renderDashboard() {
 
       <div class="cards">
 
-        ${cards.map(c => `
+        ${cards.map(
+          c => `
 
-          <div class="card">
+            <div class="card">
 
-            <small>
-              ${esc(c[0])}
-            </small>
+              <small>
+                ${esc(c[0])}
+              </small>
 
-            <strong>
-              ${esc(c[1])}
-            </strong>
+              <strong>
+                ${esc(c[1])}
+              </strong>
 
-            ${
-              c.length > 2
-                ? `
-                  <span
-                    class="badge ${c[2].cls}"
-                  >
-                    ${c[2].label}
-                  </span>
-                `
-                : ''
-            }
+              ${
+                c.length > 2
+                  ? `
 
-          </div>
+                    <span
+                      class="badge ${c[2].cls}"
+                    >
+                      ${c[2].label}
+                    </span>
 
-        `).join('')}
+                  `
+                  : ''
+              }
+
+            </div>
+
+          `
+        ).join('')}
 
       </div>
 
@@ -1674,52 +2201,58 @@ function renderDashboard() {
                     ${d
                       .slice(-20)
                       .reverse()
-                      .map(r => `
+                      .map(
+                        r => `
 
-                        <tr>
+                          <tr>
 
-                          <td>
-                            ${esc(r.fecha)}
-                          </td>
+                            <td>
+                              ${esc(r.fecha)}
+                            </td>
 
-                          <td>
-                            ${esc(r.turno)}
-                          </td>
+                            <td>
+                              ${esc(r.turno)}
+                            </td>
 
-                          <td>
-                            ${esc(r.producto)}
-                          </td>
+                            <td>
+                              ${esc(r.producto)}
+                            </td>
 
-                          <td>
-                            ${n(r.programada)}
-                          </td>
+                            <td>
+                              ${n(
+                                r.programada
+                              )}
+                            </td>
 
-                          <td>
-                            ${n(r.producida)}
-                          </td>
+                            <td>
+                              ${n(
+                                r.producida
+                              )}
+                            </td>
 
-                          <td>
-                            ${n(r.merma)}
-                          </td>
+                            <td>
+                              ${n(r.merma)}
+                            </td>
 
-                          <td>
-                            ${pct(r.oee)}
-                          </td>
+                            <td>
+                              ${pct(r.oee)}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <button
-                              type="button"
-                              data-delete-id="${esc(r.id)}"
-                            >
-                              Eliminar
-                            </button>
+                              <button
+                                type="button"
+                                data-delete-id="${esc(r.id)}"
+                              >
+                                Eliminar
+                              </button>
 
-                          </td>
+                            </td>
 
-                        </tr>
+                          </tr>
 
-                      `)
+                        `
+                      )
                       .join('')}
 
                   </tbody>
@@ -1794,7 +2327,9 @@ async function deleteRecord(id) {
 
   const detail =
     row
-      ? `${row.fecha} · ${row.turno} · ${
+      ? `${row.fecha} · ${
+          row.turno
+        } · ${
           row.producto ||
           'Sin producto'
         }`
@@ -1878,7 +2413,10 @@ function renderForm() {
             .slice(0, 7)
             .map(
               f =>
-                control(f, r)
+                control(
+                  f,
+                  r
+                )
             )
             .join('')}
 
@@ -1894,7 +2432,10 @@ function renderForm() {
             .slice(7, 12)
             .map(
               f =>
-                control(f, r)
+                control(
+                  f,
+                  r
+                )
             )
             .join('')}
 
@@ -1910,7 +2451,10 @@ function renderForm() {
             .slice(12, 15)
             .map(
               f =>
-                control(f, r)
+                control(
+                  f,
+                  r
+                )
             )
             .join('')}
 
@@ -1926,7 +2470,10 @@ function renderForm() {
             .slice(15)
             .map(
               f =>
-                control(f, r)
+                control(
+                  f,
+                  r
+                )
             )
             .join('')}
 
@@ -1995,7 +2542,9 @@ function renderForm() {
     } =
       await supabase
         .from('daily_records')
-        .insert(payload);
+        .insert(
+          payload
+        );
 
     if (error) {
 
@@ -2024,7 +2573,10 @@ function renderForm() {
 
 }
 
-function control(f, r) {
+function control(
+  f,
+  r
+) {
 
   const [
     key,
@@ -2034,21 +2586,37 @@ function control(f, r) {
 
   let input;
 
-  if (type === 'select') {
+  if (
+    type ===
+    'select'
+  ) {
 
     input = `
 
-      <select id="f_${key}">
+      <select
+        id="f_${key}"
+      >
 
-        <option>Mañana</option>
-        <option>Tarde</option>
-        <option>Noche</option>
+        <option>
+          Mañana
+        </option>
+
+        <option>
+          Tarde
+        </option>
+
+        <option>
+          Noche
+        </option>
 
       </select>
 
     `;
 
-  } else if (type === 'textarea') {
+  } else if (
+    type ===
+    'textarea'
+  ) {
 
     input = `
 
@@ -2065,9 +2633,12 @@ function control(f, r) {
       <input
         id="f_${key}"
         type="${type}"
-        value="${esc(r[key])}"
+        value="${esc(
+          r[key]
+        )}"
         ${
-          type === 'number'
+          type ===
+          'number'
             ? 'step="any"'
             : ''
         }
@@ -2149,7 +2720,8 @@ function renderResumen() {
   const mantenimientoSupabase =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.costo),
+        total +
+        n(r.costo),
       0
     );
 
@@ -2168,24 +2740,28 @@ function renderResumen() {
     sum('no_conformidades');
 
   const cumplimiento =
-    programada
-      ? producida / programada
-      : 0;
+    programada > 0
+      ? producida /
+        programada
+      : null;
 
   const yieldRate =
-    mp
-      ? producida / mp
-      : 0;
+    mp > 0
+      ? producida /
+        mp
+      : null;
 
   const mermaRate =
-    mp
-      ? merma / mp
-      : 0;
+    mp > 0
+      ? merma /
+        mp
+      : null;
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.horas_parada),
+        total +
+        n(r.horas_parada),
       0
     );
 
@@ -2195,47 +2771,54 @@ function renderResumen() {
       : paradas;
 
   const disponibilidad =
-    horas
+    horas > 0
       ? Math.max(
           0,
           (horas - paradasFinal) /
             horas
         )
-      : 0;
+      : null;
 
   const asistencia =
-    personalProgramado
+    personalProgramado > 0
       ? personalPresente /
         personalProgramado
-      : 0;
+      : null;
 
   const rechazo =
-    producida
-      ? rechazadas / producida
-      : 0;
+    producida > 0
+      ? rechazadas /
+        producida
+      : null;
 
   const otif =
-    pedidos
-      ? pedidosTiempo / pedidos
-      : 0;
+    pedidos > 0
+      ? pedidosTiempo /
+        pedidos
+      : null;
 
   const oee =
-    disponibilidad *
-    cumplimiento *
-    Math.max(
-      0,
-      1 - rechazo
-    );
+    disponibilidad !== null &&
+    cumplimiento !== null &&
+    rechazo !== null
+      ? disponibilidadeSegura(
+          disponibilidad,
+          cumplimiento,
+          rechazo
+        )
+      : null;
 
   const costoUnitario =
-    producida
-      ? costo / producida
-      : 0;
+    producida > 0
+      ? costo /
+        producida
+      : null;
 
   const energiaUnit =
-    producida
-      ? energia / producida
-      : 0;
+    producida > 0
+      ? energia /
+        producida
+      : null;
 
   const kpis = [
 
@@ -2338,27 +2921,29 @@ function renderResumen() {
 
         <div class="cards">
 
-          ${kpis.map(k => `
+          ${kpis.map(
+            k => `
 
-            <div class="card">
+              <div class="card">
 
-              <small>
-                ${k[0]}
-              </small>
+                <small>
+                  ${k[0]}
+                </small>
 
-              <strong>
-                ${k[1]}
-              </strong>
+                <strong>
+                  ${k[1]}
+                </strong>
 
-              <span
-                class="badge ${k[2].cls}"
-              >
-                ${k[2].label}
-              </span>
+                <span
+                  class="badge ${k[2].cls}"
+                >
+                  ${k[2].label}
+                </span>
 
-            </div>
+              </div>
 
-          `).join('')}
+            `
+          ).join('')}
 
         </div>
 
@@ -2445,7 +3030,8 @@ function renderResumen() {
             </small>
 
             <strong>
-              S/ ${costo.toLocaleString()}
+              S/
+              ${costo.toLocaleString()}
             </strong>
 
           </div>
@@ -2457,7 +3043,8 @@ function renderResumen() {
             </small>
 
             <strong>
-              S/ ${mantenimiento.toLocaleString()}
+              S/
+              ${mantenimiento.toLocaleString()}
             </strong>
 
           </div>
@@ -2469,7 +3056,12 @@ function renderResumen() {
             </small>
 
             <strong>
-              S/ ${costoUnitario.toFixed(3)}
+              ${
+                costoUnitario === null
+                  ? '—'
+                  : 'S/ ' +
+                    costoUnitario.toFixed(3)
+              }
             </strong>
 
           </div>
@@ -2481,7 +3073,8 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${energia.toLocaleString()} kWh
+              ${energia.toLocaleString()}
+              kWh
             </strong>
 
           </div>
@@ -2493,8 +3086,12 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${energiaUnit.toFixed(3)}
-              kWh/unidad
+              ${
+                energiaUnit === null
+                  ? '—'
+                  : energiaUnit.toFixed(3) +
+                    ' kWh/unidad'
+              }
             </strong>
 
           </div>
@@ -2533,8 +3130,9 @@ function renderResumen() {
               ${
                 maintenanceRows.filter(
                   r =>
-                    String(r.estado || '')
-                      .toLowerCase() ===
+                    String(
+                      r.estado || ''
+                    ).toLowerCase() ===
                     'programado'
                 ).length
               }
@@ -2559,8 +3157,10 @@ function renderResumen() {
                       ).toLowerCase();
 
                     return (
-                      estado === 'abierto' ||
-                      estado === 'en proceso'
+                      estado ===
+                        'abierto' ||
+                      estado ===
+                        'en proceso'
                     );
 
                   }
@@ -2597,7 +3197,11 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${horasParadaMantenimiento.toFixed(2)}
+              ${
+                horasParadaMantenimiento.toFixed(
+                  2
+                )
+              }
               h
             </strong>
 
@@ -2709,8 +3313,9 @@ function renderMaintenance() {
   const programados =
     maintenanceRows.filter(
       r =>
-        String(r.estado || '')
-          .toLowerCase() ===
+        String(
+          r.estado || ''
+        ).toLowerCase() ===
         'programado'
     ).length;
 
@@ -2724,8 +3329,10 @@ function renderMaintenance() {
           ).toLowerCase();
 
         return (
-          estado === 'abierto' ||
-          estado === 'en proceso'
+          estado ===
+            'abierto' ||
+          estado ===
+            'en proceso'
         );
 
       }
@@ -2734,22 +3341,25 @@ function renderMaintenance() {
   const cerrados =
     maintenanceRows.filter(
       r =>
-        String(r.estado || '')
-          .toLowerCase() ===
+        String(
+          r.estado || ''
+        ).toLowerCase() ===
         'cerrado'
     ).length;
 
   const horasParada =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.horas_parada),
+        total +
+        n(r.horas_parada),
       0
     );
 
   const costoTotal =
     maintenanceRows.reduce(
       (total, r) =>
-        total + n(r.costo),
+        total +
+        n(r.costo),
       0
     );
 
@@ -2857,13 +3467,11 @@ function renderMaintenance() {
       <section class="panel">
 
         <h2>
-
           ${
             editingMaintenanceId
               ? 'Editar mantenimiento'
               : 'Registrar mantenimiento'
           }
-
         </h2>
 
         <form
@@ -3162,123 +3770,137 @@ function renderMaintenance() {
                   <tbody>
 
                     ${maintenanceRows
-                      .map(r => `
+                      .map(
+                        r => `
 
-                        <tr>
+                          <tr>
 
-                          <td>
-                            ${esc(r.fecha)}
-                          </td>
+                            <td>
+                              ${esc(r.fecha)}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <strong>
-                              ${esc(r.equipo)}
-                            </strong>
+                              <strong>
+                                ${esc(
+                                  r.equipo
+                                )}
+                              </strong>
 
-                            ${
-                              r.codigo_equipo
-                                ? `
-                                  <br>
-                                  <small>
-                                    ${esc(
-                                      r.codigo_equipo
-                                    )}
-                                  </small>
-                                `
-                                : ''
-                            }
+                              ${
+                                r.codigo_equipo
+                                  ? `
 
-                          </td>
+                                    <br>
 
-                          <td>
-                            ${esc(r.tipo)}
-                          </td>
+                                    <small>
+                                      ${esc(
+                                        r.codigo_equipo
+                                      )}
+                                    </small>
 
-                          <td>
-                            ${n(
-                              r.horas_parada
-                            ).toFixed(2)}
-                          </td>
+                                  `
+                                  : ''
+                              }
 
-                          <td>
-                            ${esc(
-                              r.causa || ''
-                            )}
-                          </td>
+                            </td>
 
-                          <td>
-                            S/
-                            ${n(
-                              r.costo
-                            ).toFixed(2)}
-                          </td>
+                            <td>
+                              ${esc(r.tipo)}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.responsable || ''
-                            )}
-                          </td>
+                            <td>
+                              ${n(
+                                r.horas_parada
+                              ).toFixed(2)}
+                            </td>
 
-                          <td>
+                            <td>
+                              ${esc(
+                                r.causa ||
+                                ''
+                              )}
+                            </td>
 
-                            <span
-                              class="badge ${
-                                String(
-                                  r.estado || ''
-                                ).toLowerCase() ===
-                                'cerrado'
-                                  ? 'ok'
-                                  : (
-                                      String(
-                                        r.estado || ''
-                                      ).toLowerCase() ===
-                                      'cancelado'
-                                    )
-                                    ? 'critical'
+                            <td>
+                              S/
+                              ${n(
+                                r.costo
+                              ).toFixed(2)}
+                            </td>
+
+                            <td>
+                              ${esc(
+                                r.responsable ||
+                                ''
+                              )}
+                            </td>
+
+                            <td>
+
+                              <span
+                                class="badge ${
+                                  String(
+                                    r.estado ||
+                                    ''
+                                  ).toLowerCase() ===
+                                  'cerrado'
+                                    ? 'ok'
                                     : (
                                         String(
-                                          r.estado || ''
+                                          r.estado ||
+                                          ''
                                         ).toLowerCase() ===
-                                        'programado'
+                                        'cancelado'
                                       )
-                                      ? 'ok'
-                                      : 'warn'
-                              }"
-                            >
-                              ${esc(r.estado)}
-                            </span>
+                                      ? 'critical'
+                                      : (
+                                          String(
+                                            r.estado ||
+                                            ''
+                                          ).toLowerCase() ===
+                                          'programado'
+                                        )
+                                        ? 'ok'
+                                        : 'warn'
+                                }"
+                              >
+                                ${esc(
+                                  r.estado
+                                )}
+                              </span>
 
-                          </td>
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.fecha_programada ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.fecha_programada ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <button
-                              type="button"
-                              data-edit-maintenance="${esc(r.id)}"
-                            >
-                              Editar
-                            </button>
+                              <button
+                                type="button"
+                                data-edit-maintenance="${esc(r.id)}"
+                              >
+                                Editar
+                              </button>
 
-                            <button
-                              type="button"
-                              data-delete-maintenance="${esc(r.id)}"
-                            >
-                              Eliminar
-                            </button>
+                              <button
+                                type="button"
+                                data-delete-maintenance="${esc(r.id)}"
+                              >
+                                Eliminar
+                              </button>
 
-                          </td>
+                            </td>
 
-                        </tr>
+                          </tr>
 
-                      `)
+                        `
+                      )
                       .join('')}
 
                   </tbody>
@@ -3316,33 +3938,39 @@ function renderMaintenance() {
     .querySelectorAll(
       '[data-edit-maintenance]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        editMaintenance(
-          button.dataset.editMaintenance
-        );
+          editMaintenance(
+            button.dataset
+              .editMaintenance
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document
     .querySelectorAll(
       '[data-delete-maintenance]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        deleteMaintenance(
-          button.dataset.deleteMaintenance
-        );
+          deleteMaintenance(
+            button.dataset
+              .deleteMaintenance
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document.getElementById(
     'cancelMaintenance'
@@ -3386,7 +4014,8 @@ async function saveMaintenance(e) {
     codigo_equipo:
       document.getElementById(
         'mt_codigo_equipo'
-      ).value.trim() || null,
+      ).value.trim() ||
+      null,
 
     tipo:
       document.getElementById(
@@ -3396,7 +4025,8 @@ async function saveMaintenance(e) {
     causa:
       document.getElementById(
         'mt_causa'
-      ).value.trim() || null,
+      ).value.trim() ||
+      null,
 
     descripcion:
       document.getElementById(
@@ -3420,7 +4050,8 @@ async function saveMaintenance(e) {
     responsable:
       document.getElementById(
         'mt_responsable'
-      ).value.trim() || null,
+      ).value.trim() ||
+      null,
 
     estado:
       document.getElementById(
@@ -3430,17 +4061,20 @@ async function saveMaintenance(e) {
     fecha_programada:
       document.getElementById(
         'mt_fecha_programada'
-      ).value || null,
+      ).value ||
+      null,
 
     fecha_cierre:
       document.getElementById(
         'mt_fecha_cierre'
-      ).value || null,
+      ).value ||
+      null,
 
     observaciones:
       document.getElementById(
         'mt_observaciones'
-      ).value.trim() || null
+      ).value.trim() ||
+      null
 
   };
 
@@ -3477,7 +4111,10 @@ async function saveMaintenance(e) {
 
   }
 
-  if (payload.horas_parada < 0) {
+  if (
+    payload.horas_parada <
+    0
+  ) {
 
     msg(
       'maintenanceMsg',
@@ -3488,7 +4125,10 @@ async function saveMaintenance(e) {
 
   }
 
-  if (payload.costo < 0) {
+  if (
+    payload.costo <
+    0
+  ) {
 
     msg(
       'maintenanceMsg',
@@ -3506,7 +4146,9 @@ async function saveMaintenance(e) {
 
   let result;
 
-  if (editingMaintenanceId) {
+  if (
+    editingMaintenanceId
+  ) {
 
     result =
       await supabase
@@ -3526,7 +4168,9 @@ async function saveMaintenance(e) {
     result =
       await supabase
         .from('maintenance')
-        .insert(payload);
+        .insert(
+          payload
+        );
 
   }
 
@@ -3732,20 +4376,23 @@ async function deleteMaintenance(id) {
 function renderInventory() {
 
   const lowStock =
-    inventoryRows.filter(r => {
+    inventoryRows.filter(
+      r => {
 
-      const stock =
-        n(r.stock_inicial) +
-        n(r.entradas) -
-        n(r.salidas);
+        const stock =
+          n(r.stock_inicial) +
+          n(r.entradas) -
+          n(r.salidas);
 
-      return (
-        n(r.stock_minimo) > 0 &&
-        stock <=
-          n(r.stock_minimo)
-      );
+        return (
+          n(r.stock_minimo) >
+            0 &&
+          stock <=
+            n(r.stock_minimo)
+        );
 
-    }).length;
+      }
+    ).length;
 
   document.getElementById(
     'content'
@@ -4050,12 +4697,14 @@ function renderInventory() {
             ${
               editingInventoryId
                 ? `
+
                   <button
                     id="cancelInventory"
                     type="button"
                   >
                     Cancelar
                   </button>
+
                 `
                 : ''
             }
@@ -4105,133 +4754,140 @@ function renderInventory() {
                   <tbody>
 
                     ${inventoryRows
-                      .map(r => {
+                      .map(
+                        r => {
 
-                        const stock =
-                          n(
-                            r.stock_inicial
-                          ) +
-                          n(
-                            r.entradas
-                          ) -
-                          n(
-                            r.salidas
-                          );
-
-                        const low =
-                          n(
-                            r.stock_minimo
-                          ) > 0 &&
-                          stock <=
+                          const stock =
                             n(
-                              r.stock_minimo
+                              r.stock_inicial
+                            ) +
+                            n(
+                              r.entradas
+                            ) -
+                            n(
+                              r.salidas
                             );
 
-                        return `
-
-                          <tr>
-
-                            <td>
-                              ${esc(r.fecha)}
-                            </td>
-
-                            <td>
-                              ${esc(
-                                r.codigo ||
-                                ''
-                              )}
-                            </td>
-
-                            <td>
-                              ${esc(
-                                r.material
-                              )}
-                            </td>
-
-                            <td>
-                              ${esc(
-                                r.categoria ||
-                                ''
-                              )}
-                            </td>
-
-                            <td>
-                              ${esc(
-                                r.unidad
-                              )}
-                            </td>
-
-                            <td>
-                              ${n(
-                                r.stock_inicial
-                              )}
-                            </td>
-
-                            <td>
-                              ${n(
-                                r.entradas
-                              )}
-                            </td>
-
-                            <td>
-                              ${n(
-                                r.salidas
-                              )}
-                            </td>
-
-                            <td>
-                              <strong>
-                                ${stock}
-                              </strong>
-                            </td>
-
-                            <td>
-                              ${n(
+                          const low =
+                            n(
+                              r.stock_minimo
+                            ) >
+                              0 &&
+                            stock <=
+                              n(
                                 r.stock_minimo
-                              )}
-                            </td>
+                              );
 
-                            <td>
+                          return `
 
-                              <span
-                                class="badge ${
-                                  low
-                                    ? 'critical'
-                                    : 'ok'
-                                }"
-                              >
+                            <tr>
 
-                                ${
-                                  low
-                                    ? 'STOCK BAJO'
-                                    : 'OK'
-                                }
+                              <td>
+                                ${esc(
+                                  r.fecha
+                                )}
+                              </td>
 
-                              </span>
+                              <td>
+                                ${esc(
+                                  r.codigo ||
+                                  ''
+                                )}
+                              </td>
 
-                            </td>
+                              <td>
+                                ${esc(
+                                  r.material
+                                )}
+                              </td>
 
-                            <td>
+                              <td>
+                                ${esc(
+                                  r.categoria ||
+                                  ''
+                                )}
+                              </td>
 
-                              <button
-                                data-edit-inventory="${esc(r.id)}"
-                              >
-                                Editar
-                              </button>
+                              <td>
+                                ${esc(
+                                  r.unidad
+                                )}
+                              </td>
 
-                              <button
-                                data-delete-inventory="${esc(r.id)}"
-                              >
-                                Eliminar
-                              </button>
+                              <td>
+                                ${n(
+                                  r.stock_inicial
+                                )}
+                              </td>
 
-                            </td>
+                              <td>
+                                ${n(
+                                  r.entradas
+                                )}
+                              </td>
 
-                          </tr>
+                              <td>
+                                ${n(
+                                  r.salidas
+                                )}
+                              </td>
 
-                        `;
+                              <td>
 
-                      })
+                                <strong>
+                                  ${stock}
+                                </strong>
+
+                              </td>
+
+                              <td>
+                                ${n(
+                                  r.stock_minimo
+                                )}
+                              </td>
+
+                              <td>
+
+                                <span
+                                  class="badge ${
+                                    low
+                                      ? 'critical'
+                                      : 'ok'
+                                  }"
+                                >
+
+                                  ${
+                                    low
+                                      ? 'STOCK BAJO'
+                                      : 'OK'
+                                  }
+
+                                </span>
+
+                              </td>
+
+                              <td>
+
+                                <button
+                                  data-edit-inventory="${esc(r.id)}"
+                                >
+                                  Editar
+                                </button>
+
+                                <button
+                                  data-delete-inventory="${esc(r.id)}"
+                                >
+                                  Eliminar
+                                </button>
+
+                              </td>
+
+                            </tr>
+
+                          `;
+
+                        }
+                      )
                       .join('')}
 
                   </tbody>
@@ -4266,16 +4922,18 @@ function renderInventory() {
     'inv_stock_inicial',
     'inv_entradas',
     'inv_salidas'
-  ].forEach(id => {
+  ].forEach(
+    id => {
 
-    document
-      .getElementById(id)
-      ?.addEventListener(
-        'input',
-        updateInventoryStockPreview
-      );
+      document
+        .getElementById(id)
+        ?.addEventListener(
+          'input',
+          updateInventoryStockPreview
+        );
 
-  });
+    }
+  );
 
   document.getElementById(
     'inventoryForm'
@@ -4286,33 +4944,39 @@ function renderInventory() {
     .querySelectorAll(
       '[data-edit-inventory]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        editInventory(
-          button.dataset.editInventory
-        );
+          editInventory(
+            button.dataset
+              .editInventory
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document
     .querySelectorAll(
       '[data-delete-inventory]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        deleteInventory(
-          button.dataset.deleteInventory
-        );
+          deleteInventory(
+            button.dataset
+              .deleteInventory
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document.getElementById(
     'cancelInventory'
@@ -4448,7 +5112,9 @@ async function saveInventory(e) {
 
   let result;
 
-  if (editingInventoryId) {
+  if (
+    editingInventoryId
+  ) {
 
     result =
       await supabase
@@ -4468,7 +5134,9 @@ async function saveInventory(e) {
     result =
       await supabase
         .from('inventory')
-        .insert(payload);
+        .insert(
+          payload
+        );
 
   }
 
@@ -4664,7 +5332,9 @@ function renderPersonal() {
   const areas =
     new Set(
       personalRows
-        .map(r => r.area)
+        .map(
+          r => r.area
+        )
         .filter(Boolean)
     ).size;
 
@@ -4853,7 +5523,9 @@ function renderPersonal() {
 
               Turno
 
-              <select id="per_turno">
+              <select
+                id="per_turno"
+              >
 
                 <option>
                   Mañana
@@ -4875,7 +5547,9 @@ function renderPersonal() {
 
               Estado
 
-              <select id="per_estado">
+              <select
+                id="per_estado"
+              >
 
                 <option>
                   Activo
@@ -4991,76 +5665,91 @@ function renderPersonal() {
                   <tbody>
 
                     ${personalRows
-                      .map(r => `
+                      .map(
+                        r => `
 
-                        <tr>
+                          <tr>
 
-                          <td>
-                            ${esc(r.dni)}
-                          </td>
+                            <td>
+                              ${esc(r.dni)}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <strong>
-                              ${esc(r.nombre)}
-                            </strong>
+                              <strong>
+                                ${esc(
+                                  r.nombre
+                                )}
+                              </strong>
 
-                          </td>
+                            </td>
 
-                          <td>
-                            ${esc(r.cargo)}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.cargo
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(r.area)}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.area
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(r.turno)}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.turno
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.fecha_ingreso
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.fecha_ingreso
+                              )}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <span
-                              class="badge ${
-                                r.estado ===
-                                'Activo'
-                                  ? 'ok'
-                                  : 'warn'
-                              }"
-                            >
-                              ${esc(r.estado)}
-                            </span>
+                              <span
+                                class="badge ${
+                                  String(
+                                    r.estado ||
+                                    ''
+                                  ).toLowerCase() ===
+                                  'activo'
+                                    ? 'ok'
+                                    : 'warn'
+                                }"
+                              >
+                                ${esc(
+                                  r.estado
+                                )}
+                              </span>
 
-                          </td>
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <button
-                              type="button"
-                              data-edit-personal="${esc(r.id)}"
-                            >
-                              Editar
-                            </button>
+                              <button
+                                type="button"
+                                data-edit-personal="${esc(r.id)}"
+                              >
+                                Editar
+                              </button>
 
-                            <button
-                              type="button"
-                              data-delete-personal="${esc(r.id)}"
-                            >
-                              Eliminar
-                            </button>
+                              <button
+                                type="button"
+                                data-delete-personal="${esc(r.id)}"
+                              >
+                                Eliminar
+                              </button>
 
-                          </td>
+                            </td>
 
-                        </tr>
+                          </tr>
 
-                      `)
+                        `
+                      )
                       .join('')}
 
                   </tbody>
@@ -5100,33 +5789,39 @@ function renderPersonal() {
     .querySelectorAll(
       '[data-edit-personal]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        editPersonal(
-          button.dataset.editPersonal
-        );
+          editPersonal(
+            button.dataset
+              .editPersonal
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document
     .querySelectorAll(
       '[data-delete-personal]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        deletePersonal(
-          button.dataset.deletePersonal
-        );
+          deletePersonal(
+            button.dataset
+              .deletePersonal
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document.getElementById(
     'cancelPersonal'
@@ -5279,7 +5974,9 @@ async function savePersonal(e) {
 
   let result;
 
-  if (editingPersonalId) {
+  if (
+    editingPersonalId
+  ) {
 
     result =
       await supabase
@@ -5299,7 +5996,9 @@ async function savePersonal(e) {
     result =
       await supabase
         .from('personal')
-        .insert(payload);
+        .insert(
+          payload
+        );
 
   }
 
@@ -5824,68 +6523,70 @@ function renderSsoma() {
                   <tbody>
 
                     ${ssomaRows
-                      .map(r => `
+                      .map(
+                        r => `
 
-                        <tr>
+                          <tr>
 
-                          <td>
-                            ${esc(r.fecha)}
-                          </td>
+                            <td>
+                              ${esc(r.fecha)}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.tipo ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.tipo ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.lugar ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.lugar ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.gravedad ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.gravedad ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.estado ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.estado ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
-                            ${esc(
-                              r.hechos ||
-                              ''
-                            )}
-                          </td>
+                            <td>
+                              ${esc(
+                                r.hechos ||
+                                ''
+                              )}
+                            </td>
 
-                          <td>
+                            <td>
 
-                            <button
-                              data-edit-ssoma="${esc(r.id)}"
-                            >
-                              Editar
-                            </button>
+                              <button
+                                data-edit-ssoma="${esc(r.id)}"
+                              >
+                                Editar
+                              </button>
 
-                            <button
-                              data-delete-ssoma="${esc(r.id)}"
-                            >
-                              Eliminar
-                            </button>
+                              <button
+                                data-delete-ssoma="${esc(r.id)}"
+                              >
+                                Eliminar
+                              </button>
 
-                          </td>
+                            </td>
 
-                        </tr>
+                          </tr>
 
-                      `)
+                        `
+                      )
                       .join('')}
 
                   </tbody>
@@ -5923,33 +6624,39 @@ function renderSsoma() {
     .querySelectorAll(
       '[data-edit-ssoma]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        editSsoma(
-          button.dataset.editSsoma
-        );
+          editSsoma(
+            button.dataset
+              .editSsoma
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document
     .querySelectorAll(
       '[data-delete-ssoma]'
     )
-    .forEach(button => {
+    .forEach(
+      button => {
 
-      button.onclick = () => {
+        button.onclick = () => {
 
-        deleteSsoma(
-          button.dataset.deleteSsoma
-        );
+          deleteSsoma(
+            button.dataset
+              .deleteSsoma
+          );
 
-      };
+        };
 
-    });
+      }
+    );
 
   document.getElementById(
     'cancelSsoma'
@@ -6032,11 +6739,15 @@ async function saveSsoma(e) {
 
   let result;
 
-  if (editingSsomaId) {
+  if (
+    editingSsomaId
+  ) {
 
     result =
       await supabase
-        .from('ssoma_incidents')
+        .from(
+          'ssoma_incidents'
+        )
         .update(payload)
         .eq(
           'id',
@@ -6051,8 +6762,12 @@ async function saveSsoma(e) {
 
     result =
       await supabase
-        .from('ssoma_incidents')
-        .insert(payload);
+        .from(
+          'ssoma_incidents'
+        )
+        .insert(
+          payload
+        );
 
   }
 
@@ -6186,7 +6901,9 @@ async function deleteSsoma(id) {
     error
   } =
     await supabase
-      .from('ssoma_incidents')
+      .from(
+        'ssoma_incidents'
+      )
       .delete()
       .eq(
         'id',
@@ -6220,9 +6937,13 @@ async function deleteSsoma(id) {
 
 async function load() {
 
+  if (!user?.id) return;
+
   const r =
     await supabase
-      .from('daily_records')
+      .from(
+        'daily_records'
+      )
       .select('*')
       .eq(
         'user_id',
@@ -6254,71 +6975,135 @@ async function load() {
 
   const s =
     await supabase
-      .from('app_settings')
+      .from(
+        'app_settings'
+      )
       .select('*')
       .limit(1)
       .maybeSingle();
 
-  if (s.data) {
+  if (
+    s.data
+  ) {
 
     metas = {
 
       ...metas,
 
       cumplimiento:
-        n(
-          s.data.meta_cumplimiento
-        ) ||
-        metas.cumplimiento,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_cumplimiento
+          )
+        )
+          ? Number(
+              s.data
+                .meta_cumplimiento
+            )
+          : metas.cumplimiento,
 
       merma:
-        n(
-          s.data.meta_merma
-        ) ||
-        metas.merma,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_merma
+          )
+        )
+          ? Number(
+              s.data
+                .meta_merma
+            )
+          : metas.merma,
 
       yield:
-        n(
-          s.data.meta_yield
-        ) ||
-        metas.yield,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_yield
+          )
+        )
+          ? Number(
+              s.data
+                .meta_yield
+            )
+          : metas.yield,
 
       disponibilidad:
-        n(
-          s.data.meta_disponibilidad
-        ) ||
-        metas.disponibilidad,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_disponibilidad
+          )
+        )
+          ? Number(
+              s.data
+                .meta_disponibilidad
+            )
+          : metas.disponibilidad,
 
       asistencia:
-        n(
-          s.data.meta_asistencia
-        ) ||
-        metas.asistencia,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_asistencia
+          )
+        )
+          ? Number(
+              s.data
+                .meta_asistencia
+            )
+          : metas.asistencia,
 
       rechazo:
-        n(
-          s.data.meta_rechazo
-        ) ||
-        metas.rechazo,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_rechazo
+          )
+        )
+          ? Number(
+              s.data
+                .meta_rechazo
+            )
+          : metas.rechazo,
 
       otif:
-        n(
-          s.data.meta_entregas
-        ) ||
-        metas.otif,
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_entregas
+          )
+        )
+          ? Number(
+              s.data
+                .meta_entregas
+            )
+          : metas.otif,
 
       incidentes:
-        n(
-          s.data.meta_incidentes
+        Number.isFinite(
+          Number(
+            s.data
+              .meta_incidentes
+          )
         )
+          ? Number(
+              s.data
+                .meta_incidentes
+            )
+          : metas.incidentes
 
     };
 
   }
 
   await loadInventory();
+
   await loadSsoma();
+
   await loadPersonal();
+
   await loadMaintenance();
 
 }
@@ -6329,9 +7114,13 @@ async function load() {
 
 async function loadInventory() {
 
+  if (!user?.id) return;
+
   const result =
     await supabase
-      .from('inventory')
+      .from(
+        'inventory'
+      )
       .select('*')
       .eq(
         'user_id',
@@ -6357,7 +7146,8 @@ async function loadInventory() {
       result.error
     );
 
-    inventoryRows = [];
+    inventoryRows =
+      [];
 
     return;
 
@@ -6375,9 +7165,13 @@ async function loadInventory() {
 
 async function loadSsoma() {
 
+  if (!user?.id) return;
+
   const result =
     await supabase
-      .from('ssoma_incidents')
+      .from(
+        'ssoma_incidents'
+      )
       .select('*')
       .eq(
         'user_id',
@@ -6403,7 +7197,8 @@ async function loadSsoma() {
       result.error
     );
 
-    ssomaRows = [];
+    ssomaRows =
+      [];
 
     return;
 
@@ -6421,9 +7216,13 @@ async function loadSsoma() {
 
 async function loadPersonal() {
 
+  if (!user?.id) return;
+
   const result =
     await supabase
-      .from('personal')
+      .from(
+        'personal'
+      )
       .select('*')
       .eq(
         'user_id',
@@ -6449,7 +7248,8 @@ async function loadPersonal() {
       result.error
     );
 
-    personalRows = [];
+    personalRows =
+      [];
 
     return;
 
@@ -6467,9 +7267,13 @@ async function loadPersonal() {
 
 async function loadMaintenance() {
 
+  if (!user?.id) return;
+
   const result =
     await supabase
-      .from('maintenance')
+      .from(
+        'maintenance'
+      )
       .select('*')
       .eq(
         'user_id',
@@ -6495,7 +7299,8 @@ async function loadMaintenance() {
       result.error
     );
 
-    maintenanceRows = [];
+    maintenanceRows =
+      [];
 
     return;
 
@@ -6511,7 +7316,9 @@ async function loadMaintenance() {
    PLACEHOLDER
 ========================================================= */
 
-function renderPlaceholder(title) {
+function renderPlaceholder(
+  title
+) {
 
   document.getElementById(
     'content'
@@ -6545,29 +7352,55 @@ function renderPlaceholder(title) {
 }
 
 /* =========================================================
-   INICIO
+   INICIO SEGURO
 ========================================================= */
 
-supabase.auth
-  .getSession()
-  .then(
-    async ({ data }) => {
+async function init() {
 
-      user =
-        data.session?.user ||
-        null;
+  if (!app) {
 
-      if (user) {
+    console.error(
+      'QUIMFLUX: no se encontró el elemento #app.'
+    );
 
-        await load();
+    return;
 
-      }
+  }
 
-      render();
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase.auth.getSession();
+
+    if (error) {
+
+      console.error(
+        'Error obteniendo sesión:',
+        error
+      );
+
+      renderAuth();
+
+      return;
 
     }
-  )
-  .catch(error => {
+
+    user =
+      data.session?.user ||
+      null;
+
+    if (user) {
+
+      await load();
+
+    }
+
+    render();
+
+  } catch (error) {
 
     console.error(
       'Error inicializando QUIMFLUX:',
@@ -6576,31 +7409,48 @@ supabase.auth
 
     renderAuth();
 
-  });
+  }
+
+}
 
 /* =========================================================
    CAMBIOS DE SESIÓN
 ========================================================= */
 
-supabase.auth
-  .onAuthStateChange(
-    (_event, session) => {
+supabase.auth.onAuthStateChange(
+  (
+    _event,
+    session
+  ) => {
 
-      user =
-        session?.user ||
-        null;
+    user =
+      session?.user ||
+      null;
 
-      if (!user) {
+    if (!user) {
 
-        rows = [];
-        inventoryRows = [];
-        ssomaRows = [];
-        personalRows = [];
-        maintenanceRows = [];
-
-      }
-
-      render();
+      rows = [];
+      inventoryRows = [];
+      ssomaRows = [];
+      personalRows = [];
+      maintenanceRows = [];
 
     }
-  );
+
+    /*
+       IMPORTANTE:
+       NO hacemos load() aquí.
+       Evita la carrera entre getSession(),
+       carga de datos y renderizado.
+    */
+
+    render();
+
+  }
+);
+
+/* =========================================================
+   ARRANQUE
+========================================================= */
+
+init();
