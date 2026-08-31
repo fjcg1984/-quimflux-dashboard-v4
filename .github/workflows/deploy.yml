@@ -31,34 +31,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
-      - name: Compilar QUIMFLUX V5
+      - name: Construir aplicación
         run: npm run build
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Subir aplicación compilada
+      - name: Subir aplicación
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: ./dist
 
-  deploy:
-
-    needs: build
-
-    runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-
-      - name: Publicar QUIMFLUX V5
+      - name: Publicar aplicación
         id: deployment
         uses: actions/deploy-pages@v4
