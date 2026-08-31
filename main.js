@@ -772,8 +772,6 @@ function graficoTendencia(
   `;
 
 
-  /* líneas horizontales */
-
   [0,.4,.8,1.2,1.6]
     .forEach(value => {
 
@@ -805,8 +803,6 @@ function graficoTendencia(
     });
 
 
-  /* línea de meta */
-
   const metaY =
     y(metas.cumplimiento);
 
@@ -834,8 +830,6 @@ function graficoTendencia(
 
   `;
 
-
-  /* series */
 
   series.forEach((serie,index)=>{
 
@@ -876,8 +870,6 @@ function graficoTendencia(
 
   });
 
-
-  /* fechas */
 
   const paso =
     Math.max(
@@ -951,6 +943,351 @@ function graficoTendencia(
       ${svg}
 
     </div>
+
+  `;
+}
+
+
+/* ==========================================================
+   ANÁLISIS DE DESVIACIONES
+   ========================================================== */
+
+function analisisDesviacion(
+  label,
+  actual,
+  meta,
+  invert=false
+){
+
+  const valor = n(actual);
+
+  const objetivo = n(meta);
+
+  const s =
+    status(
+      valor,
+      objetivo,
+      invert
+    );
+
+
+  const diferencia =
+    invert
+      ? objetivo - valor
+      : valor - objetivo;
+
+
+  const diferenciaPP =
+    (diferencia * 100).toFixed(1);
+
+
+  let situacion = '';
+
+  let accion = '';
+
+
+  if(s.critical){
+
+    situacion =
+      invert
+        ? `${label} está ${Math.abs(diferenciaPP)} pp por encima del máximo permitido.`
+        : `${label} está ${Math.abs(diferenciaPP)} pp por debajo de la meta.`;
+
+    accion =
+      'Requiere atención inmediata y revisión de la causa de la desviación.';
+
+  }else if(s.ok){
+
+    situacion =
+      invert
+        ? `${label} se encuentra dentro del límite establecido.`
+        : `${label} cumple o supera la meta establecida.`;
+
+    accion =
+      'Mantener el comportamiento y continuar monitoreando.';
+
+  }else{
+
+    situacion =
+      invert
+        ? `${label} presenta una desviación respecto al límite permitido.`
+        : `${label} se encuentra por debajo de la meta establecida.`;
+
+    accion =
+      'Revisar la causa y aplicar una acción correctiva si la desviación persiste.';
+
+  }
+
+
+  return {
+
+    label,
+
+    valor:pct(valor),
+
+    meta:
+      invert
+        ? 'Máx. '+pct(objetivo)
+        : 'Meta '+pct(objetivo),
+
+    diferencia:
+      (diferencia >= 0 ? '+' : '') +
+      diferenciaPP +
+      ' pp',
+
+    situacion,
+
+    accion,
+
+    cls:s.cls,
+
+    estado:s.label
+  };
+}
+
+
+function renderAnalisisDesviaciones(
+  last
+){
+
+  if(!last){
+
+    return `
+
+      <section class="panel">
+
+        <h2>
+          🔎 Análisis de desviaciones
+        </h2>
+
+        <div class="empty">
+
+          Se necesita al menos un registro
+          diario para realizar el análisis.
+
+        </div>
+
+      </section>
+
+    `;
+  }
+
+
+  const analisis = [
+
+    analisisDesviacion(
+      'Cumplimiento',
+      last.cumplimiento,
+      metas.cumplimiento
+    ),
+
+    analisisDesviacion(
+      'Yield',
+      last.yieldRate,
+      metas.yield
+    ),
+
+    analisisDesviacion(
+      'Merma',
+      last.merma,
+      metas.merma,
+      true
+    ),
+
+    analisisDesviacion(
+      'Disponibilidad',
+      last.disponibilidad,
+      metas.disponibilidad
+    ),
+
+    analisisDesviacion(
+      'Asistencia',
+      last.asistencia,
+      metas.asistencia
+    ),
+
+    analisisDesviacion(
+      'Rechazo',
+      last.rechazo,
+      metas.rechazo,
+      true
+    ),
+
+    analisisDesviacion(
+      'OEE',
+      last.oee,
+      .80
+    ),
+
+    analisisDesviacion(
+      'Entregas a tiempo',
+      last.otif,
+      metas.otif
+    )
+
+  ];
+
+
+  const desviaciones =
+    analisis.filter(
+      a => a.estado !== 'OK'
+    );
+
+
+  return `
+
+    <section class="panel">
+
+      <h2>
+        🔎 Análisis de desviaciones
+      </h2>
+
+      <p>
+        Análisis automático del último turno
+        frente a las metas operativas.
+      </p>
+
+
+      ${
+        desviaciones.length
+          ?
+
+          `
+
+            <div class="card">
+
+              <small>
+                DESVIACIONES DETECTADAS
+              </small>
+
+              <strong>
+                ${desviaciones.length}
+              </strong>
+
+              <span class="badge warn">
+                REQUIEREN ATENCIÓN
+              </span>
+
+            </div>
+
+          `
+
+          :
+
+          `
+
+            <div class="card">
+
+              <strong>
+                No se detectan desviaciones.
+              </strong>
+
+              <span class="badge ok">
+                OPERACIÓN DENTRO DE META
+              </span>
+
+            </div>
+
+          `
+      }
+
+
+      <div class="tableWrap">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Indicador
+              </th>
+
+              <th>
+                Último turno
+              </th>
+
+              <th>
+                Meta
+              </th>
+
+              <th>
+                Diferencia
+              </th>
+
+              <th>
+                Estado
+              </th>
+
+              <th>
+                Interpretación
+              </th>
+
+              <th>
+                Acción sugerida
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            ${
+              analisis.map(a=>`
+
+                <tr>
+
+                  <td>
+                    <strong>
+                      ${a.label}
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${a.valor}
+                  </td>
+
+                  <td>
+                    ${a.meta}
+                  </td>
+
+                  <td>
+                    ${a.diferencia}
+                  </td>
+
+                  <td>
+
+                    <span
+                      class="badge ${a.cls}"
+                    >
+                      ${a.estado}
+                    </span>
+
+                  </td>
+
+                  <td>
+                    ${a.situacion}
+                  </td>
+
+                  <td>
+                    ${a.accion}
+                  </td>
+
+                </tr>
+
+              `).join('')
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
 
   `;
 }
@@ -1765,6 +2102,16 @@ function renderDashboard(){
 
 
   /* ========================================================
+     ANÁLISIS DE DESVIACIONES
+     ======================================================== */
+
+  const analisisHTML =
+    renderAnalisisDesviaciones(
+      last
+    );
+
+
+  /* ========================================================
      INDICADORES GENERALES
      ======================================================== */
 
@@ -2049,6 +2396,9 @@ function renderDashboard(){
 
 
         ${tendenciasHTML}
+
+
+        ${analisisHTML}
 
 
         <section class="panel">
