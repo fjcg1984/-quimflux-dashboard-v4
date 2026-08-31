@@ -35,7 +35,6 @@ let rows = [];
 let inventoryRows = [];
 let ssomaRows = [];
 let personalRows = [];
-let novedadesRows = [];
 let maintenanceRows = [];
 
 let tab = 'dashboard';
@@ -44,6 +43,7 @@ let editingInventoryId = null;
 let editingSsomaId = null;
 let editingPersonalId = null;
 let editingMaintenanceId = null;
+let editingDailyId = null;
 
 /* =========================================================
    METAS
@@ -92,46 +92,6 @@ function pct(v) {
 function msg(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
-}
-
-/* =========================================================
-   SSOMA - INDICADORES
-   Fuente oficial: ssoma_incidents.
-   Para el indicador de días se consideran Accidente e Incidente.
-========================================================= */
-
-function getSsomaStats() {
-  const eventos = Array.isArray(ssomaRows) ? ssomaRows : [];
-
-  const accidentesIncidentes = eventos.filter(r => {
-    const tipo = String(r.tipo || '').trim().toLowerCase();
-    return tipo === 'accidente' || tipo === 'incidente';
-  });
-
-  const fechasValidas = accidentesIncidentes
-    .map(r => String(r.fecha || '').slice(0, 10))
-    .filter(fecha => /^\d{4}-\d{2}-\d{2}$/.test(fecha))
-    .sort();
-
-  const ultimaFecha = fechasValidas.length
-    ? fechasValidas[fechasValidas.length - 1]
-    : null;
-
-  let diasSinAccidenteIncidente = null;
-
-  if (ultimaFecha) {
-    const hoy = new Date(`${today}T00:00:00`);
-    const ultimo = new Date(`${ultimaFecha}T00:00:00`);
-    const diferencia = hoy.getTime() - ultimo.getTime();
-    diasSinAccidenteIncidente = Math.max(0, Math.floor(diferencia / 86400000));
-  }
-
-  return {
-    totalEventos: eventos.length,
-    totalAccidentesIncidentes: accidentesIncidentes.length,
-    ultimaFecha,
-    diasSinAccidenteIncidente
-  };
 }
 
 /* =========================================================
@@ -395,7 +355,6 @@ function render() {
     inventoryRows = [];
     ssomaRows = [];
     personalRows = [];
-    novedadesRows = [];
     maintenanceRows = [];
 
     render();
@@ -672,21 +631,15 @@ function getAlerts() {
       });
     }
 
-  }
+    const incidentes = sum('incidentes');
 
-  /* -------------------------------------------------------
-     SSOMA - FUENTE OFICIAL DE INCIDENTES
-     Se evalúa independientemente de los datos operativos.
-  ------------------------------------------------------- */
-  const ssomaStats = getSsomaStats();
-  const incidentes = ssomaStats.totalEventos;
-
-  if (incidentes > metas.incidentes) {
-    alerts.push({
-      nivel: incidentes >= 2 ? 'critical' : 'warn',
-      titulo: 'Incidentes SSOMA registrados',
-      detalle: `${incidentes} evento(s) · Meta ${metas.incidentes}`
-    });
+    if (incidentes > metas.incidentes) {
+      alerts.push({
+        nivel: incidentes >= 2 ? 'critical' : 'warn',
+        titulo: 'Incidentes SSOMA registrados',
+        detalle: `${incidentes} incidente(s) · Meta ${metas.incidentes}`
+      });
+    }
   }
 
   /* -------------------------------------------------------
@@ -934,8 +887,7 @@ function aggregateMetrics(data, useMaintenance = true) {
   const pedidosTiempo = sum('pedidos_tiempo');
   const costo = sum('costo_produccion');
   const energiaTotal = sum('energia');
-  // INCIDENTES SSOMA: fuente oficial ssoma_incidents.
-  const incidentes = Array.isArray(ssomaRows) ? ssomaRows.length : 0;
+  const incidentes = sum('incidentes');
 
   const cumplimiento = programada > 0 ? producida / programada : null;
   const yieldRate = mp > 0 ? producida / mp : null;
@@ -1145,9 +1097,6 @@ function renderDashboard() {
     ['Incidentes SSOMA', String(metrics.incidentes), status(metrics.incidentes, metas.incidentes, true)]
   ];
 
-  const ssomaStats = getSsomaStats();
-  const diasSinAccidenteIncidente = ssomaStats.diasSinAccidenteIncidente;
-
   const trendCum = trendClass(trend.map(x => x.cumplimiento === null ? null : x.cumplimiento / 100));
   const trendYield = trendClass(trend.map(x => x.yieldRate === null ? null : x.yieldRate / 100));
   const trendOee = trendClass(trend.map(x => x.oee === null ? null : x.oee / 100));
@@ -1177,28 +1126,6 @@ function renderDashboard() {
       </div>
 
       ${renderAlerts()}
-
-      <section class="panel">
-        <h2>Seguridad: días sin accidente/incidente</h2>
-        <p>Indicador calculado automáticamente a partir de los registros oficiales de SSOMA.</p>
-        <div class="cards">
-          <div class="card">
-            <small>Días sin accidente/incidente</small>
-            <strong>${diasSinAccidenteIncidente === null ? 'SIN DATOS' : diasSinAccidenteIncidente}</strong>
-            <span class="badge ${diasSinAccidenteIncidente === null ? 'ok' : diasSinAccidenteIncidente === 0 ? 'critical' : 'ok'}">
-              ${diasSinAccidenteIncidente === null ? 'SIN REGISTROS' : diasSinAccidenteIncidente === 0 ? 'EVENTO HOY' : 'EN CONTROL'}
-            </span>
-          </div>
-          <div class="card">
-            <small>Último accidente/incidente</small>
-            <strong>${esc(ssomaStats.ultimaFecha || '—')}</strong>
-          </div>
-          <div class="card">
-            <small>Total eventos SSOMA</small>
-            <strong>${ssomaStats.totalEventos}</strong>
-          </div>
-        </div>
-      </section>
 
       ${latest ? `
         <section class="panel">
@@ -1283,7 +1210,10 @@ function renderDashboard() {
                     <td>${esc(r.fecha)}</td><td>${esc(r.turno)}</td><td>${esc(r.producto)}</td>
                     <td>${n(r.programada).toLocaleString()}</td><td>${n(r.producida).toLocaleString()}</td>
                     <td>${pct(r.merma)}</td><td>${pct(r.oee)}</td>
-                    <td><button type="button" data-delete-id="${esc(r.id)}">Eliminar</button></td>
+                    <td>
+                      <button type="button" class="link" data-view-id="${esc(r.id)}">Visualizar</button>
+                      <button type="button" data-delete-id="${esc(r.id)}">Eliminar</button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1293,6 +1223,10 @@ function renderDashboard() {
       </section>
     </main>
   `;
+
+  document.querySelectorAll('[data-view-id]').forEach(button => {
+    button.onclick = () => viewDaily(button.dataset.viewId);
+  });
 
   document.querySelectorAll('[data-delete-id]').forEach(button => {
     button.onclick = () => deleteRecord(button.dataset.deleteId);
@@ -1342,16 +1276,21 @@ async function deleteRecord(id) {
    FORMULARIO DIARIO
 ========================================================= */
 
-function renderForm() {
-  const r = empty();
+function renderForm(existing = null) {
+  const r = existing ? { ...empty(), ...existing } : empty();
+  editingDailyId = existing ? existing.id : null;
 
   document.getElementById('content').innerHTML = `
     <main>
-      <h1>Registro Diario</h1>
-      <p>
-        Ingresa los datos del turno.
-        Los KPI se calculan automáticamente.
-      </p>
+      <div class="titleRow">
+        <div>
+          <h1>${editingDailyId ? 'Editar registro diario' : 'Registro Diario'}</h1>
+          <p>
+            ${editingDailyId ? 'Modifica los datos del turno. Los KPI se recalcularán automáticamente.' : 'Ingresa los datos del turno. Los KPI se calculan automáticamente.'}
+          </p>
+        </div>
+        <button id="backDaily" type="button" class="link">← Volver</button>
+      </div>
 
       <form id="daily" class="formGrid">
         <section>
@@ -1370,19 +1309,23 @@ function renderForm() {
         </section>
 
         <section>
-          <h2>Despacho y datos complementarios</h2>
-          <p><small>El indicador oficial de incidentes se obtiene del módulo SSOMA. Este campo diario se conserva como dato complementario histórico.</small></p>
+          <h2>Despacho y SSOMA</h2>
           ${fields.slice(15).map(f => control(f, r)).join('')}
         </section>
 
         <div id="saveMsg" class="msg full"></div>
 
         <button class="primary full" type="submit">
-          Guardar registro diario
+          ${editingDailyId ? 'Guardar cambios' : 'Guardar registro diario'}
         </button>
       </form>
     </main>
   `;
+
+  document.getElementById('backDaily').onclick = () => {
+    editingDailyId = null;
+    render();
+  };
 
   document.getElementById('daily').onsubmit = async e => {
     e.preventDefault();
@@ -1403,21 +1346,33 @@ function renderForm() {
 
     msg('saveMsg', 'Guardando…');
 
-    const { error } =
-      await supabase
+    let result;
+
+    if (editingDailyId) {
+      result = await supabase
+        .from('daily_records')
+        .update(payload)
+        .eq('id', editingDailyId)
+        .eq('user_id', user.id);
+    } else {
+      result = await supabase
         .from('daily_records')
         .insert(payload);
+    }
 
-    if (error) {
-      msg('saveMsg', error.message);
+    if (result.error) {
+      msg('saveMsg', result.error.message);
       return;
     }
 
     msg(
       'saveMsg',
-      'Registro guardado correctamente.'
+      editingDailyId
+        ? 'Registro actualizado correctamente.'
+        : 'Registro guardado correctamente.'
     );
 
+    editingDailyId = null;
     await load();
 
     setTimeout(() => render(), 500);
@@ -1432,21 +1387,21 @@ function control(f, r) {
   if (type === 'select') {
     input = `
       <select id="f_${key}">
-        <option>Mañana</option>
-        <option>Tarde</option>
-        <option>Noche</option>
+        <option ${r[key] === 'Mañana' ? 'selected' : ''}>Mañana</option>
+        <option ${r[key] === 'Tarde' ? 'selected' : ''}>Tarde</option>
+        <option ${r[key] === 'Noche' ? 'selected' : ''}>Noche</option>
       </select>
     `;
   } else if (type === 'textarea') {
     input = `
-      <textarea id="f_${key}"></textarea>
+      <textarea id="f_${key}">${esc(r[key] ?? '')}</textarea>
     `;
   } else {
     input = `
       <input
         id="f_${key}"
         type="${type}"
-        value="${esc(r[key])}"
+        value="${esc(r[key] ?? '')}"
         ${type === 'number' ? 'step="any"' : ''}
       >
     `;
@@ -1459,6 +1414,64 @@ function control(f, r) {
     </label>
   `;
 }
+
+/* =========================================================
+   VISUALIZAR / EDITAR REGISTRO DIARIO
+========================================================= */
+
+function viewDaily(id) {
+  const r = rows.find(x => String(x.id) === String(id));
+
+  if (!r) {
+    alert('No se encontró el registro diario.');
+    return;
+  }
+
+  const d = derive(r);
+
+  document.getElementById('content').innerHTML = `
+    <main>
+      <div class="titleRow">
+        <div>
+          <h1>Visualizar registro diario</h1>
+          <p>${esc(r.fecha)} · ${esc(r.turno)} · ${esc(r.producto || 'Sin producto')}</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="editDaily" class="primary" type="button">Editar</button>
+          <button id="backDailyView" type="button">Volver</button>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>Datos del turno</h2>
+        <div class="tableWrap">
+          <table>
+            <tbody>
+              <tr><th>Fecha</th><td>${esc(r.fecha)}</td><th>Turno</th><td>${esc(r.turno)}</td></tr>
+              <tr><th>Producto</th><td>${esc(r.producto || '')}</td><th>Programada</th><td>${n(r.programada).toLocaleString()}</td></tr>
+              <tr><th>Producida</th><td>${n(r.producida).toLocaleString()}</td><th>Materia prima</th><td>${n(r.mp).toLocaleString()}</td></tr>
+              <tr><th>Merma</th><td>${pct(d.merma)}</td><th>Rechazo calidad</th><td>${pct(d.rechazo)}</td></tr>
+              <tr><th>Cumplimiento</th><td>${pct(d.cumplimiento)}</td><th>Yield</th><td>${pct(d.yieldRate)}</td></tr>
+              <tr><th>Disponibilidad</th><td>${pct(d.disponibilidad)}</td><th>OEE</th><td>${pct(d.oee)}</td></tr>
+              <tr><th>Asistencia</th><td>${pct(d.asistencia)}</td><th>OTIF</th><td>${pct(d.otif)}</td></tr>
+              <tr><th>Horas turno</th><td>${n(r.horas_turno).toFixed(2)}</td><th>Horas parada</th><td>${n(r.horas_paradas).toFixed(2)}</td></tr>
+              <tr><th>Personal programado</th><td>${n(r.personal_programado)}</td><th>Personal presente</th><td>${n(r.personal_presente)}</td></tr>
+              <tr><th>Costo producción</th><td>S/ ${n(r.costo_produccion).toLocaleString()}</td><th>Energía</th><td>${n(r.energia).toLocaleString()} kWh</td></tr>
+              <tr><th>Costo mantenimiento</th><td>S/ ${n(r.costo_mantenimiento).toLocaleString()}</td><th>Incidentes SSOMA</th><td>${n(r.incidentes)}</td></tr>
+              <tr><th>Pedidos programados</th><td>${n(r.pedidos_programados)}</td><th>Pedidos a tiempo</th><td>${n(r.pedidos_tiempo)}</td></tr>
+              <tr><th>Reproceso</th><td>${n(r.reproceso)}</td><th>No conformidades</th><td>${n(r.no_conformidades)}</td></tr>
+              <tr><th>Observaciones</th><td colspan="3">${esc(r.observaciones || '')}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  `;
+
+  document.getElementById('backDailyView').onclick = () => render();
+  document.getElementById('editDaily').onclick = () => renderForm(r);
+}
+
 
 /* =========================================================
    RESUMEN
@@ -2708,345 +2721,402 @@ async function deleteInventory(id) {
    PERSONAL
 ========================================================= */
 
-function renderPersonal(){
-  const total=personalRows.length;
+function renderPersonal() {
+  const activos =
+    personalRows.filter(
+      r =>
+        String(r.estado || '').toLowerCase() === 'activo'
+    ).length;
 
-  const novedadesPorDni={};
-  novedadesRows.forEach(x=>{
-    if(!novedadesPorDni[x.dni]) novedadesPorDni[x.dni]=[];
-    novedadesPorDni[x.dni].push(x);
-  });
+  const inactivos =
+    personalRows.length - activos;
 
-  document.getElementById('content').innerHTML=`
+  const areas =
+    new Set(
+      personalRows
+        .map(r => r.area)
+        .filter(Boolean)
+    ).size;
+
+  document.getElementById('content').innerHTML = `
     <main>
       <div class="titleRow">
         <div>
-          <h1>Personal</h1>
-          <p>Trabajadores registrados: ${total}</p>
+          <h1>Gestión de Personal</h1>
+          <p>Registro y control del personal de la planta.</p>
         </div>
-        <button id="newPersonal" class="primary">+ Nuevo trabajador</button>
+        <span class="online">● EN LÍNEA</span>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <small>Personal registrado</small>
+          <strong>${personalRows.length}</strong>
+        </div>
+
+        <div class="card">
+          <small>Personal activo</small>
+          <strong>${activos}</strong>
+          <span class="badge ok">ACTIVO</span>
+        </div>
+
+        <div class="card">
+          <small>Personal inactivo</small>
+          <strong>${inactivos}</strong>
+        </div>
+
+        <div class="card">
+          <small>Áreas</small>
+          <strong>${areas}</strong>
+        </div>
       </div>
 
       <section class="panel">
-        <h2>Control de personal</h2>
-        ${total?`
-          <div class="tableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>DNI</th>
-                  <th>Nombre</th>
-                  <th>Cargo</th>
-                  <th>Área</th>
-                  <th>Turno</th>
-                  <th>Estado</th>
-                  <th>Permisos</th>
-                  <th>Vacaciones</th>
-                  <th>Faltas</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${personalRows.map(p=>{
-                  const ns=novedadesPorDni[p.dni]||[];
-                  const permisos=ns.filter(x=>x.tipo==='PERMISO').length;
-                  const vacaciones=ns.filter(x=>x.tipo==='VACACIONES').length;
-                  const faltas=ns.filter(x=>x.tipo==='FALTA').length;
+        <h2>
+          ${editingPersonalId ? 'Editar trabajador' : 'Registrar trabajador'}
+        </h2>
 
-                  return `
+        <form id="personalForm" class="formGrid">
+          <section>
+            <h2>Identificación</h2>
+
+            <label>
+              DNI
+              <input id="per_dni" type="text"
+                inputmode="numeric" maxlength="20"
+                placeholder="Ej. 12345678" required>
+            </label>
+
+            <label>
+              Nombre completo
+              <input id="per_nombre" type="text"
+                placeholder="Nombre y apellidos" required>
+            </label>
+
+            <label>
+              Fecha de ingreso
+              <input id="per_fecha_ingreso" type="date"
+                value="${today}" required>
+            </label>
+          </section>
+
+          <section>
+            <h2>Puesto</h2>
+
+            <label>
+              Cargo
+              <input id="per_cargo" type="text"
+                placeholder="Ej. Operador de planta" required>
+            </label>
+
+            <label>
+              Área
+              <input id="per_area" type="text"
+                placeholder="Ej. Producción" required>
+            </label>
+
+            <label>
+              Turno
+              <select id="per_turno">
+                <option>Mañana</option>
+                <option>Tarde</option>
+                <option>Noche</option>
+              </select>
+            </label>
+
+            <label>
+              Estado
+              <select id="per_estado">
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </label>
+          </section>
+
+          <section>
+            <h2>Observaciones</h2>
+
+            <label>
+              <textarea id="per_observaciones"
+                placeholder="Información adicional..."></textarea>
+            </label>
+          </section>
+
+          <div id="personalMsg" class="msg full"></div>
+
+          <div class="full" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="primary" type="submit">
+              ${editingPersonalId ? 'Actualizar trabajador' : 'Guardar trabajador'}
+            </button>
+
+            ${
+              editingPersonalId
+                ? `<button id="cancelPersonal" type="button">
+                     Cancelar edición
+                   </button>`
+                : ''
+            }
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Personal registrado</h2>
+
+        ${
+          personalRows.length
+            ? `
+              <div class="tableWrap">
+                <table>
+                  <thead>
                     <tr>
-                      <td>${esc(p.dni)}</td>
-                      <td>${esc(p.nombre||p.nombre_completo||'')}</td>
-                      <td>${esc(p.cargo||'')}</td>
-                      <td>${esc(p.area||'')}</td>
-                      <td>${esc(p.turno||'')}</td>
-                      <td>${esc(p.estado||'')}</td>
-                      <td>${permisos}</td>
-                      <td>${vacaciones}</td>
-                      <td>${faltas}</td>
-                      <td>
-                        <button class="link personalEdit" data-id="${esc(p.id)}">Editar</button>
-                        <button class="link personalNovelty" data-dni="${esc(p.dni)}">Novedad</button>
-                      </td>
-                    </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>`
-          :`<div class="empty">No hay trabajadores registrados todavía.</div>`}
+                      <th>DNI</th>
+                      <th>Nombre</th>
+                      <th>Cargo</th>
+                      <th>Área</th>
+                      <th>Turno</th>
+                      <th>Ingreso</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    ${personalRows.map(r => `
+                      <tr>
+                        <td>${esc(r.dni)}</td>
+                        <td><strong>${esc(r.nombre)}</strong></td>
+                        <td>${esc(r.cargo)}</td>
+                        <td>${esc(r.area)}</td>
+                        <td>${esc(r.turno)}</td>
+                        <td>${esc(r.fecha_ingreso)}</td>
+                        <td>
+                          <span class="badge ${
+                            r.estado === 'Activo'
+                              ? 'ok'
+                              : 'warn'
+                          }">
+                            ${esc(r.estado)}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            data-edit-personal="${esc(r.id)}">
+                            Editar
+                          </button>
+                          <button
+                            data-delete-personal="${esc(r.id)}">
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : `
+              <div class="empty">
+                Todavía no hay personal registrado.
+              </div>
+            `
+        }
       </section>
+    </main>
+  `;
 
-      <section class="panel">
-        <h2>Últimas novedades</h2>
-        ${novedadesRows.length?`
-          <div class="tableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>DNI</th><th>Tipo</th><th>Inicio</th><th>Fin</th>
-                  <th>Motivo</th><th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${novedadesRows.slice(0,30).map(x=>`
-                  <tr>
-                    <td>${esc(x.dni)}</td>
-                    <td>${esc(x.tipo)}</td>
-                    <td>${esc(x.fecha_inicio)}</td>
-                    <td>${esc(x.fecha_fin)}</td>
-                    <td>${esc(x.motivo||'')}</td>
-                    <td>${esc(x.estado||'')}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>`
-          :'<div class="empty">Todavía no hay permisos, vacaciones o faltas registrados.</div>'}
-      </section>
+  document.getElementById('personalForm').onsubmit =
+    savePersonal;
 
-      <div id="personalMsg" class="msg"></div>
-    </main>`;
+  document
+    .querySelectorAll('[data-edit-personal]')
+    .forEach(button => {
+      button.onclick = () =>
+        editPersonal(button.dataset.editPersonal);
+    });
 
-  document.getElementById('newPersonal').onclick=()=>showPersonalForm();
+  document
+    .querySelectorAll('[data-delete-personal]')
+    .forEach(button => {
+      button.onclick = () =>
+        deletePersonal(button.dataset.deletePersonal);
+    });
 
-  document.querySelectorAll('.personalNovelty').forEach(b=>{
-    b.onclick=()=>showNovedadForm(b.dataset.dni);
-  });
-
-  document.querySelectorAll('.personalEdit').forEach(b=>{
-    b.onclick=()=>{
-      const p=personalRows.find(x=>String(x.id)===String(b.dataset.id));
-      if(p) showPersonalForm(p);
-    };
-  });
+  document.getElementById('cancelPersonal')
+    ?.addEventListener('click', () => {
+      editingPersonalId = null;
+      renderPersonal();
+    });
 }
 
-function showPersonalForm(p=null){
-  const c=document.getElementById('content');
+async function savePersonal(e) {
+  e.preventDefault();
 
-  c.innerHTML=`
-    <main>
-      <div class="titleRow">
-        <div>
-          <h1>${p?'Editar trabajador':'Nuevo trabajador'}</h1>
-          <p>Ficha maestra del trabajador.</p>
-        </div>
-        <button id="backPersonal" class="link">← Volver</button>
-      </div>
+  const payload = {
+    user_id: user.id,
 
-      <form id="personalForm" class="formGrid">
-        <section>
-          <label>DNI
-            <input id="p_dni" required value="${esc(p?.dni||'')}">
-          </label>
+    dni:
+      document.getElementById('per_dni').value.trim(),
 
-          <label>Nombre completo
-            <input id="p_nombre" required value="${esc(p?.nombre||p?.nombre_completo||'')}">
-          </label>
+    nombre:
+      document.getElementById('per_nombre').value.trim(),
 
-          <label>Fecha de ingreso
-            <input id="p_fecha_ingreso" type="date" value="${esc(p?.fecha_ingreso||'')}">
-          </label>
+    fecha_ingreso:
+      document.getElementById('per_fecha_ingreso').value,
 
-          <label>Cargo
-            <input id="p_cargo" value="${esc(p?.cargo||'')}">
-          </label>
-        </section>
+    cargo:
+      document.getElementById('per_cargo').value.trim(),
 
-        <section>
-          <label>Área
-            <input id="p_area" value="${esc(p?.area||'')}">
-          </label>
+    area:
+      document.getElementById('per_area').value.trim(),
 
-          <label>Turno
-            <select id="p_turno">
-              <option ${p?.turno==='Mañana'?'selected':''}>Mañana</option>
-              <option ${p?.turno==='Tarde'?'selected':''}>Tarde</option>
-              <option ${p?.turno==='Noche'?'selected':''}>Noche</option>
-            </select>
-          </label>
+    turno:
+      document.getElementById('per_turno').value,
 
-          <label>Estado
-            <select id="p_estado">
-              <option ${p?.estado==='ACTIVO'||!p?'selected':''}>ACTIVO</option>
-              <option ${p?.estado==='INACTIVO'?'selected':''}>INACTIVO</option>
-              <option ${p?.estado==='SUSPENDIDO'?'selected':''}>SUSPENDIDO</option>
-            </select>
-          </label>
+    estado:
+      document.getElementById('per_estado').value,
 
-          <label>Observaciones
-            <textarea id="p_observaciones">${esc(p?.observaciones||'')}</textarea>
-          </label>
-        </section>
+    observaciones:
+      document.getElementById('per_observaciones').value.trim() || null
+  };
 
-        <div id="personalFormMsg" class="msg full"></div>
-        <button class="primary full" type="submit">${p?'Guardar cambios':'Guardar trabajador'}</button>
-      </form>
-    </main>`;
+  if (!payload.dni) {
+    msg('personalMsg', 'Debes ingresar el DNI.');
+    return;
+  }
 
-  document.getElementById('backPersonal').onclick=()=>renderPersonal();
+  if (!payload.nombre) {
+    msg('personalMsg', 'Debes ingresar el nombre completo.');
+    return;
+  }
 
-  document.getElementById('personalForm').onsubmit=async e=>{
-    e.preventDefault();
+  if (!payload.cargo) {
+    msg('personalMsg', 'Debes ingresar el cargo.');
+    return;
+  }
 
-    const msg=document.getElementById('personalFormMsg');
-    msg.textContent='Guardando…';
+  if (!payload.area) {
+    msg('personalMsg', 'Debes ingresar el área.');
+    return;
+  }
 
-    const payload={
-      user_id:user.id,
-      dni:document.getElementById('p_dni').value.trim(),
-      nombre:document.getElementById('p_nombre').value.trim(),
-      fecha_ingreso:document.getElementById('p_fecha_ingreso').value||null,
-      cargo:document.getElementById('p_cargo').value.trim(),
-      area:document.getElementById('p_area').value.trim(),
-      turno:document.getElementById('p_turno').value,
-      estado:document.getElementById('p_estado').value,
-      observaciones:document.getElementById('p_observaciones').value.trim()
-    };
+  if (!payload.fecha_ingreso) {
+    msg('personalMsg', 'Debes ingresar la fecha de ingreso.');
+    return;
+  }
 
-    let result;
+  msg('personalMsg', 'Guardando trabajador…');
 
-    if(p){
-      result=await supabase.from('personal')
+  let result;
+
+  if (editingPersonalId) {
+    result =
+      await supabase
+        .from('personal')
         .update(payload)
-        .eq('id',p.id)
-        .eq('user_id',user.id);
-    }else{
-      result=await supabase.from('personal').insert(payload);
-    }
-
-    if(result.error){
-      msg.textContent=result.error.message;
-      return;
-    }
-
-    await loadPersonal();
-    renderPersonal();
-  };
-}
-
-function showNovedadForm(dni){
-  document.getElementById('content').innerHTML=`
-    <main>
-      <div class="titleRow">
-        <div>
-          <h1>Nueva novedad</h1>
-          <p>Registro de permisos, vacaciones y faltas.</p>
-        </div>
-        <button id="backNovedad" class="link">← Volver</button>
-      </div>
-
-      <form id="novedadForm" class="formGrid">
-        <section>
-          <label>DNI
-            <input id="n_dni" value="${esc(dni)}" readonly>
-          </label>
-
-          <label>Tipo
-            <select id="n_tipo">
-              <option>PERMISO</option>
-              <option>VACACIONES</option>
-              <option>FALTA</option>
-              <option>DESCANSO_MEDICO</option>
-              <option>OTRO</option>
-            </select>
-          </label>
-
-          <label>Fecha inicio
-            <input id="n_inicio" type="date" required value="${today}">
-          </label>
-
-          <label>Fecha fin
-            <input id="n_fin" type="date" required value="${today}">
-          </label>
-        </section>
-
-        <section>
-          <label>Motivo
-            <input id="n_motivo">
-          </label>
-
-          <label>Estado
-            <select id="n_estado">
-              <option>REGISTRADO</option>
-              <option>APROBADO</option>
-              <option>RECHAZADO</option>
-              <option>CERRADO</option>
-            </select>
-          </label>
-
-          <label>Observaciones
-            <textarea id="n_observaciones"></textarea>
-          </label>
-        </section>
-
-        <div id="novedadMsg" class="msg full"></div>
-        <button class="primary full" type="submit">Guardar novedad</button>
-      </form>
-    </main>`;
-
-  document.getElementById('backNovedad').onclick=()=>renderPersonal();
-
-  document.getElementById('novedadForm').onsubmit=async e=>{
-    e.preventDefault();
-
-    const msg=document.getElementById('novedadMsg');
-    msg.textContent='Guardando…';
-
-    const inicio=document.getElementById('n_inicio').value;
-    const fin=document.getElementById('n_fin').value;
-
-    if(fin<inicio){
-      msg.textContent='La fecha fin no puede ser anterior a la fecha inicio.';
-      return;
-    }
-
-    const payload={
-      user_id:user.id,
-      dni:document.getElementById('n_dni').value.trim(),
-      tipo:document.getElementById('n_tipo').value,
-      fecha_inicio:inicio,
-      fecha_fin:fin,
-      motivo:document.getElementById('n_motivo').value.trim(),
-      estado:document.getElementById('n_estado').value,
-      observaciones:document.getElementById('n_observaciones').value.trim()
-    };
-
-    const {error}=await supabase.from('personal_novedades').insert(payload);
-
-    if(error){
-      msg.textContent=error.message;
-      return;
-    }
-
-    await loadPersonal();
-    renderPersonal();
-  };
-}
-
-async function loadPersonal(){
-  const p=await supabase.from('personal')
-    .select('*')
-    .eq('user_id',user.id)
-    .order('nombre',{ascending:true});
-
-  if(p.error){
-    personalRows=[];
-    console.error('Error tabla personal:',p.error);
-  }else{
-    personalRows=p.data||[];
+        .eq('id', editingPersonalId)
+        .eq('user_id', user.id);
+  } else {
+    result =
+      await supabase
+        .from('personal')
+        .insert(payload);
   }
 
-  const nov=await supabase.from('personal_novedades')
-    .select('*')
-    .eq('user_id',user.id)
-    .order('fecha_inicio',{ascending:false});
-
-  if(nov.error){
-    novedadesRows=[];
-    console.error('Error tabla personal_novedades:',nov.error);
-  }else{
-    novedadesRows=nov.data||[];
+  if (result.error) {
+    if (result.error.code === '23505') {
+      msg(
+        'personalMsg',
+        'Ya existe un trabajador con ese DNI.'
+      );
+    } else {
+      msg(
+        'personalMsg',
+        'Error: ' + result.error.message
+      );
+    }
+    return;
   }
+
+  editingPersonalId = null;
+
+  await loadPersonal();
+  renderPersonal();
+}
+
+function editPersonal(id) {
+  const row =
+    personalRows.find(
+      r => String(r.id) === String(id)
+    );
+
+  if (!row) {
+    alert('No se encontró el trabajador.');
+    return;
+  }
+
+  editingPersonalId = row.id;
+
+  renderPersonal();
+
+  document.getElementById('per_dni').value =
+    row.dni || '';
+
+  document.getElementById('per_nombre').value =
+    row.nombre || '';
+
+  document.getElementById('per_fecha_ingreso').value =
+    row.fecha_ingreso || today;
+
+  document.getElementById('per_cargo').value =
+    row.cargo || '';
+
+  document.getElementById('per_area').value =
+    row.area || '';
+
+  document.getElementById('per_turno').value =
+    row.turno || 'Mañana';
+
+  document.getElementById('per_estado').value =
+    row.estado || 'Activo';
+
+  document.getElementById('per_observaciones').value =
+    row.observaciones || '';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deletePersonal(id) {
+  const row =
+    personalRows.find(
+      r => String(r.id) === String(id)
+    );
+
+  if (!row) return;
+
+  if (
+    !confirm(
+      `¿Eliminar a "${row.nombre}"?\n\n` +
+      `DNI: ${row.dni}\n` +
+      `Cargo: ${row.cargo}\n\n` +
+      `Esta acción no se puede deshacer.`
+    )
+  ) return;
+
+  const { error } =
+    await supabase
+      .from('personal')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+  if (error) {
+    alert('No se pudo eliminar:\n' + error.message);
+    return;
+  }
+
+  await loadPersonal();
+  renderPersonal();
 }
 
 /* =========================================================
@@ -3063,36 +3133,22 @@ function renderSsoma() {
         Salud Ocupacional y Medio Ambiente.
       </p>
 
-      ${(() => {
-        const stats = getSsomaStats();
-        const abiertos = ssomaRows.filter(
-          r => String(r.estado || '').toLowerCase() !== 'cerrado'
-        ).length;
+      <div class="cards">
+        <div class="card">
+          <small>Incidentes registrados</small>
+          <strong>${ssomaRows.length}</strong>
+        </div>
 
-        return `
-          <div class="cards">
-            <div class="card">
-              <small>Eventos SSOMA registrados</small>
-              <strong>${stats.totalEventos}</strong>
-            </div>
-            <div class="card">
-              <small>Accidentes/incidentes registrados</small>
-              <strong>${stats.totalAccidentesIncidentes}</strong>
-            </div>
-            <div class="card">
-              <small>Incidentes abiertos</small>
-              <strong>${abiertos}</strong>
-            </div>
-            <div class="card">
-              <small>Días sin accidente/incidente</small>
-              <strong>${stats.diasSinAccidenteIncidente === null ? 'SIN DATOS' : stats.diasSinAccidenteIncidente}</strong>
-              <span class="badge ${stats.diasSinAccidenteIncidente === null ? 'ok' : stats.diasSinAccidenteIncidente === 0 ? 'critical' : 'ok'}">
-                ${stats.diasSinAccidenteIncidente === null ? 'SIN REGISTROS' : stats.diasSinAccidenteIncidente === 0 ? 'EVENTO HOY' : 'EN CONTROL'}
-              </span>
-            </div>
-          </div>
-        `;
-      })()}
+        <div class="card">
+          <small>Incidentes abiertos</small>
+          <strong>
+            ${ssomaRows.filter(
+              r =>
+                String(r.estado || '').toLowerCase() !== 'cerrado'
+            ).length}
+          </strong>
+        </div>
+      </div>
 
       <section class="panel">
         <h2>
@@ -3546,6 +3602,26 @@ async function loadSsoma() {
    PERSONAL - CARGA
 ========================================================= */
 
+async function loadPersonal() {
+  if (!user?.id) return;
+
+  const result =
+    await supabase
+      .from('personal')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('estado', { ascending: true })
+      .order('nombre', { ascending: true });
+
+  if (result.error) {
+    console.error('Error personal:', result.error);
+    personalRows = [];
+    return;
+  }
+
+  personalRows = result.data || [];
+}
+
 /* =========================================================
    MANTENIMIENTO - CARGA
 ========================================================= */
@@ -3653,7 +3729,6 @@ supabase.auth.onAuthStateChange(
       inventoryRows = [];
       ssomaRows = [];
       personalRows = [];
-      novedadesRows = [];
       maintenanceRows = [];
     }
 
@@ -3673,4 +3748,3 @@ supabase.auth.onAuthStateChange(
 ========================================================= */
 
 init();
-
