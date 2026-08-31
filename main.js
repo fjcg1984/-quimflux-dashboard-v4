@@ -142,10 +142,7 @@ const fields = [
 ];
 
 /* =========================================================
-   DERIVAR KPI
-   IMPORTANTE:
-   merma conserva el valor REAL registrado.
-   mermaRate es el porcentaje calculado.
+   CÁLCULO DE KPI
 ========================================================= */
 
 function derive(r) {
@@ -153,6 +150,7 @@ function derive(r) {
   const p = n(r.programada);
   const q = n(r.producida);
   const mp = n(r.mp);
+  const merma = n(r.merma);
   const h = n(r.horas_turno);
   const stop = n(r.horas_paradas);
   const pp = n(r.personal_programado);
@@ -160,17 +158,43 @@ function derive(r) {
   const rej = n(r.rechazadas);
   const pedidos = n(r.pedidos_programados);
   const at = n(r.pedidos_tiempo);
-  const mermaReal = n(r.merma);
+
+  /*
+    MERMA
+
+    Merma = merma / materia prima consumida
+  */
 
   const mermaRate =
     mp
-      ? mermaReal / mp
-      : null;
+      ? merma / mp
+      : 0;
+
+  /*
+    YIELD CORREGIDO
+
+    Yield = producción / (producción + merma)
+
+    El resultado queda limitado entre 0% y 100%.
+  */
+
+  const yieldBase =
+    q + merma;
 
   const yieldRate =
-    mp
-      ? q / mp
-      : null;
+    yieldBase > 0
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            q / yieldBase
+          )
+        )
+      : 0;
+
+  /*
+    DISPONIBILIDAD
+  */
 
   const disponibilidad =
     h
@@ -178,71 +202,101 @@ function derive(r) {
           0,
           (h - stop) / h
         )
-      : null;
+      : 0;
+
+  /*
+    ASISTENCIA
+  */
 
   const asistencia =
     pp
       ? pa / pp
-      : null;
+      : 0;
+
+  /*
+    RECHAZO
+  */
 
   const rechazo =
     q
       ? rej / q
-      : null;
+      : 0;
+
+  /*
+    CUMPLIMIENTO
+  */
 
   const cumplimiento =
     p
       ? q / p
-      : null;
+      : 0;
+
+  /*
+    OTIF
+  */
 
   const otif =
     pedidos
       ? at / pedidos
-      : null;
+      : 0;
+
+  /*
+    OEE
+
+    Disponibilidad × Cumplimiento × Calidad
+
+    Calidad = 1 - rechazo
+  */
 
   const oee =
-    disponibilidad !== null &&
-    cumplimiento !== null &&
-    rechazo !== null
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
-      ? disponibilidad *
-        cumplimiento *
-        Math.max(
-          0,
-          1 - rechazo
-        )
-
-      : null;
+  /*
+    COSTO UNITARIO
+  */
 
   const costoUnitario =
     q
       ? n(r.costo_produccion) / q
-      : null;
+      : 0;
+
+  /*
+    ENERGÍA POR UNIDAD
+  */
 
   const energiaUnit =
     q
       ? n(r.energia) / q
-      : null;
+      : 0;
 
   return {
 
     ...r,
 
-    /* VALORES REALES */
-
-    merma: mermaReal,
-
-    /* KPI CALCULADOS */
-
     cumplimiento,
-    mermaRate,
+
+    merma:
+      mermaRate,
+
     yieldRate,
+
     disponibilidad,
+
     asistencia,
+
     rechazo,
+
     oee,
+
     otif,
+
     costoUnitario,
+
     energiaUnit
 
   };
@@ -620,21 +674,6 @@ function status(
   invert = false
 ) {
 
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(value)
-  ) {
-
-    return {
-
-      label: 'SIN DATOS',
-      cls: 'ok'
-
-    };
-
-  }
-
   const ok =
     invert
       ? value <= target
@@ -676,6 +715,12 @@ function getAlerts() {
   const d =
     rows.map(derive);
 
+  if (!d.length) {
+
+    return alerts;
+
+  }
+
   const sum = key =>
     d.reduce(
       (s, r) =>
@@ -692,10 +737,12 @@ function getAlerts() {
   const mp =
     sum('mp');
 
-  /* MERMA REAL */
-
   const merma =
-    sum('merma');
+    rows.reduce(
+      (s, r) =>
+        s + n(r.merma),
+      0
+    );
 
   const horas =
     sum('horas_turno');
@@ -719,19 +766,28 @@ function getAlerts() {
     sum('pedidos_tiempo');
 
   const cumplimiento =
-    programada > 0
+    programada
       ? producida / programada
-      : null;
+      : 0;
+
+  const yieldBase =
+    producida + merma;
 
   const yieldRate =
-    mp > 0
-      ? producida / mp
-      : null;
+    yieldBase > 0
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            producida / yieldBase
+          )
+        )
+      : 0;
 
   const mermaRate =
-    mp > 0
+    mp
       ? merma / mp
-      : null;
+      : 0;
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
@@ -746,46 +802,38 @@ function getAlerts() {
       : paradasDiarias;
 
   const disponibilidad =
-    horas > 0
+    horas
       ? Math.max(
           0,
           (horas - paradas) / horas
         )
-      : null;
+      : 0;
 
   const asistencia =
-    personalProgramado > 0
+    personalProgramado
       ? personalPresente /
         personalProgramado
-      : null;
+      : 0;
 
   const rechazo =
-    producida > 0
+    producida
       ? rechazadas / producida
-      : null;
+      : 0;
 
   const otif =
-    pedidos > 0
+    pedidos
       ? pedidosTiempo / pedidos
-      : null;
+      : 0;
 
   const oee =
-    disponibilidad !== null &&
-    cumplimiento !== null &&
-    rechazo !== null
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
-      ? disponibilidad *
-        cumplimiento *
-        Math.max(
-          0,
-          1 - rechazo
-        )
-
-      : null;
-
-  /* =======================================================
-     KPI MAYOR ES MEJOR
-  ======================================================= */
+  /* KPI MAYOR ES MEJOR */
 
   const kpis = [
 
@@ -830,15 +878,6 @@ function getAlerts() {
   kpis.forEach(kpi => {
 
     if (
-      kpi.valor === null ||
-      kpi.valor === undefined
-    ) {
-
-      return;
-
-    }
-
-    if (
       kpi.valor <
       kpi.meta * 0.85
     ) {
@@ -876,97 +915,83 @@ function getAlerts() {
 
   });
 
-  /* =======================================================
-     MERMA
-  ======================================================= */
+  /* MERMA */
 
-  if (mermaRate !== null) {
+  if (
+    mermaRate >
+    metas.merma * 1.5
+  ) {
 
-    if (
-      mermaRate >
-      metas.merma * 1.5
-    ) {
+    alerts.push({
 
-      alerts.push({
+      nivel: 'critical',
 
-        nivel: 'critical',
+      titulo:
+        'Merma en nivel crítico',
 
-        titulo:
-          'Merma en nivel crítico',
+      detalle:
+        `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
 
-        detalle:
-          `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
+    });
 
-      });
+  } else if (
+    mermaRate >
+    metas.merma
+  ) {
 
-    } else if (
-      mermaRate >
-      metas.merma
-    ) {
+    alerts.push({
 
-      alerts.push({
+      nivel: 'warn',
 
-        nivel: 'warn',
+      titulo:
+        'Merma por encima de la meta',
 
-        titulo:
-          'Merma por encima de la meta',
+      detalle:
+        `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
 
-        detalle:
-          `${pct(mermaRate)} · Meta máxima ${pct(metas.merma)}`
-
-      });
-
-    }
+    });
 
   }
 
-  /* =======================================================
-     RECHAZO
-  ======================================================= */
+  /* RECHAZO */
 
-  if (rechazo !== null) {
+  if (
+    rechazo >
+    metas.rechazo * 1.5
+  ) {
 
-    if (
-      rechazo >
-      metas.rechazo * 1.5
-    ) {
+    alerts.push({
 
-      alerts.push({
+      nivel: 'critical',
 
-        nivel: 'critical',
+      titulo:
+        'Rechazo de calidad crítico',
 
-        titulo:
-          'Rechazo de calidad crítico',
+      detalle:
+        `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
 
-        detalle:
-          `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
+    });
 
-      });
+  } else if (
+    rechazo >
+    metas.rechazo
+  ) {
 
-    } else if (
-      rechazo >
-      metas.rechazo
-    ) {
+    alerts.push({
 
-      alerts.push({
+      nivel: 'warn',
 
-        nivel: 'warn',
+      titulo:
+        'Rechazo de calidad elevado',
 
-        titulo:
-          'Rechazo de calidad elevado',
+      detalle:
+        `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
 
-        detalle:
-          `${pct(rechazo)} · Meta máxima ${pct(metas.rechazo)}`
-
-      });
-
-    }
+    });
 
   }
 
-  /* =======================================================
-     INVENTARIO
-  ======================================================= */
+  /* INVENTARIO */
 
   inventoryRows.forEach(r => {
 
@@ -999,9 +1024,7 @@ function getAlerts() {
 
   });
 
-  /* =======================================================
-     MANTENIMIENTO
-  ======================================================= */
+  /* MANTENIMIENTO */
 
   maintenanceRows.forEach(r => {
 
@@ -1051,9 +1074,7 @@ function getAlerts() {
 
   });
 
-  /* =======================================================
-     SSOMA
-  ======================================================= */
+  /* SSOMA */
 
   ssomaRows.forEach(r => {
 
@@ -1095,9 +1116,7 @@ function getAlerts() {
 
   });
 
-  /* =======================================================
-     INCIDENTES DEL REGISTRO DIARIO
-  ======================================================= */
+  /* INCIDENTES DEL REGISTRO DIARIO */
 
   const incidentes =
     sum('incidentes');
@@ -1124,9 +1143,7 @@ function getAlerts() {
 
   }
 
-  /* =======================================================
-     ORDEN
-  ======================================================= */
+  /* ORDEN */
 
   alerts.sort(
     (a, b) => {
@@ -1296,11 +1313,9 @@ function renderAlerts() {
               </strong>
 
               <div>
-
                 <small>
                   ${esc(a.detalle)}
                 </small>
-
               </div>
 
             </div>
@@ -1343,7 +1358,11 @@ function renderDashboard() {
     sum('mp');
 
   const merma =
-    sum('merma');
+    rows.reduce(
+      (s, r) =>
+        s + n(r.merma),
+      0
+    );
 
   const horas =
     sum('horas_turno');
@@ -1367,19 +1386,32 @@ function renderDashboard() {
     sum('pedidos_tiempo');
 
   const cumplimiento =
-    programada > 0
+    programada
       ? producida / programada
-      : null;
+      : 0;
+
+  /*
+    YIELD CORREGIDO
+  */
+
+  const yieldBase =
+    producida + merma;
 
   const yieldRate =
-    mp > 0
-      ? producida / mp
-      : null;
+    yieldBase > 0
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            producida / yieldBase
+          )
+        )
+      : 0;
 
   const mermaRate =
-    mp > 0
+    mp
       ? merma / mp
-      : null;
+      : 0;
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
@@ -1394,42 +1426,36 @@ function renderDashboard() {
       : paradasDiarias;
 
   const disponibilidad =
-    horas > 0
+    horas
       ? Math.max(
           0,
           (horas - paradas) / horas
         )
-      : null;
+      : 0;
 
   const asistencia =
-    personalProgramado > 0
+    personalProgramado
       ? personalPresente /
         personalProgramado
-      : null;
+      : 0;
 
   const rechazo =
-    producida > 0
+    producida
       ? rechazadas / producida
-      : null;
+      : 0;
 
   const otif =
-    pedidos > 0
+    pedidos
       ? pedidosTiempo / pedidos
-      : null;
+      : 0;
 
   const oee =
-    disponibilidad !== null &&
-    cumplimiento !== null &&
-    rechazo !== null
-
-      ? disponibilidad *
-        cumplimiento *
-        Math.max(
-          0,
-          1 - rechazo
-        )
-
-      : null;
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
   const costo =
     sum('costo_produccion');
@@ -1450,14 +1476,14 @@ function renderDashboard() {
       : mantenimientoDiario;
 
   const costoUnitario =
-    producida > 0
+    producida
       ? costo / producida
-      : null;
+      : 0;
 
   const energia =
-    producida > 0
+    producida
       ? sum('energia') / producida
-      : null;
+      : 0;
 
   const incidentes =
     sum('incidentes');
@@ -1503,9 +1529,7 @@ function renderDashboard() {
 
     [
       'Cumplimiento',
-      cumplimiento !== null
-        ? pct(cumplimiento)
-        : '—',
+      pct(cumplimiento),
       status(
         cumplimiento,
         metas.cumplimiento
@@ -1514,9 +1538,7 @@ function renderDashboard() {
 
     [
       'Yield',
-      yieldRate !== null
-        ? pct(yieldRate)
-        : '—',
+      pct(yieldRate),
       status(
         yieldRate,
         metas.yield
@@ -1525,9 +1547,7 @@ function renderDashboard() {
 
     [
       'Merma',
-      mermaRate !== null
-        ? pct(mermaRate)
-        : '—',
+      pct(mermaRate),
       status(
         mermaRate,
         metas.merma,
@@ -1537,9 +1557,7 @@ function renderDashboard() {
 
     [
       'Disponibilidad',
-      disponibilidad !== null
-        ? pct(disponibilidad)
-        : '—',
+      pct(disponibilidad),
       status(
         disponibilidad,
         metas.disponibilidad
@@ -1548,9 +1566,7 @@ function renderDashboard() {
 
     [
       'Asistencia',
-      asistencia !== null
-        ? pct(asistencia)
-        : '—',
+      pct(asistencia),
       status(
         asistencia,
         metas.asistencia
@@ -1559,9 +1575,7 @@ function renderDashboard() {
 
     [
       'Rechazo calidad',
-      rechazo !== null
-        ? pct(rechazo)
-        : '—',
+      pct(rechazo),
       status(
         rechazo,
         metas.rechazo,
@@ -1571,9 +1585,7 @@ function renderDashboard() {
 
     [
       'OEE',
-      oee !== null
-        ? pct(oee)
-        : '—',
+      pct(oee),
       status(
         oee,
         0.80
@@ -1641,25 +1653,19 @@ function renderDashboard() {
 
     [
       'Costo unitario',
-      costoUnitario !== null
-        ? 'S/ ' +
-          costoUnitario.toFixed(3)
-        : '—'
+      'S/ ' +
+      costoUnitario.toFixed(3)
     ],
 
     [
       'Energía',
-      energia !== null
-        ? energia.toFixed(3) +
-          ' kWh/unidad'
-        : '—'
+      energia.toFixed(3) +
+      ' kWh/unidad'
     ],
 
     [
       'Entregas a tiempo',
-      otif !== null
-        ? pct(otif)
-        : '—',
+      pct(otif),
       status(
         otif,
         metas.otif
@@ -1807,11 +1813,7 @@ function renderDashboard() {
                           </td>
 
                           <td>
-                            ${
-                              r.oee !== null
-                                ? pct(r.oee)
-                                : '—'
-                            }
+                            ${pct(r.oee)}
                           </td>
 
                           <td>
@@ -2225,7 +2227,11 @@ function renderResumen() {
     sum('mp');
 
   const merma =
-    sum('merma');
+    rows.reduce(
+      (s, r) =>
+        s + n(r.merma),
+      0
+    );
 
   const horas =
     sum('horas_turno');
@@ -2276,19 +2282,32 @@ function renderResumen() {
     sum('no_conformidades');
 
   const cumplimiento =
-    programada > 0
+    programada
       ? producida / programada
-      : null;
+      : 0;
+
+  /*
+    YIELD CORREGIDO
+  */
+
+  const yieldBase =
+    producida + merma;
 
   const yieldRate =
-    mp > 0
-      ? producida / mp
-      : null;
+    yieldBase > 0
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            producida / yieldBase
+          )
+        )
+      : 0;
 
   const mermaRate =
-    mp > 0
+    mp
       ? merma / mp
-      : null;
+      : 0;
 
   const horasParadaMantenimiento =
     maintenanceRows.reduce(
@@ -2303,61 +2322,53 @@ function renderResumen() {
       : paradas;
 
   const disponibilidad =
-    horas > 0
+    horas
       ? Math.max(
           0,
           (horas - paradasFinal) /
             horas
         )
-      : null;
+      : 0;
 
   const asistencia =
-    personalProgramado > 0
+    personalProgramado
       ? personalPresente /
         personalProgramado
-      : null;
+      : 0;
 
   const rechazo =
-    producida > 0
+    producida
       ? rechazadas / producida
-      : null;
+      : 0;
 
   const otif =
-    pedidos > 0
+    pedidos
       ? pedidosTiempo / pedidos
-      : null;
+      : 0;
 
   const oee =
-    disponibilidad !== null &&
-    cumplimiento !== null &&
-    rechazo !== null
-
-      ? disponibilidad *
-        cumplimiento *
-        Math.max(
-          0,
-          1 - rechazo
-        )
-
-      : null;
+    disponibilidad *
+    cumplimiento *
+    Math.max(
+      0,
+      1 - rechazo
+    );
 
   const costoUnitario =
-    producida > 0
+    producida
       ? costo / producida
-      : null;
+      : 0;
 
   const energiaUnit =
-    producida > 0
+    producida
       ? energia / producida
-      : null;
+      : 0;
 
   const kpis = [
 
     [
       'Cumplimiento',
-      cumplimiento !== null
-        ? pct(cumplimiento)
-        : '—',
+      pct(cumplimiento),
       status(
         cumplimiento,
         metas.cumplimiento
@@ -2366,9 +2377,7 @@ function renderResumen() {
 
     [
       'Yield',
-      yieldRate !== null
-        ? pct(yieldRate)
-        : '—',
+      pct(yieldRate),
       status(
         yieldRate,
         metas.yield
@@ -2377,9 +2386,7 @@ function renderResumen() {
 
     [
       'Merma',
-      mermaRate !== null
-        ? pct(mermaRate)
-        : '—',
+      pct(mermaRate),
       status(
         mermaRate,
         metas.merma,
@@ -2389,9 +2396,7 @@ function renderResumen() {
 
     [
       'Disponibilidad',
-      disponibilidad !== null
-        ? pct(disponibilidad)
-        : '—',
+      pct(disponibilidad),
       status(
         disponibilidad,
         metas.disponibilidad
@@ -2400,9 +2405,7 @@ function renderResumen() {
 
     [
       'Asistencia',
-      asistencia !== null
-        ? pct(asistencia)
-        : '—',
+      pct(asistencia),
       status(
         asistencia,
         metas.asistencia
@@ -2411,9 +2414,7 @@ function renderResumen() {
 
     [
       'Rechazo',
-      rechazo !== null
-        ? pct(rechazo)
-        : '—',
+      pct(rechazo),
       status(
         rechazo,
         metas.rechazo,
@@ -2423,9 +2424,7 @@ function renderResumen() {
 
     [
       'OEE',
-      oee !== null
-        ? pct(oee)
-        : '—',
+      pct(oee),
       status(
         oee,
         0.80
@@ -2434,9 +2433,7 @@ function renderResumen() {
 
     [
       'OTIF',
-      otif !== null
-        ? pct(otif)
-        : '—',
+      pct(otif),
       status(
         otif,
         metas.otif
@@ -2599,12 +2596,7 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${
-                costoUnitario !== null
-                  ? 'S/ ' +
-                    costoUnitario.toFixed(3)
-                  : '—'
-              }
+              S/ ${costoUnitario.toFixed(3)}
             </strong>
 
           </div>
@@ -2628,12 +2620,8 @@ function renderResumen() {
             </small>
 
             <strong>
-              ${
-                energiaUnit !== null
-                  ? energiaUnit.toFixed(3) +
-                    ' kWh/unidad'
-                  : '—'
-              }
+              ${energiaUnit.toFixed(3)}
+              kWh/unidad
             </strong>
 
           </div>
