@@ -1,21 +1,35 @@
-// QUIMFLUX — Retiro definitivo del cargador de 5 guías de prueba.
+// QUIMFLUX — Limpieza definitiva del cargador de demostración de Despachos.
 // El módulo Despachos definitivo usa únicamente registro manual.
 (function () {
-  const LEGACY_TEXT = 'Cargar las 5 guías reales';
+  const LEGACY_BUTTON = 'cargar las 5 guías reales';
+  const LEGACY_HELP = 'pulsa “cargar las 5 guías reales” para insertar en supabase los documentos que analizamos.';
+
+  function normalize(value) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
 
   function cleanupLegacyLoader() {
     document.querySelectorAll('button, p, div, span').forEach(el => {
-      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!text.includes(LEGACY_TEXT)) return;
+      const text = normalize(el.textContent);
+      if (!text) return;
 
-      // Si el texto está dentro de un botón, elimina el botón.
-      if (el.tagName === 'BUTTON' && text.includes(LEGACY_TEXT)) {
+      // El botón antiguo.
+      if (el.tagName === 'BUTTON' && text.includes(LEGACY_BUTTON)) {
         el.remove();
         return;
       }
 
-      // El mensaje de ayuda antiguo también se elimina.
-      if (el.tagName === 'P' && text.includes(LEGACY_TEXT)) {
+      // El texto de ayuda antiguo que aparece dentro de "Guías de remisión".
+      // Solo eliminamos el elemento si su propio texto es el mensaje,
+      // evitando borrar accidentalmente el contenedor completo.
+      if (
+        (el.tagName === 'P' || el.tagName === 'SPAN' || el.tagName === 'DIV') &&
+        (text === LEGACY_HELP ||
+          (text.includes('pulsa') && text.includes(LEGACY_BUTTON) && !el.querySelector('button, h1, h2, h3, table')))
+      ) {
         el.remove();
       }
     });
