@@ -2,20 +2,258 @@
 
 .badge.critical{border-color:#b91c1c;background:#fee2e2;color:#991b1b}
 
-/* QUIMFLUX V5 - mejoras visuales de KPI y gráfico */
-.kpiCard{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;min-height:116px}
-.kpiLabel{display:block;width:100%;margin-bottom:10px;line-height:1.25;letter-spacing:.1px}
-.kpiValue{display:block;width:100%;line-height:1.05;margin-bottom:2px;white-space:normal;overflow-wrap:anywhere}
-.kpiStatus{align-self:flex-start;margin-top:auto}
-.trendChartWrap{width:100%;overflow-x:auto;padding:8px 0 0}
-.trendChartWrap svg{display:block;min-width:720px;height:auto}
-.chartGrid{stroke:currentColor;opacity:.12}
-.chartAxis{fill:currentColor;opacity:.72;font-size:12px}
-.chartDate{fill:currentColor;opacity:.78;font-size:12px}
-.chartMeta{fill:#fbbf24;font-size:12px;font-weight:700}
-.chartHint{font-size:12px;color:#8f9a96;margin-top:6px}
-.trendLegend{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:12px 0 8px}
-.trendLegend span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-.trendLegend i{width:12px;height:4px;border-radius:4px;display:inline-block}
-.trendLegend i.dash{background:#fbbf24!important}
-@media(max-width:750px){.kpiCard{min-height:105px}.kpiValue{font-size:20px!important}.trendChartWrap svg{min-width:680px}}
+
+
+/* =========================================================
+   QUIMFLUX V6 — LOGIN RESPONSIVE + LOGO
+   Capa agregada sobre los estilos existentes.
+   ========================================================= */
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(0,155,99,.12), transparent 30%),
+    linear-gradient(135deg, #071522 0%, #0d2638 55%, #0b1f33 100%);
+}
+
+.auth-quimflux {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 !important;
+  padding: 24px 16px !important;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.auth-quimflux .auth-card {
+  width: min(460px, 100%);
+  box-sizing: border-box;
+  padding: 30px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 22px;
+  background: rgba(255,255,255,.98);
+  color: #0e1c2a;
+  box-shadow: 0 24px 70px rgba(0,0,0,.30);
+}
+
+.auth-quimflux .auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.auth-quimflux .auth-logo {
+  display: block;
+  width: min(300px, 100%);
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.auth-quimflux .auth-brand-copy h1 {
+  margin: 0;
+  color: #0b1f33;
+  font-size: 25px;
+  line-height: 1.15;
+  letter-spacing: .01em;
+}
+
+.auth-quimflux .auth-brand-copy p {
+  margin: 6px 0 0;
+  color: #64727c;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-quimflux .auth-welcome {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.auth-quimflux .auth-welcome h2 {
+  margin: 0 0 6px;
+  color: #123b5d;
+  font-size: 20px;
+}
+
+.auth-quimflux .auth-welcome p {
+  margin: 0;
+  color: #64727c;
+  font-size: 14px;
+}
+
+.auth-quimflux .auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-quimflux .auth-form label {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: #0b1f33;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.auth-quimflux .auth-form input {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  border: 1px solid #ccd7df;
+  border-radius: 11px;
+  background: #fff;
+  color: #17212b;
+  font-size: 16px;
+}
+
+.auth-quimflux .auth-form input:focus {
+  outline: none;
+  border-color: #009b63;
+  box-shadow: 0 0 0 3px rgba(0,155,99,.13);
+}
+
+.auth-quimflux .auth-submit {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.auth-quimflux .auth-signup {
+  display: block;
+  width: 100%;
+  margin: 2px auto 0;
+  padding: 8px;
+  background: transparent;
+  border: 0;
+  color: #007c50;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-quimflux .auth-signup:hover {
+  text-decoration: underline;
+  transform: none;
+}
+
+.auth-quimflux .auth-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #e4eaee;
+  text-align: center;
+  color: #71808a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.auth-quimflux .auth-footer span:first-child {
+  color: #009b63;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+@media (max-width: 600px) {
+  .auth-quimflux {
+    padding: 14px !important;
+  }
+
+  .auth-quimflux .auth-card {
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+
+  .auth-quimflux .auth-logo {
+    width: min(270px, 100%);
+    max-height: 125px;
+  }
+
+  .auth-quimflux .auth-brand-copy h1 {
+    font-size: 22px;
+  }
+
+  .auth-quimflux .auth-welcome h2 {
+    font-size: 19px;
+  }
+
+  .auth-quimflux .auth-form input {
+    min-height: 50px;
+  }
+}
+
+/* =========================================================
+   QUIMFLUX V6 — BASE APP RESPONSIVE
+   ========================================================= */
+
+header {
+  gap: 12px;
+}
+
+header > div {
+  min-width: 0;
+}
+
+nav {
+  -webkit-overflow-scrolling: touch;
+}
+
+nav button {
+  min-height: 42px;
+}
+
+main {
+  overflow-x: hidden;
+}
+
+.tableWrap {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 750px) {
+  header {
+    padding: 12px 14px;
+  }
+
+  header span {
+    display: none;
+  }
+
+  nav {
+    padding: 8px 10px;
+  }
+
+  main {
+    width: calc(100% - 20px);
+    padding: 20px 0 36px;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .titleRow {
+    display: block;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
