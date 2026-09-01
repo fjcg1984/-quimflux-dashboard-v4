@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
-import './styles_v6_additional.css';
 
 /* =========================================================
    SUPABASE
@@ -3155,7 +3154,6 @@ async function saveInventory(e) {
     salidas:
       n(document.getElementById('inv_salidas').value),
 
-    // Persistir el stock calculado en Supabase.
     stock_sistema:
       n(document.getElementById('inv_stock_inicial').value) +
       n(document.getElementById('inv_entradas').value) -
