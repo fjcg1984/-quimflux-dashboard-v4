@@ -2633,6 +2633,13 @@ async function saveInventory(e) {
     salidas:
       n(document.getElementById('inv_salidas').value),
 
+    // Stock calculado y persistido en Supabase.
+    // Fórmula: stock inicial + entradas - salidas.
+    stock_sistema:
+      n(document.getElementById('inv_stock_inicial').value) +
+      n(document.getElementById('inv_entradas').value) -
+      n(document.getElementById('inv_salidas').value),
+
     stock_minimo:
       n(document.getElementById('inv_stock_minimo').value),
 
