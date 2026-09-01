@@ -212,7 +212,7 @@ function renderAuth() {
         <div class="auth-brand">
           <img
             class="auth-logo"
-            src="./quimflux-logo.png"
+            src="${new URL('./quimflux-logo.png', import.meta.url).href}"
             alt="QUIMFLUX - Especialistas en insumos químicos para la industria"
           >
           <div class="auth-brand-copy">
