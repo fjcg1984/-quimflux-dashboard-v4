@@ -4118,6 +4118,21 @@ function fmtNum(value, decimals = 0) {
    DESPACHOS - INTERFAZ
 ========================================================= */
 
+async function syncDespachoInventario(shipmentId) {
+  if (!shipmentId) return;
+  const button = document.querySelector(`[data-sync-shipment="${shipmentId}"]`);
+  if (button) { button.disabled = true; button.textContent = 'Sincronizando…'; }
+  const { data, error } = await supabase.rpc('qf_sync_dispatch_to_inventory', { p_shipment_id: shipmentId });
+  if (error) {
+    alert('No se pudo sincronizar con Inventario:\n' + error.message);
+  } else {
+    await loadInventory();
+    await loadDespachos();
+    renderDespachos();
+    alert(`Despacho sincronizado. Movimientos de inventario: ${data?.movements_synced ?? 0}.`);
+  }
+}
+
 async function importGuiasPoderosa() {
   const button = document.getElementById('importPoderosa');
   if (button) {
@@ -4235,6 +4250,7 @@ function renderDespachos() {
                   <th>Peso bruto</th>
                   <th>Vehículo</th>
                   <th>Estado</th>
+                  <th>Inventario</th>
                 </tr>
               </thead>
               <tbody>
@@ -4256,6 +4272,7 @@ function renderDespachos() {
                     <td><strong>${fmtNum(g.gross_weight_kg)} kg</strong></td>
                     <td>${esc(g.vehicle?.plate || '—')}</td>
                     <td><span class="badge ok">${esc(String(g.status || '').toUpperCase())}</span></td>
+                    <td><button type="button" class="secondary" data-sync-shipment="${esc(g.id)}">↻ Sincronizar</button></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -4283,15 +4300,18 @@ function renderDespachos() {
       <section class="panel">
         <h2>Integración con Inventario</h2>
         <p class="qf-muted">
-          En esta versión los despachos quedan registrados y trazables sin modificar todavía
-          la tabla <code>inventory</code>. Primero verificaremos su estructura real para conectar
-          las salidas automáticamente sin arriesgar los datos existentes.
+          Cada guía puede sincronizarse con Inventario de forma controlada. Solo se descuentan
+          líneas en kg con un producto mapeado; las unidades no se descuentan automáticamente.
+          La operación es idempotente y queda trazabilidad por guía y línea.
         </p>
       </section>
     </main>
   `;
 
   document.getElementById('importPoderosa')?.addEventListener('click', importGuiasPoderosa);
+  document.querySelectorAll('[data-sync-shipment]').forEach(btn => {
+    btn.addEventListener('click', () => syncDespachoInventario(btn.dataset.syncShipment));
+  });
 }
 
 /* =========================================================
