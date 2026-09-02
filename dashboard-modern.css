@@ -1,0 +1,28 @@
+:root{--qfm-green:#169447;--qfm-green-dark:#0b6b36;--qfm-bg:#f4f7f5;--qfm-card:#fff;--qfm-text:#17201b;--qfm-muted:#647169;--qfm-border:#dce5df;--qfm-shadow:0 8px 24px rgba(23,32,27,.07)}
+.qf-modern-dashboard{background:var(--qfm-bg)!important;color:var(--qfm-text)!important}
+.qf-modern-dashboard main{max-width:1500px!important;margin:0 auto!important;padding:0!important}
+.qf-modern-dashboard .titleRow{background:linear-gradient(135deg,#14211a,#1e3a2a)!important;color:#fff!important;border-radius:16px!important;padding:24px 28px!important;margin-bottom:18px!important;box-shadow:var(--qfm-shadow)!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:20px!important}
+.qf-modern-dashboard .titleRow h1{color:#fff!important;margin:0 0 6px!important;font-size:26px!important;letter-spacing:-.02em}
+.qf-modern-dashboard .titleRow p{color:#c9ddd0!important;margin:0!important}
+.qf-modern-dashboard .online{background:#dff7e8!important;color:#087f3e!important;border-radius:999px!important;padding:8px 13px!important;font-weight:800!important;font-size:12px!important;white-space:nowrap}
+.qf-modern-dashboard .panel{background:var(--qfm-card)!important;border:1px solid var(--qfm-border)!important;border-radius:16px!important;box-shadow:var(--qfm-shadow)!important;padding:20px!important;margin:0 0 18px!important}
+.qf-modern-dashboard .panel h2{color:var(--qfm-text)!important;font-size:18px!important;margin:0 0 6px!important}
+.qf-modern-dashboard .panel>p{color:var(--qfm-muted)!important}
+.qf-modern-dashboard .cards{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;margin-top:14px!important}
+.qf-modern-dashboard .card{background:#fbfdfb!important;border:1px solid var(--qfm-border)!important;border-radius:13px!important;padding:16px!important;min-height:108px!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important;box-shadow:none!important;transition:transform .15s ease,box-shadow .15s ease!important}
+.qf-modern-dashboard .card:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(23,32,27,.08)!important}
+.qf-modern-dashboard .card small{color:var(--qfm-muted)!important;font-weight:600!important;font-size:12px!important}
+.qf-modern-dashboard .card strong{color:var(--qfm-text)!important;font-size:25px!important;line-height:1.15!important;margin:8px 0!important}
+.qf-modern-dashboard .badge{width:max-content!important;border-radius:999px!important;padding:5px 9px!important;font-size:10px!important;font-weight:800!important}
+.qf-modern-dashboard .badge.ok{background:#e4f6eb!important;color:#087f3e!important}
+.qf-modern-dashboard .badge.warn{background:#fff5d9!important;color:#946200!important}
+.qf-modern-dashboard .badge.critical{background:#fde8eb!important;color:#b4232f!important}
+.qf-modern-dashboard .tableWrap{border:1px solid var(--qfm-border)!important;border-radius:12px!important;overflow:auto!important;margin-top:14px!important}
+.qf-modern-dashboard table{width:100%!important;border-collapse:collapse!important;background:#fff!important}
+.qf-modern-dashboard th{background:#eef6f1!important;color:#25332b!important;font-size:12px!important;font-weight:800!important;padding:11px!important;white-space:nowrap!important}
+.qf-modern-dashboard td{padding:11px!important;border-top:1px solid #edf1ee!important;font-size:12px!important;white-space:nowrap!important}
+.qf-modern-dashboard .trendLegend{background:#f8fbf9!important;border:1px solid var(--qfm-border)!important;border-radius:10px!important;padding:10px!important;margin-top:12px!important}
+.qf-modern-dashboard .empty{background:#f8fbf9!important;border:1px dashed #bfd0c4!important;border-radius:12px!important;padding:18px!important;color:var(--qfm-muted)!important}
+.qf-modern-dashboard .qfm-section-label{font-size:11px!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:var(--qfm-green)!important;font-weight:800!important;margin-bottom:10px!important}
+@media(max-width:1000px){.qf-modern-dashboard .cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:650px){.qf-modern-dashboard .titleRow{padding:18px!important;align-items:flex-start!important}.qf-modern-dashboard .titleRow h1{font-size:21px!important}.qf-modern-dashboard .cards{grid-template-columns:1fr!important}.qf-modern-dashboard .panel{padding:15px!important}}
