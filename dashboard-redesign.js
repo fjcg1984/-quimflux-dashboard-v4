@@ -31,7 +31,6 @@
     if(key===lastKey && main.querySelector('.qf-dashboard-new')) return;
     lastKey=key;
 
-    // Encabezado igual al diseño aprobado.
     const h1=title.querySelector('h1');
     const tp=title.querySelector('p');
     if(h1) h1.textContent='Administración de Planta';
@@ -39,9 +38,8 @@
 
     const wrap=document.createElement('div');
     wrap.className='qf-dashboard-new';
-    if(title) wrap.appendChild(title);
+    wrap.appendChild(title);
 
-    // 8 KPI principales.
     const kpiSection=document.createElement('section');
     kpiSection.className='qf-dashboard-kpis';
     kpiSection.innerHTML='<div class="qf-section-head"><div><span class="qf-eyebrow">DESEMPEÑO DE PLANTA · HOY</span><h2>Indicadores clave</h2></div><span class="qf-kpi-period">ACUMULADO</span></div>';
@@ -51,24 +49,24 @@
     const wanted=['Producción total','Cumplimiento','Yield','Merma','Disponibilidad','Asistencia','Rechazo calidad','OEE'];
     wanted.forEach(name=>{
       const c=cards.find(x=>(x.querySelector('small')?.textContent||'').trim().toLowerCase()===name.toLowerCase());
-      if(c){
-        const clone=c.cloneNode(true);
-        clone.classList.add('qf-kpi-card');
-        grid.appendChild(clone);
-      }
+      if(c){const clone=c.cloneNode(true);clone.classList.add('qf-kpi-card');grid.appendChild(clone)}
     });
     kpiSection.appendChild(grid);
     wrap.appendChild(kpiSection);
 
-    // Bloque operativo: alertas 2/4, seguridad 1/4, último turno 1/4.
+    // Bloque operativo: izquierda = alertas + seguridad; derecha = último turno.
     const ops=document.createElement('div');
     ops.className='qf-dashboard-ops';
-    if(alerts){alerts.classList.add('qf-dashboard-alerts');ops.appendChild(alerts)}
-    if(security){security.classList.add('qf-dashboard-security');ops.appendChild(security)}
+
+    const attention=document.createElement('div');
+    attention.className='qf-dashboard-attention';
+    if(alerts){alerts.classList.add('qf-dashboard-alerts');attention.appendChild(alerts)}
+    if(security){security.classList.add('qf-dashboard-security');attention.appendChild(security)}
+    if(attention.children.length) ops.appendChild(attention);
+
     if(latest){latest.classList.add('qf-dashboard-latest');ops.appendChild(latest)}
     if(ops.children.length) wrap.appendChild(ops);
 
-    // Análisis: comparativa + tendencias.
     const analytics=document.createElement('div');
     analytics.className='qf-dashboard-analytics';
     if(comparison){comparison.classList.add('qf-dashboard-comparison');analytics.appendChild(comparison)}
