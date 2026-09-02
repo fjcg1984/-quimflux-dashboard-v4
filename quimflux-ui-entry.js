@@ -12,3 +12,4 @@ import './dashboard-v6-ui.js';
 import './dashboard-v6-enhance.js';
 import './dashboard-v6-nav-fix.js';
 import './dashboard-final.js';
+import './dashboard-redesign.js';
