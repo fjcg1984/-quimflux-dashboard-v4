@@ -4,7 +4,12 @@ import process from 'node:process';
 import XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
 
-const EXPECTED = { Entradas: 488, Salidas: 904 };
+const EXPECTED = {
+  Entradas: 491,
+  Salidas: 904,
+  EntradasQuantity: 46461,
+  SalidasQuantity: 43747,
+};
 const SHEET_NAMES = ['Entradas', 'Salidas'];
 const CHUNK_SIZE = 250;
 
@@ -115,7 +120,10 @@ async function main() {
     return;
   }
   if (parsed.counts.Entradas !== EXPECTED.Entradas || parsed.counts.Salidas !== EXPECTED.Salidas) {
-    throw new Error('Conteo inesperado. Se esperaban 488 Entradas y 904 Salidas.');
+    throw new Error(`Conteo inesperado. Se esperaban ${EXPECTED.Entradas} Entradas y ${EXPECTED.Salidas} Salidas.`);
+  }
+  if (entriesQuantity !== EXPECTED.EntradasQuantity || exitsQuantity !== EXPECTED.SalidasQuantity) {
+    throw new Error(`Totales inesperados. Se esperaban ${EXPECTED.EntradasQuantity} unidades de Entradas y ${EXPECTED.SalidasQuantity} de Salidas.`);
   }
   if (mode === 'validate') { console.log('VALIDACIÓN OK. No se escribió nada en Supabase.'); return; }
   if (mode !== 'stage') throw new Error(`Modo no válido: ${mode}. Use validate o stage.`);
