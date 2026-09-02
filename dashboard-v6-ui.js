@@ -18,7 +18,7 @@
     const now=new Date();
     const dateText=now.toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'});
     const timeText=now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-    top.innerHTML=`<div><div class="qf-page-context">CENTRO DE CONTROL DE OPERACIONES</div><div class="qf-welcome">Administración de Planta</div></div><div class="qf-top-actions"><span class="qf-status"><i></i> EN LÍNEA</span><span class="qf-meta"><b>▣</b> ${dateText}</span><span class="qf-meta"><b>↻</b> Última sincronización <em>${timeText}</em></span></div>`;
+    top.innerHTML=`<div class="qf-top-brand"><img src="./quimflux-logo.png" alt="QUIMFLUX"><div class="qf-top-titles"><div class="qf-page-context">CENTRO DE CONTROL DE OPERACIONES</div><div class="qf-welcome">Administración de Planta</div></div></div><div class="qf-top-actions"><span class="qf-status"><i></i> EN LÍNEA</span><span class="qf-meta"><b>▣</b> ${dateText}</span><span class="qf-meta"><b>↻</b> Última sincronización <em>${timeText}</em></span></div>`;
     if(oldLogout){oldLogout.className='qf-logout';top.querySelector('.qf-top-actions').appendChild(oldLogout)}
     const area=document.createElement('div'); area.className='qf-content'; area.appendChild(content);
     main.append(top,area); shell.append(side,main); app.innerHTML=''; app.appendChild(shell);
