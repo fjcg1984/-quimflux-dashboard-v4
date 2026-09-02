@@ -6,6 +6,7 @@ import './recepciones.css';
 import './dashboard-v6-ui.css';
 import './quimflux-theme.css';
 import './dashboard-final.css';
+import './dashboard-redesign.css';
 
 import './dashboard-v6-ui.js';
 import './dashboard-v6-enhance.js';
