@@ -1,0 +1,112 @@
+/* =========================================================
+   QUIMFLUX · TEMA VISUAL V6
+   Contraste alto, fondo claro y tarjetas limpias.
+========================================================= */
+
+:root{
+  --qf-navy:#10283b;
+  --qf-navy-2:#17384f;
+  --qf-green:#087f4f;
+  --qf-green-soft:#e7f5ef;
+  --qf-bg:#f4f7f8;
+  --qf-surface:#ffffff;
+  --qf-text:#17242d;
+  --qf-muted:#5f707b;
+  --qf-border:#d9e2e7;
+  --qf-shadow:0 8px 24px rgba(16,40,59,.08);
+}
+
+html,body{background:var(--qf-bg)!important;color:var(--qf-text)!important}
+
+body{background:linear-gradient(180deg,#eef4f6 0%,#f7f9fa 100%)!important}
+
+header{
+  background:var(--qf-navy)!important;
+  border-bottom:1px solid #29485b!important;
+  color:#fff!important;
+}
+header b{color:#fff!important}
+header span{color:#d4e0e7!important}
+.logout{color:#fff!important;border-color:#6f8795!important}
+
+nav,
+.qf-v6-nav{
+  background:#fff!important;
+  border-bottom:1px solid var(--qf-border)!important;
+}
+
+nav button,
+.qf-v6-nav button{
+  color:#425663!important;
+  background:transparent!important;
+  font-weight:600!important;
+}
+
+nav button:hover,
+.qf-v6-nav button:hover{
+  background:#eef5f2!important;
+  color:#123b2d!important;
+}
+
+nav button.active,
+.qf-v6-nav button.active,
+nav button[data-qf-rec-v6].active{
+  background:var(--qf-green)!important;
+  color:#fff!important;
+  box-shadow:0 3px 10px rgba(8,127,79,.18)!important;
+}
+
+main{
+  color:var(--qf-text)!important;
+}
+
+main h1,main h2,main h3,main h4,
+.titleRow h1,.panel h2,.card h2{
+  color:#142733!important;
+}
+
+main p,
+main .empty,
+.titleRow p{
+  color:var(--qf-muted)!important;
+}
+
+.card,.panel,.authCard,
+.formGrid section{
+  background:var(--qf-surface)!important;
+  color:var(--qf-text)!important;
+  border:1px solid var(--qf-border)!important;
+  box-shadow:var(--qf-shadow)!important;
+}
+
+.card small{color:#60717c!important}
+.card strong{color:#102b3c!important}
+
+th{color:#314b5a!important;background:#f5f8f9!important}
+td{color:#263b47!important;border-bottom-color:#e1e8eb!important}
+
+.formGrid label,.authCard label{color:#263d49!important}
+.formGrid input,.formGrid select,.formGrid textarea,.authCard input{
+  background:#fff!important;
+  color:#17242d!important;
+  border-color:#cbd8df!important;
+}
+.formGrid input::placeholder,.formGrid textarea::placeholder,.authCard input::placeholder{
+  color:#7b8b95!important;
+}
+
+.primary{background:var(--qf-green)!important;color:#fff!important}
+.link{color:#087f4f!important}
+
+.online{background:var(--qf-green-soft)!important;color:#087f4f!important}
+.ok{background:#dcf5e9!important;color:#08683f!important}
+.warn{background:#fff0d5!important;color:#8a5600!important}
+
+.badge.critical{background:#fde5e5!important;color:#a12828!important}
+
+/* El encabezado de indicadores nunca debe perder contraste. */
+.panel h2{color:#142733!important}
+
+@media(max-width:750px){
+  nav,.qf-v6-nav{background:#fff!important}
+}
