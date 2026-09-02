@@ -1,8 +1,6 @@
 /* =========================================================
    QUIMFLUX · Recepciones
-   Integración robusta del botón del menú.
-   Se ejecuta en fase CAPTURE para evitar que el manejador
-   general de navegación de main.js intercepte el clic.
+   Control del clic + estado visual activo.
 ========================================================= */
 
 (function () {
@@ -15,6 +13,15 @@
     return text === 'recepciones';
   }
 
+  function setRecepcionesActive(button) {
+    const nav = button?.closest('nav');
+    if (!nav) return;
+    nav.querySelectorAll('button, a').forEach(el => {
+      el.classList.remove('active', 'qf-active');
+    });
+    button.classList.add('active', 'qf-active');
+  }
+
   document.addEventListener('click', function (event) {
     const button = event.target?.closest?.('button, a');
     if (!isRecepciones(button)) return;
@@ -22,6 +29,7 @@
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+    setRecepcionesActive(button);
 
     const open = window.qfOpenRecepciones;
     if (typeof open !== 'function') {
@@ -29,7 +37,9 @@
       return;
     }
 
-    Promise.resolve(open()).catch(error => {
+    Promise.resolve(open()).then(() => {
+      setTimeout(() => setRecepcionesActive(button), 50);
+    }).catch(error => {
       console.error('QUIMFLUX Recepciones:', error);
       alert('No se pudo abrir Recepciones: ' + (error?.message || error));
     });
