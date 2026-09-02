@@ -1,0 +1,106 @@
+/* =========================================================
+   QUIMFLUX · TEMA CORPORATIVO
+   Paleta basada en el logo: verde QUIMFLUX + negro/carbono.
+   Prioridad: legibilidad, contraste y fatiga visual reducida.
+========================================================= */
+:root{
+  --qf-green:#009b63;
+  --qf-green-dark:#007a4d;
+  --qf-green-soft:#e8f6ef;
+  --qf-black:#111615;
+  --qf-ink:#1d2825;
+  --qf-muted:#5f6d68;
+  --qf-bg:#f3f6f4;
+  --qf-card:#ffffff;
+  --qf-border:#d9e2de;
+  --qf-hover:#f0f7f3;
+}
+
+html,body{background:var(--qf-bg)!important;color:var(--qf-ink)!important}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+/* Encabezado y navegación principal */
+header{background:var(--qf-black)!important;color:#fff!important;border-bottom:1px solid #26312e!important}
+header b{color:#fff!important}
+header span{color:#b9c8c2!important}
+nav{background:#fff!important;border-bottom:1px solid var(--qf-border)!important}
+nav button{color:#40504a!important;background:transparent!important}
+nav button:hover{background:var(--qf-green-soft)!important;color:var(--qf-green-dark)!important}
+nav button.active,
+nav button.qf-active{background:var(--qf-green)!important;color:#fff!important;font-weight:700!important;box-shadow:0 2px 6px rgba(0,122,77,.18)!important}
+
+/* Contenido general */
+main{color:var(--qf-ink)!important}
+main h1,main h2,main h3,main h4{color:#17221f!important}
+main p{color:var(--qf-muted)!important}
+.titleRow p{color:var(--qf-muted)!important}
+
+.card,.panel,.authCard{background:var(--qf-card)!important;color:var(--qf-ink)!important;border:1px solid var(--qf-border)!important;box-shadow:0 3px 12px rgba(20,45,35,.06)!important}
+.card small,.empty{color:var(--qf-muted)!important}
+.card strong{color:#14201c!important}
+th{color:#40504a!important}
+td{color:#27332f!important;border-bottom-color:#e5ebe8!important}
+
+.primary{background:var(--qf-green)!important;color:#fff!important}
+.primary:hover{background:var(--qf-green-dark)!important}
+.secondary{background:#fff!important;color:var(--qf-green-dark)!important;border:1px solid #b8d7ca!important}
+.secondary:hover{background:var(--qf-green-soft)!important}
+
+.formGrid section{background:#fff!important;border-color:var(--qf-border)!important}
+.formGrid label,.authCard label{color:#34443f!important}
+.formGrid input,.formGrid select,.formGrid textarea,.authCard input{background:#fff!important;color:#1d2825!important;border-color:#cbd8d2!important}
+.formGrid input::placeholder,.formGrid textarea::placeholder{color:#8a9691!important}
+.formGrid input:focus,.formGrid select:focus,.formGrid textarea:focus{outline:none!important;border-color:var(--qf-green)!important;box-shadow:0 0 0 3px rgba(0,155,99,.12)!important}
+
+.badge.ok,.ok{background:#e4f5ed!important;color:#08744b!important}
+.badge.warn,.warn{background:#fff2d9!important;color:#8a5a00!important}
+.badge.critical{background:#fde8e8!important;color:#a12b2b!important}
+
+/* Dashboard V6 */
+.qf-v6-shell{background:var(--qf-bg)!important}
+.qf-v6-sidebar{background:linear-gradient(180deg,#111615 0%,#18211e 100%)!important}
+.qf-v6-brand{background:#fff!important}
+.qf-v6-nav button{color:#dfe9e4!important}
+.qf-v6-nav button:hover{background:#e8f6ef!important;color:var(--qf-green-dark)!important}
+.qf-v6-nav button.active,.qf-v6-nav button.qf-active{background:var(--qf-green)!important;color:#fff!important}
+.qf-v6-topbar{background:#fff!important;border-bottom-color:var(--qf-border)!important}
+.qf-v6-welcome h2,.qf-v6-date{color:#17221f!important}
+.qf-v6-welcome p,.qf-v6-date small{color:var(--qf-muted)!important}
+.qf-v6-kpi,.qf-v6-panel,.qf-v6-action{background:#fff!important;border-color:var(--qf-border)!important;color:var(--qf-ink)!important}
+.qf-v6-kpi-label,.qf-v6-kpi span,.qf-v6-table th{color:#596760!important}
+.qf-v6-kpi strong,.qf-v6-panel-head h3,.qf-v6-action{color:#17221f!important}
+.qf-v6-action .icon{color:var(--qf-green)!important}
+
+/* Recepciones: reemplaza el bloque oscuro por una superficie clara */
+.qf-rec-page{background:transparent!important;color:var(--qf-ink)!important}
+.qf-rec-titlebar h1,.qf-rec-panel-head h2{color:#17221f!important}
+.qf-rec-titlebar p{color:var(--qf-muted)!important}
+.qf-rec-kpis{margin-bottom:28px}
+.qf-rec-card,.qf-rec-panel{background:#fff!important;border:1px solid var(--qf-border)!important;box-shadow:0 3px 12px rgba(20,45,35,.06)!important;color:var(--qf-ink)!important}
+.qf-rec-card span,.qf-rec-panel-head span,.qf-rec-empty{color:var(--qf-muted)!important}
+.qf-rec-card strong{color:#17221f!important}
+.qf-rec-panel-head{border-bottom-color:var(--qf-border)!important}
+.qf-rec-table th,.qf-rec-table td{border-bottom-color:#e5ebe8!important}
+.qf-rec-table th{color:#40504a!important}
+.qf-rec-table td{color:#27332f!important}
+.qf-rec-status{background:var(--qf-green-soft)!important;color:var(--qf-green-dark)!important}
+.qf-rec-empty h3{color:#17221f!important}
+.qf-rec-new{background:var(--qf-green)!important;color:#fff!important;border:0!important}
+
+/* Modal de Recepciones */
+.qf-rec-modal{background:rgba(15,24,21,.48)!important}
+.qf-rec-modal-card{background:#fff!important;border:1px solid var(--qf-border)!important;color:var(--qf-ink)!important}
+.qf-rec-modal-head{background:#fff!important;border-bottom-color:var(--qf-border)!important}
+.qf-rec-modal-head h2,.qf-rec-section h3{color:#17221f!important}
+.qf-rec-modal-head p{color:var(--qf-muted)!important}
+.qf-rec-close{color:#40504a!important}
+.qf-rec-section{border-bottom-color:var(--qf-border)!important}
+.qf-rec-grid label,.qf-rec-line label{color:#40504a!important}
+.qf-rec-grid input,.qf-rec-grid select,.qf-rec-grid textarea,.qf-rec-line input,.qf-rec-line select{background:#fff!important;color:#1d2825!important;border-color:#cbd8d2!important}
+.qf-rec-grid input:focus,.qf-rec-grid select:focus,.qf-rec-grid textarea:focus,.qf-rec-line input:focus,.qf-rec-line select:focus{outline:none!important;border-color:var(--qf-green)!important;box-shadow:0 0 0 3px rgba(0,155,99,.12)!important}
+.qf-rec-line{background:#f7faf8!important;border-color:var(--qf-border)!important}
+.qf-line-remove{background:#fdeaea!important;color:#a12b2b!important}
+
+@media(max-width:750px){
+  nav button.active,nav button.qf-active{box-shadow:none!important}
+}
