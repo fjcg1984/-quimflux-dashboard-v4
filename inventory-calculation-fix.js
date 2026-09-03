@@ -7,6 +7,11 @@
      Stock actual = Entradas - Salidas
 
    La columna Inicial se conserva como referencia.
+
+   IMPORTANTE:
+   El botón "Consultar inventario" pertenece al módulo Inventario
+   original (main.js). Este archivo NO crea botones adicionales para
+   evitar duplicados en la interfaz.
 */
 
 (() => {
@@ -72,76 +77,11 @@
     });
   }
 
-  function ensureInventoryConsultaButton() {
-    const content = document.querySelector('#content');
-    if (!content) return;
-
-    // No dependemos de que el botón original siga dentro de .titleRow.
-    // Buscamos el título real del módulo y colocamos una acción propia
-    // inmediatamente después de ese encabezado.
-    const title = Array.from(content.querySelectorAll('h1')).find(h =>
-      normalize(h.textContent) === 'control de inventario'
-    );
-
-    if (!title) return;
-
-    const main = title.closest('main') || content;
-    let button = main.querySelector('#qfConsultaInventarioVisible');
-
-    if (!button) {
-      button = document.createElement('button');
-      button.id = 'qfConsultaInventarioVisible';
-      button.type = 'button';
-      button.textContent = '🔎 Consultar inventario';
-      button.className = 'primary';
-      button.style.display = 'inline-flex';
-      button.style.visibility = 'visible';
-      button.style.opacity = '1';
-      button.style.position = 'relative';
-      button.style.zIndex = '10';
-      button.style.margin = '8px 0 16px';
-
-      const titleRow = title.closest('.titleRow');
-      if (titleRow?.parentElement) {
-        titleRow.parentElement.insertBefore(button, titleRow.nextSibling);
-      } else {
-        title.insertAdjacentElement('afterend', button);
-      }
-    }
-
-    button.style.display = 'inline-flex';
-    button.style.visibility = 'visible';
-    button.style.opacity = '1';
-    button.style.cursor = 'pointer';
-    button.title = 'Abrir consulta completa del inventario';
-
-    if (button.dataset.qfConsultaBound === '1') return;
-
-    button.dataset.qfConsultaBound = '1';
-    button.addEventListener('click', () => {
-      const secondary = document.getElementById('openInventoryConsulta2');
-
-      if (secondary) {
-        secondary.click();
-        return;
-      }
-
-      // Compatibilidad si el módulo cambia el id del botón secundario.
-      const candidate = Array.from(main.querySelectorAll('button')).find(b => {
-        const text = normalize(b.textContent);
-        return text.includes('ver todo') || text.includes('buscar') || text.includes('consultar inventario');
-      });
-
-      if (candidate && candidate !== button) candidate.click();
-    });
-  }
-
   function scan() {
     document.querySelectorAll('table').forEach(fixInventoryTable);
-    ensureInventoryConsultaButton();
   }
 
-  const observer = new MutationObserver(() => scan());
+  const observer = new MutationObserver(scan);
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true
