@@ -61,19 +61,19 @@ function parseWorkbook(filePath) {
       // Entradas: A=fecha, B=documento, C=proveedor, D=código, E=categoría,
       // F=producto, G=unidad, H=comentario, I=cantidad.
       // Salidas:  A=fecha, B=documento, C=cliente, D=código, E=categoría,
-      // F=producto, G=comentario, H=cantidad.
+      // F=producto, G=comentario, H=cantidad. Salidas no tiene columna Unidad.
       const eventDate = excelDateToISO(r[0]);
       const documentNo = normalizeText(r[1]);
       const party = normalizeText(r[2]);
       const productCode = normalizeText(r[3]);
       const category = normalizeText(r[4]);
       const productName = normalizeText(r[5]);
-      const unit = normalizeText(r[6]);
+      const unit = isEntrada ? normalizeText(r[6]) : null;
       const comment = normalizeText(r[isEntrada ? 7 : 6]);
       const quantity = normalizeQuantity(r[isEntrada ? 8 : 7]);
       const allEmpty = [eventDate, documentNo, party, productCode, category, productName, unit, comment, quantity].every(v => v === null);
       if (allEmpty) continue;
-      if (!eventDate || !documentNo || !party || !productCode || !productName || !unit || quantity === null) {
+      if (!eventDate || !documentNo || !party || !productCode || !productName || (isEntrada && !unit) || quantity === null) {
         errors.push(`${sheetName}!${sourceRow}: fila incompleta`);
         continue;
       }
