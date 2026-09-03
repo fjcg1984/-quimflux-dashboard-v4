@@ -27,7 +27,11 @@ async function load(){
 function addNav(){
   const nav=document.querySelector('.qf-nav, nav');
   if(!nav)return;
-  if(nav.querySelector('[data-qf-rec-nav]'))return;
+  const existing=[...nav.querySelectorAll('button,a')].find(x=>x.textContent.trim().toLowerCase()==='recepciones');
+  if(existing){
+    existing.dataset.qfRecNav=existing.dataset.qfRecNav||'1';
+    return;
+  }
   const els=[...nav.querySelectorAll('button,a')];
   const inv=els.find(x=>x.textContent.trim().toLowerCase()==='inventario');
   const a=document.createElement('button');a.type='button';a.textContent='Recepciones';a.dataset.qfRecNav='1';a.className='qf-nav-btn';
