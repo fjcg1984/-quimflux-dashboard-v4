@@ -72,8 +72,54 @@
     });
   }
 
+  function ensureInventoryConsultaButton() {
+    const content = document.querySelector('#content');
+    if (!content) return;
+
+    const titleRow = content.querySelector('main .titleRow');
+    const title = titleRow?.querySelector('h1');
+    if (!title || normalize(title.textContent) !== 'control de inventario') return;
+
+    let button = titleRow.querySelector('#openInventoryConsulta');
+
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'openInventoryConsulta';
+      button.type = 'button';
+      button.textContent = '🔎 Consultar inventario';
+      titleRow.appendChild(button);
+    }
+
+    button.style.display = 'inline-flex';
+    button.style.visibility = 'visible';
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    button.title = 'Abrir consulta completa del inventario';
+
+    if (button.dataset.qfConsultaBound === '1') return;
+
+    button.dataset.qfConsultaBound = '1';
+    button.addEventListener('click', () => {
+      const secondary = document.getElementById('openInventoryConsulta2');
+
+      if (secondary) {
+        secondary.click();
+        return;
+      }
+
+      const fallback = Array.from(titleRow.querySelectorAll('button')).find(b =>
+        normalize(b.textContent).includes('consultar inventario')
+      );
+
+      if (fallback && fallback !== button) {
+        fallback.click();
+      }
+    });
+  }
+
   function scan() {
     document.querySelectorAll('table').forEach(fixInventoryTable);
+    ensureInventoryConsultaButton();
   }
 
   const observer = new MutationObserver(() => scan());
@@ -89,6 +135,7 @@
   }
 
   // Refuerzo para renders asíncronos del módulo Inventario.
-  // No modifica Supabase; solo corrige la celda visible.
+  // No modifica Supabase; solo corrige la celda visible y garantiza
+  // que el acceso a Consulta permanezca visible.
   setInterval(scan, 500);
 })();
