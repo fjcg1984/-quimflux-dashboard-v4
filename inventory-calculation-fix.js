@@ -1,11 +1,12 @@
 /* QUIMFLUX — corrección del Stock actual en Inventario.
-   Las Entradas históricas ya incluyen INV INICIAL, por lo que no debe
-   volver a sumarse stock_inicial en el cálculo mostrado.
+   Las Entradas históricas ya incluyen el movimiento de inventario
+   importado, por lo que el Stock actual no debe volver a sumar
+   stock_inicial.
 
-   Fórmula oficial para el histórico importado:
+   Fórmula para el histórico importado:
      Stock actual = Entradas - Salidas
 
-   La columna Inicial se conserva como referencia y no se modifica.
+   La columna Inicial se conserva como referencia.
 */
 
 (() => {
@@ -28,7 +29,7 @@
     }).format(value);
 
   function fixInventoryTable(table) {
-    if (!table || table.dataset.qfInventoryStockFixed === '1') return;
+    if (!table) return;
 
     const rows = Array.from(table.querySelectorAll('tr'));
     if (!rows.length) return;
@@ -44,14 +45,11 @@
     if (!header) return;
 
     const headers = Array.from(header.cells).map(cell => normalize(cell.textContent));
-    const initialIndex = headers.indexOf('inicial');
     const entradasIndex = headers.indexOf('entradas');
     const salidasIndex = headers.indexOf('salidas');
     const stockIndex = headers.indexOf('stock actual');
 
     if (entradasIndex < 0 || salidasIndex < 0 || stockIndex < 0) return;
-
-    let changed = false;
 
     rows.forEach(row => {
       if (row === header || row.cells.length <= stockIndex) return;
@@ -67,16 +65,11 @@
 
       if (current !== stockActual) {
         cell.textContent = formatQuantity(stockActual);
-        changed = true;
       }
 
       cell.dataset.qfCalculatedStock = String(stockActual);
-      cell.title = 'Stock actual = Entradas − Salidas. El Inicial ya está incluido en las entradas históricas.';
+      cell.title = 'Stock actual = Entradas − Salidas. El Inicial se conserva como referencia.';
     });
-
-    if (changed || rows.length > 1) {
-      table.dataset.qfInventoryStockFixed = '1';
-    }
   }
 
   function scan() {
@@ -94,4 +87,8 @@
   } else {
     scan();
   }
+
+  // Refuerzo para renders asíncronos del módulo Inventario.
+  // No modifica Supabase; solo corrige la celda visible.
+  setInterval(scan, 500);
 })();
