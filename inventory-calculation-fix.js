@@ -76,18 +76,37 @@
     const content = document.querySelector('#content');
     if (!content) return;
 
-    const titleRow = content.querySelector('main .titleRow');
-    const title = titleRow?.querySelector('h1');
-    if (!title || normalize(title.textContent) !== 'control de inventario') return;
+    // No dependemos de que el botón original siga dentro de .titleRow.
+    // Buscamos el título real del módulo y colocamos una acción propia
+    // inmediatamente después de ese encabezado.
+    const title = Array.from(content.querySelectorAll('h1')).find(h =>
+      normalize(h.textContent) === 'control de inventario'
+    );
 
-    let button = titleRow.querySelector('#openInventoryConsulta');
+    if (!title) return;
+
+    const main = title.closest('main') || content;
+    let button = main.querySelector('#qfConsultaInventarioVisible');
 
     if (!button) {
       button = document.createElement('button');
-      button.id = 'openInventoryConsulta';
+      button.id = 'qfConsultaInventarioVisible';
       button.type = 'button';
       button.textContent = '🔎 Consultar inventario';
-      titleRow.appendChild(button);
+      button.className = 'primary';
+      button.style.display = 'inline-flex';
+      button.style.visibility = 'visible';
+      button.style.opacity = '1';
+      button.style.position = 'relative';
+      button.style.zIndex = '10';
+      button.style.margin = '8px 0 16px';
+
+      const titleRow = title.closest('.titleRow');
+      if (titleRow?.parentElement) {
+        titleRow.parentElement.insertBefore(button, titleRow.nextSibling);
+      } else {
+        title.insertAdjacentElement('afterend', button);
+      }
     }
 
     button.style.display = 'inline-flex';
@@ -107,13 +126,13 @@
         return;
       }
 
-      const fallback = Array.from(titleRow.querySelectorAll('button')).find(b =>
-        normalize(b.textContent).includes('consultar inventario')
-      );
+      // Compatibilidad si el módulo cambia el id del botón secundario.
+      const candidate = Array.from(main.querySelectorAll('button')).find(b => {
+        const text = normalize(b.textContent);
+        return text.includes('ver todo') || text.includes('buscar') || text.includes('consultar inventario');
+      });
 
-      if (fallback && fallback !== button) {
-        fallback.click();
-      }
+      if (candidate && candidate !== button) candidate.click();
     });
   }
 
@@ -135,7 +154,5 @@
   }
 
   // Refuerzo para renders asíncronos del módulo Inventario.
-  // No modifica Supabase; solo corrige la celda visible y garantiza
-  // que el acceso a Consulta permanezca visible.
   setInterval(scan, 500);
 })();
