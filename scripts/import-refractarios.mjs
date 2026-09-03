@@ -12,6 +12,7 @@ const EXPECTED = {
 };
 const SHEET_NAMES = ['Entradas', 'Salidas'];
 const CHUNK_SIZE = 250;
+const VERIFY_PAGE_SIZE = 1000;
 
 function arg(name, fallback = undefined) {
   const i = process.argv.indexOf(`--${name}`);
@@ -57,11 +58,6 @@ function parseWorkbook(filePath) {
       const r = matrix[i] || [];
       const sourceRow = i + 1;
       const isEntrada = sheetName === 'Entradas';
-      // sheet_to_json(..., { header: 1 }) returns zero-based columns.
-      // Entradas: A=fecha, B=documento, C=proveedor, D=código, E=categoría,
-      // F=producto, G=unidad, H=comentario, I=cantidad.
-      // Salidas:  A=fecha, B=documento, C=cliente, D=código, E=categoría,
-      // F=producto, G=comentario, H=cantidad. Salidas no tiene columna Unidad.
       const eventDate = excelDateToISO(r[0]);
       const documentNo = normalizeText(r[1]);
       const party = normalizeText(r[2]);
@@ -160,18 +156,27 @@ async function main() {
     console.log(`Staging: ${Math.min(i + chunk.length, payload.length)}/${payload.length}`);
   }
 
-  const verification = await supabase.from('qf_import_rows').select('event_type,quantity').eq('batch_id', batchId);
-  if (verification.error) throw verification.error;
-  const stagedEntryQty = verification.data.filter(r => r.event_type === 'entrada').reduce((s, r) => s + Number(r.quantity || 0), 0);
-  const stagedExitQty = verification.data.filter(r => r.event_type === 'salida').reduce((s, r) => s + Number(r.quantity || 0), 0);
-  if (verification.data.length !== parsed.rows.length || stagedEntryQty !== entriesQuantity || stagedExitQty !== exitsQuantity) {
+  const verificationRows = [];
+  for (let from = 0; ; from += VERIFY_PAGE_SIZE) {
+    const { data, error: verifyError } = await supabase
+      .from('qf_import_rows')
+      .select('event_type,quantity')
+      .eq('batch_id', batchId)
+      .range(from, from + VERIFY_PAGE_SIZE - 1);
+    if (verifyError) throw verifyError;
+    verificationRows.push(...(data || []));
+    if (!data || data.length < VERIFY_PAGE_SIZE) break;
+  }
+  const stagedEntryQty = verificationRows.filter(r => r.event_type === 'entrada').reduce((s, r) => s + Number(r.quantity || 0), 0);
+  const stagedExitQty = verificationRows.filter(r => r.event_type === 'salida').reduce((s, r) => s + Number(r.quantity || 0), 0);
+  if (verificationRows.length !== parsed.rows.length || stagedEntryQty !== entriesQuantity || stagedExitQty !== exitsQuantity) {
     await supabase.from('qf_import_batches').update({ status: 'error', error_message: 'La verificación post-carga no coincide con el Excel.' }).eq('id', batchId);
-    throw new Error(`Verificación post-carga fallida: ${verification.data.length} filas, ${stagedEntryQty} entradas, ${stagedExitQty} salidas.`);
+    throw new Error(`Verificación post-carga fallida: ${verificationRows.length} filas, ${stagedEntryQty} entradas, ${stagedExitQty} salidas.`);
   }
   const final = await supabase.from('qf_import_batches').update({ status: 'verified', completed_at: new Date().toISOString() }).eq('id', batchId);
   if (final.error) throw final.error;
   console.log(`STAGING OK · batch ${batchId}`);
-  console.log(`Verificado: ${verification.data.length} filas · ${stagedEntryQty} entradas · ${stagedExitQty} salidas.`);
+  console.log(`Verificado: ${verificationRows.length} filas · ${stagedEntryQty} entradas · ${stagedExitQty} salidas.`);
 }
 
 main().catch(error => { console.error(`ERROR: ${error.message}`); process.exitCode = 1; });
