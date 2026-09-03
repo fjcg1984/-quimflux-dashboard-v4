@@ -57,15 +57,20 @@ function parseWorkbook(filePath) {
       const r = matrix[i] || [];
       const sourceRow = i + 1;
       const isEntrada = sheetName === 'Entradas';
-      const eventDate = excelDateToISO(r[1]);
-      const documentNo = normalizeText(r[2]);
-      const party = normalizeText(r[3]);
-      const productCode = normalizeText(r[4]);
-      const category = normalizeText(r[5]);
-      const productName = normalizeText(r[6]);
-      const unit = normalizeText(r[7]);
-      const comment = normalizeText(r[8]);
-      const quantity = normalizeQuantity(isEntrada ? r[9] : r[8]);
+      // sheet_to_json(..., { header: 1 }) returns zero-based columns.
+      // Entradas: A=fecha, B=documento, C=proveedor, D=código, E=categoría,
+      // F=producto, G=unidad, H=comentario, I=cantidad.
+      // Salidas:  A=fecha, B=documento, C=cliente, D=código, E=categoría,
+      // F=producto, G=comentario, H=cantidad.
+      const eventDate = excelDateToISO(r[0]);
+      const documentNo = normalizeText(r[1]);
+      const party = normalizeText(r[2]);
+      const productCode = normalizeText(r[3]);
+      const category = normalizeText(r[4]);
+      const productName = normalizeText(r[5]);
+      const unit = normalizeText(r[6]);
+      const comment = normalizeText(r[isEntrada ? 7 : 6]);
+      const quantity = normalizeQuantity(r[isEntrada ? 8 : 7]);
       const allEmpty = [eventDate, documentNo, party, productCode, category, productName, unit, comment, quantity].every(v => v === null);
       if (allEmpty) continue;
       if (!eventDate || !documentNo || !party || !productCode || !productName || !unit || quantity === null) {
