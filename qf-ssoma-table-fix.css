@@ -1,0 +1,39 @@
+/* SSOMA: tabla compacta y sin desplazamiento horizontal en escritorio. */
+main:has(> h1:first-child) .qf-ssoma-table-fix,
+main:has(h1) .qf-ssoma-table-fix{box-sizing:border-box}
+
+/* La tabla de incidentes de SSOMA debe aprovechar todo el ancho disponible. */
+main:has(h1) table{max-width:100%}
+
+/* En SSOMA, la tabla de incidentes se identifica por su cabecera. */
+main:has(h1) table:has(th:nth-child(6)){width:100%;table-layout:fixed}
+main:has(h1) table:has(th:nth-child(6)) th,
+main:has(h1) table:has(th:nth-child(6)) td{white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:top}
+
+/* Anchos equilibrados para: Fecha, Tipo, Lugar, Gravedad, Estado, Hechos. */
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(1),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(1){width:9%}
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(2),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(2){width:13%}
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(3),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(3){width:18%}
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(4),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(4){width:10%}
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(5),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(5){width:10%}
+main:has(h1) table:has(th:nth-child(6)) th:nth-child(6),
+main:has(h1) table:has(th:nth-child(6)) td:nth-child(6){width:40%}
+
+@media(max-width:900px){
+  main:has(h1) table:has(th:nth-child(6)){font-size:12px}
+  main:has(h1) table:has(th:nth-child(6)) th:nth-child(3),
+  main:has(h1) table:has(th:nth-child(6)) td:nth-child(3){width:20%}
+  main:has(h1) table:has(th:nth-child(6)) th:nth-child(6),
+  main:has(h1) table:has(th:nth-child(6)) td:nth-child(6){width:34%}
+}
+
+@media(max-width:650px){
+  main:has(h1) table:has(th:nth-child(6)){font-size:11px}
+  main:has(h1) table:has(th:nth-child(6)) th,
+  main:has(h1) table:has(th:nth-child(6)) td{padding:7px 5px}
+}
